@@ -122,6 +122,7 @@ export function Home({ notices, isAdmin, user }: HomeProps) {
                       else if (category.id === '17') navigate('/medical');
                       else if (category.id === '19') navigate('/age-calculator');
                       else if (category.id === '20') navigate('/chat?open=helpline');
+                      else if (category.id === '21') window.open('https://getapp.koyrabd.top', '_blank');
                       else if (category.id === '18') {
                         navigate('/auth');
                       }

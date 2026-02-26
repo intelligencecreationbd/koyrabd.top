@@ -27,22 +27,7 @@ import {
 } from 'lucide-react';
 import { User } from '../types';
 
-// Firebase Imports
-import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getDatabase, ref, set, onValue, remove, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
-
-const firebaseConfig = {
-  apiKey: 'AIzaSyBg-atwF990YQ8PvDCwKPDxu8IZlQgOZr4',
-  authDomain: 'koyra-paikgacha.firebaseapp.com',
-  databaseURL: 'https://koyra-paikgacha-default-rtdb.firebaseio.com',
-  projectId: 'koyra-paikgacha',
-  storageBucket: 'koyra-paikgacha.firebasestorage.app',
-  messagingSenderId: '637481870946',
-  appId: '1:637481870946:web:ef71c1e96b2729b2eb133b'
-};
-
-const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
-const db = getDatabase(app);
+// Firebase removed for paid hosting migration
 
 const toBn = (num: string | number) => 
   (num || '০').toString().replace(/\d/g, d => "০১২৩৪৫৬৭৮৯"[parseInt(d)]);
@@ -76,10 +61,10 @@ const PublicLedger: React.FC<PublicLedgerProps> = ({ user, onBack }) => {
 
   useEffect(() => {
     if (!user) return;
-    const ledgerRef = ref(db, `ledger/${user.memberId}`);
-    const unsubscribe = onValue(ledgerRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data) {
+    const loadLedger = () => {
+      const saved = localStorage.getItem(`kp_ledger_${user.memberId}`);
+      if (saved) {
+        const data = JSON.parse(saved);
         const list = Object.keys(data).map(key => ({ ...data[key], id: key }));
         setLedgerEntries(list.sort((a, b) => (b.lastUpdate || b.createdAt).localeCompare(a.lastUpdate || a.createdAt)));
         
@@ -87,10 +72,11 @@ const PublicLedger: React.FC<PublicLedgerProps> = ({ user, onBack }) => {
           const updated = list.find(e => e.id === selectedEntry.id);
           if (updated) setSelectedEntry(updated);
         }
+      } else {
+        setLedgerEntries([]);
       }
-      else setLedgerEntries([]);
-    });
-    return () => unsubscribe();
+    };
+    loadLedger();
   }, [user, selectedEntry?.id]);
 
   const ledgerSummary = useMemo(() => ledgerEntries.reduce((acc, entry) => {
@@ -172,7 +158,10 @@ const PublicLedger: React.FC<PublicLedgerProps> = ({ user, onBack }) => {
     const entryId = targetEntry ? targetEntry.id : Math.random().toString(36).substr(2, 9);
     
     try {
-      await set(ref(db, `ledger/${user.memberId}/${entryId}`), { 
+      const saved = localStorage.getItem(`kp_ledger_${user.memberId}`);
+      const data = saved ? JSON.parse(saved) : {};
+      
+      const newEntry = { 
         id: entryId, 
         personName: targetEntry?.personName || ledgerFormData.personName, 
         mobile: targetEntry?.mobile || ledgerFormData.mobile, 
@@ -181,7 +170,16 @@ const PublicLedger: React.FC<PublicLedgerProps> = ({ user, onBack }) => {
         history, 
         lastUpdate: timestamp, 
         createdAt: targetEntry?.createdAt || timestamp 
-      });
+      };
+
+      data[entryId] = newEntry;
+      localStorage.setItem(`kp_ledger_${user.memberId}`, JSON.stringify(data));
+      
+      // Update local state
+      const list = Object.keys(data).map(key => ({ ...data[key], id: key }));
+      setLedgerEntries(list.sort((a, b) => (b.lastUpdate || b.createdAt).localeCompare(a.lastUpdate || a.createdAt)));
+      if (selectedEntry && entryId === selectedEntry.id) setSelectedEntry(newEntry);
+
       setShowLedgerForm(false);
       setIsAddingQuickTransaction(false);
       setLedgerFormData({ personName: '', mobile: '', address: '', type: 'pabo', amount: '' });
@@ -196,13 +194,26 @@ const PublicLedger: React.FC<PublicLedgerProps> = ({ user, onBack }) => {
     if (!selectedEntry || !user || !personEditForm.personName) return;
     setIsSubmitting(true);
     try {
-      const updates = {
-        personName: personEditForm.personName,
-        mobile: personEditForm.mobile,
-        address: personEditForm.address
-      };
-      await update(ref(db, `ledger/${user.memberId}/${selectedEntry.id}`), updates);
-      setSelectedEntry({ ...selectedEntry, ...updates });
+      const saved = localStorage.getItem(`kp_ledger_${user.memberId}`);
+      const data = saved ? JSON.parse(saved) : {};
+      
+      if (data[selectedEntry.id]) {
+        data[selectedEntry.id] = {
+          ...data[selectedEntry.id],
+          personName: personEditForm.personName,
+          mobile: personEditForm.mobile,
+          address: personEditForm.address
+        };
+        localStorage.setItem(`kp_ledger_${user.memberId}`, JSON.stringify(data));
+        
+        const updatedEntry = data[selectedEntry.id];
+        setSelectedEntry(updatedEntry);
+        
+        // Update local state
+        const list = Object.keys(data).map(key => ({ ...data[key], id: key }));
+        setLedgerEntries(list.sort((a, b) => (b.lastUpdate || b.createdAt).localeCompare(a.lastUpdate || a.createdAt)));
+      }
+
       setIsEditingPerson(false);
       alert('তথ্য সফলভাবে আপডেট হয়েছে।');
     } catch (e) {
@@ -215,7 +226,16 @@ const PublicLedger: React.FC<PublicLedgerProps> = ({ user, onBack }) => {
   const handleDeleteEntry = async () => {
     if (!entryToDelete || !user) return;
     try {
-      await remove(ref(db, `ledger/${user.memberId}/${entryToDelete.id}`));
+      const saved = localStorage.getItem(`kp_ledger_${user.memberId}`);
+      const data = saved ? JSON.parse(saved) : {};
+      
+      delete data[entryToDelete.id];
+      localStorage.setItem(`kp_ledger_${user.memberId}`, JSON.stringify(data));
+      
+      // Update local state
+      const list = Object.keys(data).map(key => ({ ...data[key], id: key }));
+      setLedgerEntries(list.sort((a, b) => (b.lastUpdate || b.createdAt).localeCompare(a.lastUpdate || a.createdAt)));
+
       setEntryToDelete(null);
       setShowPersonProfile(false);
       setShowDetailView(false);

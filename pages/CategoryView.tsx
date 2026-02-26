@@ -14,22 +14,7 @@ import PublicLegal from '../components/PublicLegal';
 import PublicDirectory from '../components/PublicDirectory';
 import PublicNews from '../components/PublicNews';
 
-// Firebase Imports
-import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
-
-const firebaseConfig = {
-  apiKey: 'AIzaSyBg-atwF990YQ8PvDCwKPDxu8IZlQgOZr4',
-  authDomain: 'koyra-paikgacha.firebaseapp.com',
-  databaseURL: 'https://koyra-paikgacha-default-rtdb.firebaseio.com',
-  projectId: 'koyra-paikgacha',
-  storageBucket: 'koyra-paikgacha.firebasestorage.app',
-  messagingSenderId: '637481870946',
-  appId: '1:637481870946:web:ef71c1e96b2729b2eb133b'
-};
-
-const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
-const db = getDatabase(app);
+// Firebase removed for paid hosting migration
 
 const CategoryView: React.FC = () => {
   const { id, '*': splat } = useParams<{ id: string; '*': string }>();

@@ -89,9 +89,9 @@ const TraditionalHistory: React.FC<{ busId: string; onBack: () => void }> = ({ b
   useEffect(() => {
     const handleTraditionalDataSync = async () => {
       setIsLoading(true);
-      const dataRef = ref(db, `traditional_and_historical/${busId}`);
       try {
-        const snapshot = await get(dataRef);
+        const saved = localStorage.getItem('kp_traditional_and_historical');
+        const data = saved ? JSON.parse(saved) : {};
         const fullMigrationSource: any = {
           "9-1-1": {
             id: "9-1-1",
@@ -145,15 +145,16 @@ const TraditionalHistory: React.FC<{ busId: string; onBack: () => void }> = ({ b
           }
         };
 
-        const existingData = snapshot.val();
+        const existingData = data[busId];
         if (!existingData && fullMigrationSource[busId]) {
-          await set(dataRef, fullMigrationSource[busId]);
+          data[busId] = fullMigrationSource[busId];
+          localStorage.setItem('kp_traditional_and_historical', JSON.stringify(data));
           setContent(fullMigrationSource[busId]);
         } else {
           setContent(existingData);
         }
       } catch (e) {
-        console.error("Database Error:", e);
+        console.error("Storage Error:", e);
       } finally {
         setIsLoading(false);
       }

@@ -30,24 +30,7 @@ import {
   Users2
 } from 'lucide-react';
 
-// Firebase Imports
-import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getDatabase, ref, onValue, set, push, remove, update, serverTimestamp, get } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
-import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-
-const firebaseConfig = {
-  apiKey: 'AIzaSyBg-atwF990YQ8PvDCwKPDxu8IZlQgOZr4',
-  authDomain: 'koyra-paikgacha.firebaseapp.com',
-  databaseURL: 'https://koyra-paikgacha-default-rtdb.firebaseio.com',
-  projectId: 'koyra-paikgacha',
-  storageBucket: 'koyra-paikgacha.firebasestorage.app',
-  messagingSenderId: '637481870946',
-  appId: '1:637481870946:web:ef71c1e96b2729b2eb133b'
-};
-
-const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
-const db = getDatabase(app);
-const dbFs = getFirestore(app);
+// Firebase removed for paid hosting migration
 
 const HELPLINE_ID = 'KP37224995';
 const HELPLINE_NAME = 'কয়রা-পাইকগাছা কমিউনিটি এপস';
@@ -147,8 +130,11 @@ const KPCommunityChat: React.FC = () => {
           navigate(location.pathname, { replace: true });
       }
 
-      const presenceRef = ref(db, `presence/${u.memberId}`);
-      set(presenceRef, { status: 'online', lastActive: serverTimestamp() });
+      // Presence simulation
+      const presence = JSON.parse(localStorage.getItem('kp_presence') || '{}');
+      presence[u.memberId] = { status: 'online', lastActive: Date.now() };
+      localStorage.setItem('kp_presence', JSON.stringify(presence));
+      
       setIsLoading(false);
       return;
     }
@@ -159,89 +145,83 @@ const KPCommunityChat: React.FC = () => {
     }
   }, [navigate, location]);
 
-  // Global user listener to keep verification status updated everywhere
+  // Global user listener
   useEffect(() => {
     if (!currentUser || isGuest) return;
-    const usersCollection = collection(dbFs, 'users');
-    const unsubscribeUsers = onSnapshot(usersCollection, (snapshot) => {
-        const list = snapshot.docs.map(doc => ({ ...doc.data() }));
-        setUsers(list);
-    });
-    return () => unsubscribeUsers();
+    const loadUsers = () => {
+      const list = JSON.parse(localStorage.getItem('kp_users') || '[]');
+      setUsers(list);
+    };
+    loadUsers();
+    const interval = setInterval(loadUsers, 5000);
+    return () => clearInterval(interval);
   }, [currentUser, isGuest]);
 
   useEffect(() => {
     if (!currentUser || isGuest) return;
 
-    const friendsRef = ref(db, `user_friends/${currentUser.memberId}`);
-    onValue(friendsRef, snap => {
-        setFriends(snap.val() || {});
-    });
+    const loadSocialData = () => {
+      const allFriends = JSON.parse(localStorage.getItem('kp_user_friends') || '{}');
+      setFriends(allFriends[currentUser.memberId] || {});
 
-    const outgoingRef = ref(db, `user_outgoing_requests/${currentUser.memberId}`);
-    onValue(outgoingRef, snap => {
-        setSentRequests(snap.val() || {});
-    });
+      const allOutgoing = JSON.parse(localStorage.getItem('kp_user_outgoing_requests') || '{}');
+      setSentRequests(allOutgoing[currentUser.memberId] || {});
 
-    const incomingRef = ref(db, `user_incoming_requests/${currentUser.memberId}`);
-    onValue(incomingRef, snap => {
-        const val = snap.val();
-        if (val) {
-            setReceivedRequests(Object.keys(val).map(k => ({ ...val[k], senderId: k })));
-        } else {
-            setReceivedRequests([]);
-        }
-    });
+      const allIncoming = JSON.parse(localStorage.getItem('kp_user_incoming_requests') || '{}');
+      const myIncoming = allIncoming[currentUser.memberId] || {};
+      setReceivedRequests(Object.keys(myIncoming).map(k => ({ ...myIncoming[k], senderId: k })));
 
-    const roomsRef = ref(db, `user_chats/${currentUser.memberId}`);
-    const unsub = onValue(roomsRef, (snap) => {
-        const val = snap.val();
-        if (val) {
-            const list = Object.keys(val).map(k => ({ ...val[k], otherId: k }));
-            const filteredList = list.filter(room => room.otherId !== HELPLINE_ID);
-            setChatRooms(filteredList.sort((a, b) => b.lastTimestamp - a.lastTimestamp));
-        } else {
-            setChatRooms([]);
-        }
-    });
-    return () => unsub();
+      const allChats = JSON.parse(localStorage.getItem('kp_user_chats') || '{}');
+      const myChats = allChats[currentUser.memberId] || {};
+      const list = Object.keys(myChats).map(k => ({ ...myChats[k], otherId: k }));
+      const filteredList = list.filter(room => room.otherId !== HELPLINE_ID);
+      setChatRooms(filteredList.sort((a, b) => b.lastTimestamp - a.lastTimestamp));
+    };
+
+    loadSocialData();
+    const interval = setInterval(loadSocialData, 3000);
+    return () => clearInterval(interval);
   }, [currentUser, isGuest]);
 
   useEffect(() => {
     if (!activeChat || !currentUser) return;
     const chatId = [currentUser.memberId, activeChat.memberId].sort().join('_');
-    const msgRef = ref(db, `messages/${chatId}`);
-    const unsub = onValue(msgRef, (snap) => {
-        const val = snap.val();
-        if (val) {
-            const now = Date.now();
-            const list: any[] = [];
-            const expiredIds: string[] = [];
-            Object.keys(val).forEach(k => {
-                const m = val[k];
-                if (now - m.timestamp > MESSAGE_EXPIRY_MS) {
-                    expiredIds.push(k);
-                } else {
-                    list.push({ ...m, id: k });
-                }
-            });
-            expiredIds.forEach(id => remove(ref(db, `messages/${chatId}/${id}`)));
-            setMessages(list.sort((a, b) => a.timestamp - b.timestamp));
-            list.forEach(m => {
-                if (m.receiverId === currentUser.memberId && m.status !== 'seen') {
-                    update(ref(db, `messages/${chatId}/${m.id}`), { status: 'seen' });
-                }
-            });
-            if (!isGuest) {
-              update(ref(db, `user_chats/${currentUser.memberId}/${activeChat.memberId}`), { unseenCount: 0 });
-            }
-        } else {
-            setMessages([]);
+    
+    const loadMessages = () => {
+      const allMessages = JSON.parse(localStorage.getItem(`kp_messages_${chatId}`) || '[]');
+      const now = Date.now();
+      const list: any[] = [];
+      const updatedMessages = allMessages.filter((m: any) => {
+        if (now - m.timestamp > MESSAGE_EXPIRY_MS) return false;
+        
+        if (m.receiverId === currentUser.memberId && m.status !== 'seen') {
+          m.status = 'seen';
         }
-    });
-    const typingRef = ref(db, `typing/${chatId}/${activeChat.memberId}`);
-    const unsubTyping = onValue(typingRef, snap => setOtherTyping(!!snap.val()));
-    return () => { unsub(); unsubTyping(); };
+        list.push(m);
+        return true;
+      });
+
+      if (JSON.stringify(allMessages) !== JSON.stringify(updatedMessages)) {
+        localStorage.setItem(`kp_messages_${chatId}`, JSON.stringify(updatedMessages));
+      }
+
+      setMessages(list.sort((a, b) => a.timestamp - b.timestamp));
+      
+      if (!isGuest) {
+        const allChats = JSON.parse(localStorage.getItem('kp_user_chats') || '{}');
+        if (allChats[currentUser.memberId]?.[activeChat.memberId]) {
+          allChats[currentUser.memberId][activeChat.memberId].unseenCount = 0;
+          localStorage.setItem('kp_user_chats', JSON.stringify(allChats));
+        }
+      }
+
+      const allTyping = JSON.parse(localStorage.getItem('kp_typing') || '{}');
+      setOtherTyping(!!allTyping[chatId]?.[activeChat.memberId]);
+    };
+
+    loadMessages();
+    const interval = setInterval(loadMessages, 2000);
+    return () => clearInterval(interval);
   }, [activeChat, currentUser, isGuest]);
 
   useEffect(() => {
@@ -251,8 +231,10 @@ const KPCommunityChat: React.FC = () => {
   const handleSendMessage = async () => {
     if (!inputText.trim() || !currentUser || !activeChat) return;
     const chatId = [currentUser.memberId, activeChat.memberId].sort().join('_');
-    const msgId = push(ref(db, `messages/${chatId}`)).key;
+    const msgId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+    
     const messageData = {
+        id: msgId,
         senderId: currentUser.memberId,
         senderName: currentUser.fullName,
         receiverId: activeChat.memberId,
@@ -261,24 +243,42 @@ const KPCommunityChat: React.FC = () => {
         status: 'sent',
         reactions: {}
     };
-    const receiverPresenceRef = ref(db, `presence/${activeChat.memberId}`);
-    const recSnap = await get(receiverPresenceRef);
-    if (recSnap.val()?.status === 'online') messageData.status = 'delivered';
-    await set(ref(db, `messages/${chatId}/${msgId}`), messageData);
+
+    const presence = JSON.parse(localStorage.getItem('kp_presence') || '{}');
+    if (presence[activeChat.memberId]?.status === 'online') {
+      messageData.status = 'delivered';
+    }
+
+    const allMessages = JSON.parse(localStorage.getItem(`kp_messages_${chatId}`) || '[]');
+    allMessages.push(messageData);
+    localStorage.setItem(`kp_messages_${chatId}`, JSON.stringify(allMessages));
+
     const updateRoom = (userId: string, otherId: string, otherData: any, isSender: boolean) => {
         if (userId.startsWith('GUEST-')) return; 
-        update(ref(db, `user_chats/${userId}/${otherId}`), {
+        const allChats = JSON.parse(localStorage.getItem('kp_user_chats') || '{}');
+        if (!allChats[userId]) allChats[userId] = {};
+        
+        const currentUnseen = allChats[userId][otherId]?.unseenCount || 0;
+        
+        allChats[userId][otherId] = {
             lastMessage: inputText,
             lastTimestamp: Date.now(),
             otherName: otherData.fullName || otherData.name,
             otherPhoto: otherData.photoURL || otherData.photo || '',
-            unseenCount: isSender ? 0 : 1
-        });
+            unseenCount: isSender ? 0 : currentUnseen + 1
+        };
+        localStorage.setItem('kp_user_chats', JSON.stringify(allChats));
     };
+
     updateRoom(currentUser.memberId, activeChat.memberId, activeChat, true);
     updateRoom(activeChat.memberId, currentUser.memberId, currentUser, false);
+    
     setInputText('');
-    set(ref(db, `typing/${chatId}/${currentUser.memberId}`), false);
+    const typing = JSON.parse(localStorage.getItem('kp_typing') || '{}');
+    if (!typing[chatId]) typing[chatId] = {};
+    typing[chatId][currentUser.memberId] = false;
+    localStorage.setItem('kp_typing', JSON.stringify(typing));
+    setIsTyping(false);
   };
 
   const sendFriendRequest = async (user: any) => {
@@ -289,44 +289,78 @@ const KPCommunityChat: React.FC = () => {
         senderVillage: currentUser.village || '',
         timestamp: Date.now()
     };
-    await update(ref(db, `user_incoming_requests/${user.memberId}/${currentUser.memberId}`), requestData);
-    await update(ref(db, `user_outgoing_requests/${currentUser.memberId}/${user.memberId}`), { timestamp: Date.now() });
+
+    const allIncoming = JSON.parse(localStorage.getItem('kp_user_incoming_requests') || '{}');
+    if (!allIncoming[user.memberId]) allIncoming[user.memberId] = {};
+    allIncoming[user.memberId][currentUser.memberId] = requestData;
+    localStorage.setItem('kp_user_incoming_requests', JSON.stringify(allIncoming));
+
+    const allOutgoing = JSON.parse(localStorage.getItem('kp_user_outgoing_requests') || '{}');
+    if (!allOutgoing[currentUser.memberId]) allOutgoing[currentUser.memberId] = {};
+    allOutgoing[currentUser.memberId][user.memberId] = { timestamp: Date.now() };
+    localStorage.setItem('kp_user_outgoing_requests', JSON.stringify(allOutgoing));
+
     alert(`${user.fullName} কে বন্ধুত্বের অনুরোধ পাঠানো হয়েছে।`);
   };
 
   const acceptFriendRequest = async (request: any) => {
     if (!currentUser) return;
-    const { senderId, senderName, senderPhoto } = request;
-    const updates: any = {};
-    updates[`user_friends/${currentUser.memberId}/${senderId}`] = true;
-    updates[`user_friends/${senderId}/${currentUser.memberId}`] = true;
-    updates[`user_incoming_requests/${currentUser.memberId}/${senderId}`] = null;
-    updates[`user_outgoing_requests/${senderId}/${currentUser.memberId}`] = null;
-    await update(ref(db), updates);
+    const { senderId, senderName } = request;
+
+    const allFriends = JSON.parse(localStorage.getItem('kp_user_friends') || '{}');
+    if (!allFriends[currentUser.memberId]) allFriends[currentUser.memberId] = {};
+    if (!allFriends[senderId]) allFriends[senderId] = {};
+    allFriends[currentUser.memberId][senderId] = true;
+    allFriends[senderId][currentUser.memberId] = true;
+    localStorage.setItem('kp_user_friends', JSON.stringify(allFriends));
+
+    const allIncoming = JSON.parse(localStorage.getItem('kp_user_incoming_requests') || '{}');
+    if (allIncoming[currentUser.memberId]) delete allIncoming[currentUser.memberId][senderId];
+    localStorage.setItem('kp_user_incoming_requests', JSON.stringify(allIncoming));
+
+    const allOutgoing = JSON.parse(localStorage.getItem('kp_user_outgoing_requests') || '{}');
+    if (allOutgoing[senderId]) delete allOutgoing[senderId][currentUser.memberId];
+    localStorage.setItem('kp_user_outgoing_requests', JSON.stringify(allOutgoing));
+
     alert(`${senderName} এখন আপনার বন্ধু!`);
   };
 
   const rejectFriendRequest = async (request: any) => {
     if (!currentUser) return;
-    await remove(ref(db, `user_incoming_requests/${currentUser.memberId}/${request.senderId}`));
-    await remove(ref(db, `user_outgoing_requests/${request.senderId}/${currentUser.memberId}`));
+    const allIncoming = JSON.parse(localStorage.getItem('kp_user_incoming_requests') || '{}');
+    if (allIncoming[currentUser.memberId]) delete allIncoming[currentUser.memberId][request.senderId];
+    localStorage.setItem('kp_user_incoming_requests', JSON.stringify(allIncoming));
+
+    const allOutgoing = JSON.parse(localStorage.getItem('kp_user_outgoing_requests') || '{}');
+    if (allOutgoing[request.senderId]) delete allOutgoing[request.senderId][currentUser.memberId];
+    localStorage.setItem('kp_user_outgoing_requests', JSON.stringify(allOutgoing));
   };
 
   const unfriend = async (otherId: string, otherName: string) => {
     if (!currentUser || !window.confirm(`${otherName} কে কি আনফ্রেন্ড করতে চান?`)) return;
-    const updates: any = {};
-    updates[`user_friends/${currentUser.memberId}/${otherId}`] = null;
-    updates[`user_friends/${otherId}/${currentUser.memberId}`] = null;
-    await update(ref(db), updates);
+    const allFriends = JSON.parse(localStorage.getItem('kp_user_friends') || '{}');
+    if (allFriends[currentUser.memberId]) delete allFriends[currentUser.memberId][otherId];
+    if (allFriends[otherId]) delete allFriends[otherId][currentUser.memberId];
+    localStorage.setItem('kp_user_friends', JSON.stringify(allFriends));
   };
 
   const handleTyping = (val: string) => {
     setInputText(val);
     if (!currentUser || !activeChat) return;
     const chatId = [currentUser.memberId, activeChat.memberId].sort().join('_');
-    const typingRef = ref(db, `typing/${chatId}/${currentUser.memberId}`);
-    if (val.length > 0 && !isTyping) { setIsTyping(true); set(typingRef, true); } 
-    else if (val.length === 0) { setIsTyping(false); set(typingRef, false); }
+    const typing = JSON.parse(localStorage.getItem('kp_typing') || '{}');
+    if (!typing[chatId]) typing[chatId] = {};
+    
+    if (val.length > 0 && !isTyping) { 
+      setIsTyping(true); 
+      typing[chatId][currentUser.memberId] = true;
+      localStorage.setItem('kp_typing', JSON.stringify(typing));
+    } 
+    else if (val.length === 0) { 
+      setIsTyping(false); 
+      typing[chatId][currentUser.memberId] = false;
+      localStorage.setItem('kp_typing', JSON.stringify(typing));
+    }
   };
 
   const StatusIcon = ({ status }: { status: string }) => {

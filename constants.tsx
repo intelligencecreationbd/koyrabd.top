@@ -23,7 +23,8 @@ import {
   MessagesSquare,
   UserCircle,
   Calculator,
-  Headset
+  Headset,
+  Download
 } from 'lucide-react';
 import { MainMenu } from './types';
 
@@ -178,6 +179,13 @@ export const CATEGORIES: MainMenu[] = [
     subMenus: []
   },
   {
+    id: '21',
+    name: 'ডাউনলোড এপস',
+    icon: 'Download',
+    color: '#3B82F6',
+    subMenus: []
+  },
+  {
     id: '12',
     name: 'ইউজার লগইন',
     icon: 'LogIn',
@@ -209,5 +217,6 @@ export const ICON_MAP: Record<string, any> = {
   MessagesSquare,
   UserCircle,
   Calculator,
-  Headset
+  Headset,
+  Download
 };

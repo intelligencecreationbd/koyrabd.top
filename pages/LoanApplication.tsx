@@ -15,22 +15,7 @@ import {
 } from 'lucide-react';
 import { User } from '../types';
 
-// Firebase Imports
-import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-
-const firebaseConfig = {
-  apiKey: 'AIzaSyBg-atwF990YQ8PvDCwKPDxu8IZlQgOZr4',
-  authDomain: 'koyra-paikgacha.firebaseapp.com',
-  databaseURL: 'https://koyra-paikgacha-default-rtdb.firebaseio.com',
-  projectId: 'koyra-paikgacha',
-  storageBucket: 'koyra-paikgacha.firebasestorage.app',
-  messagingSenderId: '637481870946',
-  appId: '1:637481870946:web:ef71c1e96b2729b2eb133b'
-};
-
-const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
-const dbFs = getFirestore(app);
+// Firebase removed for paid hosting migration
 
 const LoanApplication: React.FC = () => {
   const navigate = useNavigate();
@@ -61,7 +46,11 @@ const LoanApplication: React.FC = () => {
 
     setIsSubmitting(true);
     try {
-      await addDoc(collection(dbFs, "loan_requests"), {
+      const saved = localStorage.getItem('kp_loan_requests');
+      const requests = saved ? JSON.parse(saved) : [];
+      
+      const newRequest = {
+        id: `loan_${Date.now()}`,
         userId: user.memberId,
         userName: user.fullName,
         userMobile: user.mobile,
@@ -70,7 +59,10 @@ const LoanApplication: React.FC = () => {
         period: formData.period,
         status: 'pending',
         timestamp: new Date().toISOString()
-      });
+      };
+
+      requests.push(newRequest);
+      localStorage.setItem('kp_loan_requests', JSON.stringify(requests));
       
       setIsSuccess(true);
       setTimeout(() => navigate('/services'), 3000);
