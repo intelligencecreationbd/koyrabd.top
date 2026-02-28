@@ -18,8 +18,9 @@ import {
   FolderPlus 
 } from 'lucide-react';
 import { LegalServiceContact } from '../types';
-
-// Firebase removed for paid hosting migration
+import { ref, onValue, set, push, remove } from 'firebase/database';
+import { directoryDb } from '../Firebase-directory';
+import { uploadImageToServer } from '../src/services/uploadService';
 
 // INTERNAL COMPONENTS
 const Header: React.FC<{ title: string; onBack: () => void }> = ({ title, onBack }) => (
@@ -57,6 +58,7 @@ const AdminLegalMgmt: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const [legalServices, setLegalServices] = useState<LegalServiceContact[]>([]);
   const [showLegalForm, setShowLegalForm] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [editingLegalId, setEditingLegalId] = useState<string | null>(null);
   
   const [showEmailField, setShowEmailField] = useState(false);
@@ -69,13 +71,26 @@ const AdminLegalMgmt: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   });
 
   useEffect(() => {
-    const saved = localStorage.getItem('kp_legal_services');
-    if (saved) setLegalServices(JSON.parse(saved));
+    const legalRef = ref(directoryDb, 'আইনি সেবা');
+    const unsubscribe = onValue(legalRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const list = Object.entries(data).map(([id, value]: [string, any]) => ({
+          ...value,
+          id
+        }));
+        setLegalServices(list);
+      } else {
+        setLegalServices([]);
+      }
+    });
+    return () => unsubscribe();
   }, []);
 
   const handleLegalPhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      setSelectedFile(file);
       const reader = new FileReader();
       reader.onloadend = () => {
         setLegalForm(prev => ({ ...prev, photo: reader.result as string }));
@@ -90,46 +105,58 @@ const AdminLegalMgmt: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     if (isAddingNewCategory && !newCategoryName.trim()) { alert('ক্যাটাগরির নাম লিখুন'); return; }
     
     setIsSubmitting(true);
-    const catId = isAddingNewCategory ? `4-${Date.now()}` : legalForm.categoryId;
-    const catName = isAddingNewCategory ? newCategoryName : legalForm.categoryName;
-    
-    const customFields = [];
-    if (legalForm.email) customFields.push({ label: 'Email', value: legalForm.email });
-    if (legalForm.assistantName) customFields.push({ label: 'সহকারীর নাম', value: legalForm.assistantName });
-    if (legalForm.assistantMobile) customFields.push({ label: 'সহকারীর মোবাইল', value: legalForm.assistantMobile });
-    
-    legalForm.extraMobiles.forEach((mob, idx) => {
-        if (mob) customFields.push({ label: `Mobile ${idx + 2}`, value: mob });
-    });
 
     try {
-        const id = editingLegalId || `legal_${Date.now()}`;
+        let photoUrl = legalForm.photo;
+        
+        if (selectedFile) {
+          try {
+            photoUrl = await uploadImageToServer(selectedFile);
+          } catch (uploadError: any) {
+            alert(uploadError.message || 'ইমেজ আপলোড ব্যর্থ হয়েছে!');
+            setIsSubmitting(false);
+            return;
+          }
+        }
+
+        const catId = isAddingNewCategory ? `4-${Date.now()}` : legalForm.categoryId;
+        const catName = isAddingNewCategory ? newCategoryName : legalForm.categoryName;
+        
+        const customFields = [];
+        if (legalForm.email) customFields.push({ label: 'Email', value: legalForm.email });
+        if (legalForm.assistantName) customFields.push({ label: 'সহকারীর নাম', value: legalForm.assistantName });
+        if (legalForm.assistantMobile) customFields.push({ label: 'সহকারীর মোবাইল', value: legalForm.assistantMobile });
+        
+        legalForm.extraMobiles.forEach((mob, idx) => {
+            if (mob) customFields.push({ label: `Mobile ${idx + 2}`, value: mob });
+        });
+
         const finalData = {
-            id,
             categoryId: catId,
             categoryName: catName,
             name: legalForm.name,
             mobile: legalForm.mobile,
             homeAddress: legalForm.homeAddress,
             officeAddress: legalForm.officeAddress,
-            photo: legalForm.photo,
+            photo: photoUrl,
             customFields
         };
         
-        let updated;
         if (editingLegalId) {
-          updated = legalServices.map(l => l.id === editingLegalId ? finalData : l);
+          const legalRef = ref(directoryDb, `আইনি সেবা/${editingLegalId}`);
+          await set(legalRef, { ...finalData, id: editingLegalId });
         } else {
-          updated = [...legalServices, finalData];
+          const legalRef = ref(directoryDb, 'আইনি সেবা');
+          const newRef = push(legalRef);
+          await set(newRef, { ...finalData, id: newRef.key });
         }
         
-        setLegalServices(updated);
-        localStorage.setItem('kp_legal_services', JSON.stringify(updated));
-        
+        alert('সফলভাবে সংরক্ষিত হয়েছে!');
         setShowLegalForm(false);
         setIsAddingNewCategory(false);
         setNewCategoryName('');
         setEditingLegalId(null);
+        setSelectedFile(null);
     } catch (e) { alert('ত্রুটি!'); }
     finally { setIsSubmitting(false); }
   };
@@ -137,9 +164,8 @@ const AdminLegalMgmt: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const handleDeleteLegal = async (categoryId: string, id: string) => {
     if (confirm('আপনি কি এই তথ্যটি মুছে ফেলতে চান?')) {
         try {
-            const updated = legalServices.filter(l => l.id !== id);
-            setLegalServices(updated);
-            localStorage.setItem('kp_legal_services', JSON.stringify(updated));
+            const legalRef = ref(directoryDb, `আইনি সেবা/${id}`);
+            await remove(legalRef);
         } catch (e) { alert('মুছে ফেলা সম্ভব হয়নি।'); }
     }
   };

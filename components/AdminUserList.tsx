@@ -24,7 +24,8 @@ import {
   CheckCircle2
 } from 'lucide-react';
 
-// Firebase removed for paid hosting migration
+import { db } from '../firebase';
+import { ref, get, set, update, child, onValue } from "firebase/database";
 
 const toBn = (num: string | number) => 
     (num || '').toString().replace(/\d/g, d => "০১২৩৪৫৬৭৮৯"[parseInt(d)]);
@@ -63,11 +64,17 @@ const AdminUserList: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const [showPass, setShowPass] = useState(false);
 
   useEffect(() => {
-    const saved = localStorage.getItem('kp_users');
-    if (saved) {
-      setUsers(JSON.parse(saved));
-    }
-    setIsLoading(false);
+    const usersRef = ref(db, 'users');
+    const unsubscribe = onValue(usersRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.val();
+        setUsers(Object.values(data));
+      } else {
+        setUsers([]);
+      }
+      setIsLoading(false);
+    });
+    return () => unsubscribe();
   }, []);
 
   const filteredUsers = users.filter(u => 
@@ -86,10 +93,7 @@ const AdminUserList: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const handleUpdateStatus = async (uid: string, currentStatus: string) => {
     const newStatus = currentStatus === 'suspended' ? 'active' : 'suspended';
     try {
-        const updated = users.map(u => u.uid === uid ? { ...u, status: newStatus as any } : u);
-        setUsers(updated);
-        localStorage.setItem('kp_users', JSON.stringify(updated));
-        if (selectedUser) setSelectedUser({ ...selectedUser, status: newStatus as any });
+        await update(ref(db, `users/${uid}`), { status: newStatus });
         alert(`ইউজার সফলভাবে ${newStatus === 'suspended' ? 'সাসপেন্ড' : 'সক্রিয়'} করা হয়েছে।`);
     } catch (e) {
         alert('স্ট্যাটাস আপডেট করা সম্ভব হয়নি!');
@@ -98,10 +102,7 @@ const AdminUserList: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 
   const handleToggleVerification = async (uid: string, currentVerified: boolean) => {
     try {
-      const updated = users.map(u => u.uid === uid ? { ...u, isVerified: !currentVerified } : u);
-      setUsers(updated);
-      localStorage.setItem('kp_users', JSON.stringify(updated));
-      if (selectedUser) setSelectedUser({ ...selectedUser, isVerified: !currentVerified });
+      await update(ref(db, `users/${uid}`), { isVerified: !currentVerified });
       alert(`ইউজার ভেরিফিকেশন স্ট্যাটাস আপডেট হয়েছে।`);
     } catch (e) {
       alert('ভেরিফিকেশন আপডেট করতে সমস্যা হয়েছে!');
@@ -112,10 +113,7 @@ const AdminUserList: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     if (!selectedUser?.uid) return;
     setIsSaving(true);
     try {
-        const updated = users.map(u => u.uid === selectedUser.uid ? { ...u, ...editForm } : u);
-        setUsers(updated);
-        localStorage.setItem('kp_users', JSON.stringify(updated));
-        setSelectedUser({ ...selectedUser, ...editForm } as any);
+        await update(ref(db, `users/${selectedUser.uid}`), editForm);
         setIsEditing(false);
         alert('ইউজারের তথ্য সফলভাবে আপডেট করা হয়েছে।');
     } catch (e) {

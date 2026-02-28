@@ -29,8 +29,8 @@ import {
   UserCheck,
   XCircle
 } from 'lucide-react';
-
-// Firebase removed for paid hosting migration
+import { ref, onValue, set, push, remove, update } from 'firebase/database';
+import { kppostDb } from '../Firebase-kppost';
 
 const toBn = (num: string | number) => 
   (num || '').toString().replace(/\d/g, d => "০১২৩৪৫৬৭৮৯"[parseInt(d)]);
@@ -107,33 +107,72 @@ export default function AdminNewsMgmt({ onBack }: { onBack: () => void }) {
 
   useEffect(() => {
     // Categories
-    const savedCats = localStorage.getItem('kp_news_categories');
-    if (savedCats) {
-      const list = JSON.parse(savedCats);
-      setCategories(list);
-      if (list.length > 0 && !form.category) {
-        setForm(prev => ({ ...prev, category: list[0].id }));
+    const catsRef = ref(kppostDb, 'categories');
+    const unsubscribeCats = onValue(catsRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const list = Object.values(data);
+        setCategories(list as any[]);
+        if (list.length > 0 && !form.category) {
+          setForm(prev => ({ ...prev, category: (list[0] as any).id }));
+        }
+      } else {
+        setCategories([]);
       }
-    }
+    });
 
     // Main News
-    const savedNews = localStorage.getItem('kp_local_news_main');
-    if (savedNews) setNewsList(JSON.parse(savedNews));
+    const newsRef = ref(kppostDb, 'news_main');
+    const unsubscribeNews = onValue(newsRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        setNewsList(Object.values(data));
+      } else {
+        setNewsList([]);
+      }
+    });
 
     // Pending News
-    const savedPending = localStorage.getItem('kp_local_news_pending');
-    if (savedPending) setPendingNewsList(JSON.parse(savedPending));
+    const pendingRef = ref(kppostDb, 'news_pending');
+    const unsubscribePending = onValue(pendingRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        setPendingNewsList(Object.values(data));
+      } else {
+        setPendingNewsList([]);
+      }
+    });
 
     // Rejected News
-    const savedRejected = localStorage.getItem('kp_local_news_rejected');
-    if (savedRejected) setRejectedNewsList(JSON.parse(savedRejected));
+    const rejectedRef = ref(kppostDb, 'news_rejected');
+    const unsubscribeRejected = onValue(rejectedRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        setRejectedNewsList(Object.values(data));
+      } else {
+        setRejectedNewsList([]);
+      }
+    });
 
     // Breaking News
-    const savedBreaking = localStorage.getItem('kp_breaking_news');
-    if (savedBreaking) {
-      const list = JSON.parse(savedBreaking);
-      setBreakingNewsList(list.sort((a: any, b: any) => (b.timestamp || 0) - (a.timestamp || 0)));
-    }
+    const breakingRef = ref(kppostDb, 'breaking_news');
+    const unsubscribeBreaking = onValue(breakingRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const list = Object.values(data);
+        setBreakingNewsList(list.sort((a: any, b: any) => (b.timestamp || 0) - (a.timestamp || 0)));
+      } else {
+        setBreakingNewsList([]);
+      }
+    });
+
+    return () => {
+      unsubscribeCats();
+      unsubscribeNews();
+      unsubscribePending();
+      unsubscribeRejected();
+      unsubscribeBreaking();
+    };
   }, []);
 
   // When a pending news is selected, initialize the edit form
@@ -170,15 +209,7 @@ export default function AdminNewsMgmt({ onBack }: { onBack: () => void }) {
             timestamp: Date.now()
         };
         
-        let updated;
-        if (editingBreakingId) {
-          updated = breakingNewsList.map(bn => bn.id === editingBreakingId ? newBreaking : bn);
-        } else {
-          updated = [...breakingNewsList, newBreaking];
-        }
-        
-        setBreakingNewsList(updated.sort((a, b) => b.timestamp - a.timestamp));
-        localStorage.setItem('kp_breaking_news', JSON.stringify(updated));
+        await set(ref(kppostDb, `breaking_news/${id}`), newBreaking);
         
         setBreakingText('');
         setEditingBreakingId(null);
@@ -191,26 +222,21 @@ export default function AdminNewsMgmt({ onBack }: { onBack: () => void }) {
   const handleAddCategory = async () => {
     if (!newCategoryName.trim()) return;
     const id = `cat_${Date.now()}`;
-    const updated = [...categories, { id, name: newCategoryName }];
-    setCategories(updated);
-    localStorage.setItem('kp_news_categories', JSON.stringify(updated));
+    const newCat = { id, name: newCategoryName };
+    await set(ref(kppostDb, `categories/${id}`), newCat);
     setNewCategoryName('');
   };
 
   const handleUpdateCategoryName = async (id: string) => {
     if (!editCategoryName.trim()) return;
-    const updated = categories.map(c => c.id === id ? { ...c, name: editCategoryName } : c);
-    setCategories(updated);
-    localStorage.setItem('kp_news_categories', JSON.stringify(updated));
+    await update(ref(kppostDb, `categories/${id}`), { name: editCategoryName });
     setEditingCategoryId(null);
     setEditCategoryName('');
   };
 
   const handleDeleteCategory = async (id: string) => {
     if (confirm('এই ক্যাটাগরি কি ডিলিট করতে চান?')) {
-      const updated = categories.filter(c => c.id !== id);
-      setCategories(updated);
-      localStorage.setItem('kp_news_categories', JSON.stringify(updated));
+      await remove(ref(kppostDb, `categories/${id}`));
     }
   };
 
@@ -225,15 +251,7 @@ export default function AdminNewsMgmt({ onBack }: { onBack: () => void }) {
         const id = editingId || `news_${Date.now()}`;
         const finalData = { ...form, id, status: 'published', timestamp: Date.now(), isAdminPost: true };
         
-        let updated;
-        if (editingId) {
-          updated = newsList.map(n => n.id === editingId ? finalData : n);
-        } else {
-          updated = [...newsList, finalData];
-        }
-        
-        setNewsList(updated);
-        localStorage.setItem('kp_local_news_main', JSON.stringify(updated));
+        await set(ref(kppostDb, `news_main/${id}`), finalData);
         
         setShowForm(false);
         setEditingId(null);
@@ -242,7 +260,6 @@ export default function AdminNewsMgmt({ onBack }: { onBack: () => void }) {
     finally { setIsSubmitting(false); }
   };
 
-  // Approval logic now uses pendingEditForm data
   const handleApproveNews = async () => {
     if (!selectedPendingNews?.id || isSubmitting) return;
     setIsSubmitting(true);
@@ -250,20 +267,16 @@ export default function AdminNewsMgmt({ onBack }: { onBack: () => void }) {
         const id = selectedPendingNews.id;
         const finalData = { 
             ...selectedPendingNews, 
-            ...pendingEditForm, // Integrate edits
+            ...pendingEditForm, 
             status: 'published', 
             timestamp: selectedPendingNews.timestamp || Date.now() 
         };
         
         // Add to main
-        const updatedMain = [...newsList, finalData];
-        setNewsList(updatedMain);
-        localStorage.setItem('kp_local_news_main', JSON.stringify(updatedMain));
+        await set(ref(kppostDb, `news_main/${id}`), finalData);
         
         // Remove from pending
-        const updatedPending = pendingNewsList.filter(p => p.id !== id);
-        setPendingNewsList(updatedPending);
-        localStorage.setItem('kp_local_news_pending', JSON.stringify(updatedPending));
+        await remove(ref(kppostDb, `news_pending/${id}`));
         
         setSelectedPendingNews(null);
         alert('সংবাদটি সফলভাবে প্রকাশিত হয়েছে!');
@@ -282,20 +295,16 @@ export default function AdminNewsMgmt({ onBack }: { onBack: () => void }) {
         const id = selectedPendingNews.id;
         const finalData = { 
             ...selectedPendingNews, 
-            ...pendingEditForm, // Integrate edits even if rejecting
+            ...pendingEditForm, 
             status: 'rejected', 
             timestamp: selectedPendingNews.timestamp || Date.now() 
         };
         
         // Add to rejected
-        const updatedRejected = [...rejectedNewsList, finalData];
-        setRejectedNewsList(updatedRejected);
-        localStorage.setItem('kp_local_news_rejected', JSON.stringify(updatedRejected));
+        await set(ref(kppostDb, `news_rejected/${id}`), finalData);
         
         // Remove from pending
-        const updatedPending = pendingNewsList.filter(p => p.id !== id);
-        setPendingNewsList(updatedPending);
-        localStorage.setItem('kp_local_news_pending', JSON.stringify(updatedPending));
+        await remove(ref(kppostDb, `news_pending/${id}`));
         
         setSelectedPendingNews(null);
         alert('সংবাদটি রিজেক্ট করা হয়েছে।');
@@ -309,20 +318,16 @@ export default function AdminNewsMgmt({ onBack }: { onBack: () => void }) {
 
   const handleDeleteNewsDirectly = async (id: string, tab: 'admin' | 'approved' | 'rejected') => {
     if (!id || isSubmitting) return;
+    if (!confirm('আপনি কি নিশ্চিতভাবে এটি ডিলিট করতে চান?')) return;
     
     setIsSubmitting(true);
     try {
         if (tab === 'rejected') {
-          const updated = rejectedNewsList.filter(n => n.id !== id);
-          setRejectedNewsList(updated);
-          localStorage.setItem('kp_local_news_rejected', JSON.stringify(updated));
+          await remove(ref(kppostDb, `news_rejected/${id}`));
         } else {
-          const updated = newsList.filter(n => n.id !== id);
-          setNewsList(updated);
-          localStorage.setItem('kp_local_news_main', JSON.stringify(updated));
+          await remove(ref(kppostDb, `news_main/${id}`));
         }
     } catch (err) {
-        console.error("News removal failed:", err);
         alert('ত্রুটির কারণে ডিলিট করা যায়নি।');
     } finally {
         setIsSubmitting(false);
@@ -375,11 +380,9 @@ export default function AdminNewsMgmt({ onBack }: { onBack: () => void }) {
                         <div className="flex items-center gap-2 shrink-0">
                             <button onClick={() => { setEditingBreakingId(bn.id); setBreakingText(bn.text); }} className="p-3 text-blue-500 bg-blue-50 rounded-xl active:scale-90 transition-all"><Edit2 size={18}/></button>
                             <button onClick={() => { 
-                                if(confirm('ডিলিট করতে চান?')) {
-                                    const updated = breakingNewsList.filter(b => b.id !== bn.id);
-                                    setBreakingNewsList(updated);
-                                    localStorage.setItem('kp_breaking_news', JSON.stringify(updated));
-                                }
+                                    if(confirm('ডিলিট করতে চান?')) {
+                                        remove(ref(kppostDb, `breaking_news/${bn.id}`));
+                                    }
                             }} className="p-3 text-red-600 bg-red-50 rounded-xl active:scale-90 transition-all"><Trash2 size={20}/></button>
                         </div>
                     </div>

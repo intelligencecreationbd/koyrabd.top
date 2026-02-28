@@ -54,14 +54,14 @@ const CategoryView: React.FC = () => {
     );
   }
 
-  // Public Directory (ID 15) Logic - Supports Deep Nesting
-  if (id === '15') {
+  // Public Directory (ID 15) & Public Representatives (ID 22) Logic
+  if (id === '15' || id === '22') {
     return (
-      <div className="p-5 pb-40 min-h-screen">
+      <div className="p-5 pb-24 min-h-screen">
         <PublicDirectory 
           id={id} 
           pathParts={pathParts}
-          categoryName={category?.name || 'মোবাইল নাম্বার'}
+          categoryName={category?.name || (id === '15' ? 'মোবাইল নাম্বার' : 'জনপ্রতিনিধি')}
           onNavigate={(path) => navigate(path)} 
           onBack={() => navigate(-1)} 
         />
@@ -71,7 +71,7 @@ const CategoryView: React.FC = () => {
 
   // Default Standard Sub-menu navigation (for other modules)
   return (
-    <div className="p-5 pb-32 space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+    <div className="p-5 pb-20 space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
       <div className="flex items-center gap-4 mb-2">
         <button onClick={() => navigate(-1)} className="p-3 bg-white border border-slate-100 rounded-xl shadow-sm transition-transform active:scale-90 shrink-0"><ChevronLeft size={24} /></button>
         <div className="text-left overflow-hidden">

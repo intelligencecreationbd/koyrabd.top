@@ -35,7 +35,8 @@ import { Submission, Notice, User as AppUser, HotlineContact, BusCounter, LegalS
 import AdminHotlineMgmt from '../components/AdminHotlineMgmt';
 import AdminBusMgmt from '../components/AdminBusMgmt';
 import AdminLegalMgmt from '../components/AdminLegalMgmt';
-import AdminDirectoryMgmt from '../components/AdminDirectoryMgmt';
+import AdminMobileMgmt from '../components/AdminMobileMgmt';
+import AdminRepMgmt from '../components/AdminRepMgmt';
 import AdminNewsMgmt from '../components/AdminNewsMgmt';
 import AdminHaatMgmt from '../components/AdminHaatMgmt';
 import AdminUserList from '../components/AdminUserList';
@@ -52,7 +53,7 @@ interface AdminDashboardProps {
   adminPassword: string;
 }
 
-type AdminView = 'menu' | 'users' | 'notices' | 'hotline_mgmt' | 'bus_mgmt' | 'legal_mgmt' | 'directory_mgmt' | 'news_mgmt' | 'haat_mgmt' | 'medical_mgmt' | 'change_pass' | 'user_submissions';
+type AdminView = 'menu' | 'users' | 'notices' | 'hotline_mgmt' | 'bus_mgmt' | 'legal_mgmt' | 'mobile_mgmt' | 'rep_mgmt' | 'news_mgmt' | 'haat_mgmt' | 'medical_mgmt' | 'change_pass' | 'user_submissions';
 
 const Header: React.FC<{ title: string; onBack: () => void }> = ({ title, onBack }) => (
   <div className="flex items-center gap-4 mb-6 text-left">
@@ -112,26 +113,17 @@ export default function AdminDashboard({ submissions, notices, onUpdateNotices, 
 
   const handleAddNotice = async () => {
     if (!newNoticeText.trim()) return;
-    const id = Date.now().toString();
-    const newNotice = { id, content: newNoticeText, date: new Date().toLocaleDateString() };
-    try {
-      const updatedNotices = [...notices, newNotice];
-      onUpdateNotices(updatedNotices);
-      localStorage.setItem('kp_notices', JSON.stringify(updatedNotices));
-      setNewNoticeText('');
-    } catch (e) {
-      alert('নোটিশ পাবলিশ করতে সমস্যা হয়েছে!');
-    }
+    const id = `notice_${Date.now()}`;
+    const updated = [...notices, { id, content: newNoticeText, date: new Date().toLocaleDateString('bn-BD') }];
+    onUpdateNotices(updated);
+    localStorage.setItem('kp_notices', JSON.stringify(updated));
+    setNewNoticeText('');
   };
 
   const deleteNotice = async (id: string) => {
-    try {
-      const updatedNotices = notices.filter(n => n.id !== id);
-      onUpdateNotices(updatedNotices);
-      localStorage.setItem('kp_notices', JSON.stringify(updatedNotices));
-    } catch (e) {
-      alert('মুছে ফেলা সম্ভব হয়নি।');
-    }
+    const updated = notices.filter(n => n.id !== id);
+    onUpdateNotices(updated);
+    localStorage.setItem('kp_notices', JSON.stringify(updated));
   };
 
   const handlePassUpdate = () => {
@@ -150,7 +142,8 @@ export default function AdminDashboard({ submissions, notices, onUpdateNotices, 
           <Header title="এডমিন ড্যাশবোর্ড" onBack={() => navigate('/')} />
           <div className="flex flex-col gap-3">
             <MenuListItem onClick={() => setCurrentView('hotline_mgmt')} icon={<ShieldAlert size={26} />} label="জরুরি হটলাইন ম্যানেজমেন্ট" color="#FF4D4D" />
-            <MenuListItem onClick={() => setCurrentView('directory_mgmt')} icon={<Phone size={26} />} label="মোবাইল নাম্বার ম্যানেজার" color="#673AB7" />
+            <MenuListItem onClick={() => setCurrentView('mobile_mgmt')} icon={<Phone size={26} />} label="মোবাইল নাম্বার ম্যানেজার" color="#673AB7" />
+            <MenuListItem onClick={() => setCurrentView('rep_mgmt')} icon={<UserCheck size={26} />} label="জনপ্রতিনিধি ম্যানেজার" color="#3498DB" />
             <MenuListItem onClick={() => setCurrentView('news_mgmt')} icon={<Newspaper size={26} />} label="সংবাদ ম্যানেজার" color="#4CAF50" />
             <MenuListItem onClick={() => setCurrentView('haat_mgmt')} icon={<ShoppingBag size={26} />} label="অনলাইন হাট ম্যানেজার" color="#F1C40F" />
             <MenuListItem onClick={() => setCurrentView('medical_mgmt')} icon={<HeartPulse size={26} />} label="চিকিৎসা সেবা ম্যানেজমেন্ট" color="#E91E63" />
@@ -165,7 +158,8 @@ export default function AdminDashboard({ submissions, notices, onUpdateNotices, 
       )}
 
       {currentView === 'hotline_mgmt' && <AdminHotlineMgmt onBack={() => setCurrentView('menu')} />}
-      {currentView === 'directory_mgmt' && <AdminDirectoryMgmt onBack={() => setCurrentView('menu')} />}
+      {currentView === 'mobile_mgmt' && <AdminMobileMgmt onBack={() => setCurrentView('menu')} />}
+      {currentView === 'rep_mgmt' && <AdminRepMgmt onBack={() => setCurrentView('menu')} />}
       {currentView === 'news_mgmt' && <AdminNewsMgmt onBack={() => setCurrentView('menu')} />}
       {currentView === 'haat_mgmt' && <AdminHaatMgmt onBack={() => setCurrentView('menu')} />}
       {currentView === 'medical_mgmt' && <AdminMedicalMgmt onBack={() => setCurrentView('menu')} />}

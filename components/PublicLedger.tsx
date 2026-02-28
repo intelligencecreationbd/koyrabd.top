@@ -26,11 +26,17 @@ import {
   Download
 } from 'lucide-react';
 import { User } from '../types';
-
-// Firebase removed for paid hosting migration
+import { ledgerDb } from '../Firebase-digitalledger';
+import { ref, onValue, set, push, remove, update } from 'firebase/database';
 
 const toBn = (num: string | number) => 
   (num || '০').toString().replace(/\d/g, d => "০১২৩৪৫৬৭৮৯"[parseInt(d)]);
+
+const convertToEn = (str: string) => {
+  if (!str) return '';
+  const bn = ['০','১','২','৩','৪','৫','৬','৭','৮','৯'], en = ['0','1','2','3','4','5','6','7','8','9'];
+  return str.toString().replace(/[০-৯]/g, (s) => en[bn.indexOf(s)]).replace(/[^0-9.]/g, '').trim();
+};
 
 interface PublicLedgerProps {
   user: User;
@@ -61,10 +67,11 @@ const PublicLedger: React.FC<PublicLedgerProps> = ({ user, onBack }) => {
 
   useEffect(() => {
     if (!user) return;
-    const loadLedger = () => {
-      const saved = localStorage.getItem(`kp_ledger_${user.memberId}`);
-      if (saved) {
-        const data = JSON.parse(saved);
+    const ledgerRef = ref(ledgerDb, `ledgers/${user.memberId}`);
+    
+    const unsubscribe = onValue(ledgerRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.val();
         const list = Object.keys(data).map(key => ({ ...data[key], id: key }));
         setLedgerEntries(list.sort((a, b) => (b.lastUpdate || b.createdAt).localeCompare(a.lastUpdate || a.createdAt)));
         
@@ -75,8 +82,9 @@ const PublicLedger: React.FC<PublicLedgerProps> = ({ user, onBack }) => {
       } else {
         setLedgerEntries([]);
       }
-    };
-    loadLedger();
+    });
+
+    return () => unsubscribe();
   }, [user, selectedEntry?.id]);
 
   const ledgerSummary = useMemo(() => ledgerEntries.reduce((acc, entry) => {
@@ -93,7 +101,9 @@ const PublicLedger: React.FC<PublicLedgerProps> = ({ user, onBack }) => {
 
   const handleLedgerSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const amount = parseFloat(ledgerFormData.amount) || 0;
+    const cleanAmount = convertToEn(ledgerFormData.amount);
+    const amount = parseFloat(cleanAmount) || 0;
+    
     if (amount <= 0) {
       alert('সঠিক টাকার পরিমাণ দিন');
       return;
@@ -155,14 +165,10 @@ const PublicLedger: React.FC<PublicLedgerProps> = ({ user, onBack }) => {
       newBalance -= amount; 
     }
 
-    const entryId = targetEntry ? targetEntry.id : Math.random().toString(36).substr(2, 9);
+    const entryId = targetEntry ? targetEntry.id : null;
     
     try {
-      const saved = localStorage.getItem(`kp_ledger_${user.memberId}`);
-      const data = saved ? JSON.parse(saved) : {};
-      
       const newEntry = { 
-        id: entryId, 
         personName: targetEntry?.personName || ledgerFormData.personName, 
         mobile: targetEntry?.mobile || ledgerFormData.mobile, 
         address: targetEntry?.address || ledgerFormData.address, 
@@ -172,19 +178,18 @@ const PublicLedger: React.FC<PublicLedgerProps> = ({ user, onBack }) => {
         createdAt: targetEntry?.createdAt || timestamp 
       };
 
-      data[entryId] = newEntry;
-      localStorage.setItem(`kp_ledger_${user.memberId}`, JSON.stringify(data));
+      if (entryId) {
+        await update(ref(ledgerDb, `ledgers/${user.memberId}/${entryId}`), newEntry);
+      } else {
+        await push(ref(ledgerDb, `ledgers/${user.memberId}`), newEntry);
+      }
       
-      // Update local state
-      const list = Object.keys(data).map(key => ({ ...data[key], id: key }));
-      setLedgerEntries(list.sort((a, b) => (b.lastUpdate || b.createdAt).localeCompare(a.lastUpdate || a.createdAt)));
-      if (selectedEntry && entryId === selectedEntry.id) setSelectedEntry(newEntry);
-
       setShowLedgerForm(false);
       setIsAddingQuickTransaction(false);
       setLedgerFormData({ personName: '', mobile: '', address: '', type: 'pabo', amount: '' });
-    } catch (err) { 
-      alert('ত্রুটি! তথ্য সংরক্ষণ করা যায়নি।'); 
+    } catch (err: any) { 
+      console.error('Ledger Submit Error:', err);
+      alert(`ত্রুটি! তথ্য সংরক্ষণ করা যায়নি। সম্ভব হলে আপনার ইন্টারনেট কানেকশন এবং ফায়ারবেস ডাটাবেস রুলস (Rules) চেক করুন। এরর: ${err.message || 'Unknown'}`); 
     } finally { 
       setIsSubmitting(false); 
     }
@@ -194,25 +199,11 @@ const PublicLedger: React.FC<PublicLedgerProps> = ({ user, onBack }) => {
     if (!selectedEntry || !user || !personEditForm.personName) return;
     setIsSubmitting(true);
     try {
-      const saved = localStorage.getItem(`kp_ledger_${user.memberId}`);
-      const data = saved ? JSON.parse(saved) : {};
-      
-      if (data[selectedEntry.id]) {
-        data[selectedEntry.id] = {
-          ...data[selectedEntry.id],
-          personName: personEditForm.personName,
-          mobile: personEditForm.mobile,
-          address: personEditForm.address
-        };
-        localStorage.setItem(`kp_ledger_${user.memberId}`, JSON.stringify(data));
-        
-        const updatedEntry = data[selectedEntry.id];
-        setSelectedEntry(updatedEntry);
-        
-        // Update local state
-        const list = Object.keys(data).map(key => ({ ...data[key], id: key }));
-        setLedgerEntries(list.sort((a, b) => (b.lastUpdate || b.createdAt).localeCompare(a.lastUpdate || a.createdAt)));
-      }
+      await update(ref(ledgerDb, `ledgers/${user.memberId}/${selectedEntry.id}`), {
+        personName: personEditForm.personName,
+        mobile: personEditForm.mobile,
+        address: personEditForm.address
+      });
 
       setIsEditingPerson(false);
       alert('তথ্য সফলভাবে আপডেট হয়েছে।');
@@ -226,16 +217,8 @@ const PublicLedger: React.FC<PublicLedgerProps> = ({ user, onBack }) => {
   const handleDeleteEntry = async () => {
     if (!entryToDelete || !user) return;
     try {
-      const saved = localStorage.getItem(`kp_ledger_${user.memberId}`);
-      const data = saved ? JSON.parse(saved) : {};
+      await remove(ref(ledgerDb, `ledgers/${user.memberId}/${entryToDelete.id}`));
       
-      delete data[entryToDelete.id];
-      localStorage.setItem(`kp_ledger_${user.memberId}`, JSON.stringify(data));
-      
-      // Update local state
-      const list = Object.keys(data).map(key => ({ ...data[key], id: key }));
-      setLedgerEntries(list.sort((a, b) => (b.lastUpdate || b.createdAt).localeCompare(a.lastUpdate || a.createdAt)));
-
       setEntryToDelete(null);
       setShowPersonProfile(false);
       setShowDetailView(false);

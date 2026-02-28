@@ -2,6 +2,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LayoutDashboard, ChevronRight } from 'lucide-react';
+import { ref, onValue } from 'firebase/database';
+import { collection, onSnapshot } from 'firebase/firestore';
+import { chatDb } from '../Firebase-kpchat';
 import { CATEGORIES, ICON_MAP } from '../constants';
 import { Notice, User } from '../types';
 
@@ -27,8 +30,14 @@ export function Home({ notices, isAdmin, user }: HomeProps) {
       setChatNotifications(0);
       return;
     }
-    // Mock chat notifications
-    setChatNotifications(0);
+    
+    const roomsRef = collection(chatDb, `user_rooms/${user.memberId}/rooms`);
+    const unsubscribe = onSnapshot(roomsRef, (snapshot) => {
+      const total = snapshot.docs.reduce((acc: number, d: any) => acc + (d.data().unseenCount || 0), 0);
+      setChatNotifications(total);
+    });
+
+    return () => unsubscribe();
   }, [user]);
 
   // Filter out User Login (ID 12) from the main grid
@@ -53,7 +62,7 @@ export function Home({ notices, isAdmin, user }: HomeProps) {
   };
 
   return (
-    <div className="fixed inset-x-0 bottom-4 top-16 overflow-hidden flex flex-col p-4 animate-in fade-in duration-700">
+    <div className="fixed inset-x-0 bottom-0 top-16 overflow-hidden flex flex-col pt-4 px-4 pb-0 animate-in fade-in duration-700">
       
       {/* Notice Board - Compact */}
       <div className="shrink-0 relative overflow-hidden bg-notice rounded-full py-1.5 px-6 border border-blue-100 shadow-[inset_0_1px_2px_rgba(0,86,179,0.05)] mb-3">
@@ -94,7 +103,7 @@ export function Home({ notices, isAdmin, user }: HomeProps) {
           {pages.map((chunk, pageIdx) => (
             <div 
               key={pageIdx} 
-              className="w-full h-full shrink-0 snap-start grid grid-cols-3 gap-x-4 gap-y-3 px-2"
+              className="w-full h-full shrink-0 snap-start grid grid-cols-3 gap-x-4 gap-y-3 px-2 content-start"
             >
               {chunk.map((category) => {
                 const IconComponent = ICON_MAP[category.icon];
@@ -169,7 +178,7 @@ export function Home({ notices, isAdmin, user }: HomeProps) {
 
         {/* Pagination Indicators */}
         {pages.length > 1 && (
-          <div className="shrink-0 flex justify-center items-center gap-2 pt-2 pb-12">
+          <div className="shrink-0 flex justify-center items-center gap-2 pt-2 pb-6">
             {pages.map((_, i) => (
               <div 
                 key={i} 

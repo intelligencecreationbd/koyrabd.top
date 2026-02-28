@@ -17,6 +17,8 @@ import AgeCalculator from './components/AgeCalculator';
 import DateTimeBox from './components/DateTimeBox';
 import PublicDownload from './components/PublicDownload';
 import { Submission, Notice, User } from './types';
+import { settingsDb } from './Firebase-appsettings';
+import { ref, onValue, set, get } from 'firebase/database';
 
 // Firebase removed for paid hosting migration
 
@@ -81,7 +83,7 @@ const BottomNav: React.FC = () => {
   if (isAtLanding) return null;
 
   return (
-    <div className="fixed bottom-2 left-0 right-0 z-[80] flex justify-center items-end gap-5 pointer-events-none px-6 pb-2">
+    <div className="fixed bottom-0 left-0 right-0 z-[80] flex justify-center items-end gap-5 pointer-events-none px-6 pb-6">
       <button 
         onClick={() => navigate('/info-submit')}
         className={`w-12 h-12 rounded-full metallic-blue pointer-events-auto transition-all duration-300 ${isSubmit ? 'glow-active scale-110' : 'opacity-90 active:scale-95'}`}
@@ -106,8 +108,21 @@ const BottomNav: React.FC = () => {
   );
 };
 
-const LandingScreen: React.FC<{ isDarkMode: boolean, setIsDarkMode: (v: boolean) => void, appLogo: string }> = ({ isDarkMode, setIsDarkMode, appLogo }) => {
+const convertToEn = (str: string) => {
+  if (!str) return '';
+  return str.replace(/[০-৯]/g, d => "0123456789"["০১২৩৪৫৬৭৮৯".indexOf(d)]);
+};
+
+const LandingScreen: React.FC<{ 
+  isDarkMode: boolean, 
+  setIsDarkMode: (v: boolean) => void, 
+  appLogo: string,
+  isAdmin: boolean,
+  onLogoChange: (e: React.ChangeEvent<HTMLInputElement>) => void
+}> = ({ isDarkMode, setIsDarkMode, appLogo, isAdmin, onLogoChange }) => {
   const navigate = useNavigate();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   return (
     <div className={`h-full w-full relative flex flex-col items-center pt-2 pb-6 px-6 transition-colors duration-500 overflow-hidden ${isDarkMode ? 'bg-slate-950' : 'bg-white'}`}>
       <button 
@@ -120,20 +135,32 @@ const LandingScreen: React.FC<{ isDarkMode: boolean, setIsDarkMode: (v: boolean)
       <div className="flex-1 flex flex-col items-center justify-start w-full max-w-sm pt-2">
          <div className="relative mb-3 animate-in zoom-in duration-1000">
             <div className="absolute inset-0 bg-blue-400/20 rounded-full blur-[80px] animate-pulse"></div>
-            <div className="relative w-56 h-56 bg-white rounded-full shadow-[0_25px_60px_-12px_rgba(0,0,0,0.2)] flex items-center justify-center border-[10px] border-white overflow-hidden p-2.5">
+            <div className="relative w-44 h-44 bg-white rounded-full shadow-[0_25px_60px_-12px_rgba(0,0,0,0.2)] flex items-center justify-center border-[10px] border-white overflow-hidden p-2.5 group">
               <img 
                 src={appLogo} 
                 className="w-full h-full object-cover rounded-full" 
                 alt="App Logo"
+                referrerPolicy="no-referrer"
                 onError={(e) => {
                   (e.target as any).src = 'https://raw.githubusercontent.com/StackBlitz-User-Assets/logo/main/kp-logo.png';
                 }}
               />
+              {isAdmin && (
+                <button 
+                  onClick={() => fileInputRef.current?.click()}
+                  className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-full"
+                >
+                  <Camera className="text-white" size={32} />
+                </button>
+              )}
+              <input 
+                type="file" 
+                ref={fileInputRef} 
+                className="hidden" 
+                accept="image/*" 
+                onChange={onLogoChange} 
+              />
             </div>
-         </div>
-
-         <div className="w-full mb-4 animate-in slide-in-from-top-4 duration-1000">
-            <DateTimeBox />
          </div>
 
          <div className="space-y-4 text-center animate-in fade-in zoom-in duration-1000 delay-200">
@@ -142,17 +169,26 @@ const LandingScreen: React.FC<{ isDarkMode: boolean, setIsDarkMode: (v: boolean)
                 কয়রা-পাইকগাছা
               </h1>
               <p className="text-[12px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.4em] mt-0.5">কমিউনিটি এপস</p>
+            </div>
+
+            <div className="w-full mb-4 animate-in slide-in-from-top-4 duration-1000">
+               <DateTimeBox />
+            </div>
+
+            <div className="flex flex-col items-center">
               <p className="text-slate-500 dark:text-slate-400 font-bold text-lg px-4 leading-snug max-w-[320px] mx-auto mt-4">
                 আপনার এলাকার সকল ডিজিটাল সেবা এখন এক ঠিকানায়
               </p>
             </div>
             
-            <button 
-              onClick={() => navigate('/services')}
-              className="group relative w-full mt-4 py-5 bg-[#0056b3] dark:bg-blue-600 text-white font-black text-xl rounded-[35px] shadow-[0_20px_40px_-10px_rgba(0,86,179,0.4)] overflow-hidden active:scale-95 transition-all flex items-center justify-center gap-4 mx-auto max-w-[260px]"
-            >
-                সকল সেবা <ArrowRight size={26} className="group-hover:translate-x-2 transition-transform" />
-            </button>
+            <div className="rainbow-border-container mx-auto max-w-[260px] mt-4">
+              <button 
+                onClick={() => navigate('/services')}
+                className="group relative w-full py-5 bg-[#0056b3] dark:bg-blue-600 text-white font-black text-xl rounded-[35px] shadow-[0_20px_40px_-10px_rgba(0,86,179,0.4)] overflow-hidden active:scale-95 transition-all flex items-center justify-center gap-4"
+              >
+                  সকল সেবা <ArrowRight size={26} className="group-hover:translate-x-2 transition-transform" />
+              </button>
+            </div>
          </div>
       </div>
 
@@ -166,8 +202,10 @@ const LandingScreen: React.FC<{ isDarkMode: boolean, setIsDarkMode: (v: boolean)
 
 const App = () => {
   const [isDarkMode, setIsDarkMode] = useState(false);
-  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
-  const [adminPassword, setAdminPassword] = useState('Tayeb');
+  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(() => {
+    return localStorage.getItem('kp_admin_logged_in') === 'true';
+  });
+  const [adminPassword, setAdminPassword] = useState('t');
   const [showAdminLogin, setShowAdminLogin] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [loginInput, setLoginInput] = useState('');
@@ -198,15 +236,33 @@ const App = () => {
   }, [subtitles.length]);
 
   useEffect(() => {
-    // Load settings from localStorage instead of Firebase
-    const savedPassword = localStorage.getItem('kp_admin_password');
-    if (savedPassword) setAdminPassword(savedPassword);
+    // Load admin password from AppSettings Firebase
+    const adminPassRef = ref(settingsDb, 'admin_password');
+    const unsubscribePass = onValue(adminPassRef, (snapshot) => {
+      if (snapshot.exists()) {
+        setAdminPassword(snapshot.val());
+      } else {
+        // Set default if not exists
+        set(adminPassRef, 't');
+        setAdminPassword('t');
+      }
+    });
+
+    // Load app logo from AppSettings Firebase
+    const appLogoRef = ref(settingsDb, 'app_logo');
+    const unsubscribeLogo = onValue(appLogoRef, (snapshot) => {
+      if (snapshot.exists()) {
+        setAppLogo(snapshot.val());
+      }
+    });
 
     const savedNotices = localStorage.getItem('kp_notices');
     if (savedNotices) setNotices(JSON.parse(savedNotices));
 
-    const savedLogo = localStorage.getItem('kp_app_logo');
-    if (savedLogo) setAppLogo(savedLogo);
+    return () => {
+      unsubscribePass();
+      unsubscribeLogo();
+    };
   }, []);
 
   useEffect(() => {
@@ -222,8 +278,14 @@ const App = () => {
 
   const handleAdminLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (loginInput === adminPassword) {
+    
+    // Convert Bengali digits to English and trim spaces
+    const cleanInput = convertToEn(loginInput).trim();
+    const cleanMaster = adminPassword.toString().trim();
+
+    if (cleanInput === cleanMaster) {
       setIsAdminLoggedIn(true);
+      localStorage.setItem('kp_admin_logged_in', 'true');
       setShowAdminLogin(false);
       setLoginInput('');
     } else {
@@ -247,7 +309,8 @@ const App = () => {
   const handleUpdatePassword = async (newPass: string) => {
     if (!newPass.trim()) return;
     try {
-      localStorage.setItem('kp_admin_password', newPass);
+      const adminPassRef = ref(settingsDb, 'admin_password');
+      await set(adminPassRef, newPass);
       setAdminPassword(newPass);
       alert('পাসওয়ার্ড সফলভাবে আপডেট করা হয়েছে।');
     } catch (e) {
@@ -262,7 +325,8 @@ const App = () => {
       reader.onloadend = async () => {
         const base64 = reader.result as string;
         try {
-          localStorage.setItem('kp_app_logo', base64);
+          const appLogoRef = ref(settingsDb, 'app_logo');
+          await set(appLogoRef, base64);
           setAppLogo(base64);
           alert('এপসের প্রোফাইল পিকচার আপডেট হয়েছে!');
         } catch (err) {
@@ -275,6 +339,7 @@ const App = () => {
 
   const handleLogout = () => {
     setIsAdminLoggedIn(false);
+    localStorage.removeItem('kp_admin_logged_in');
     setCurrentUser(null);
     setIsDrawerOpen(false);
     localStorage.removeItem('kp_logged_in_user');
@@ -425,7 +490,15 @@ const App = () => {
       <main className={`flex-1 relative w-full overflow-hidden ${isLanding ? '' : 'bg-white dark:bg-slate-950'}`}>
         <div className="h-full w-full overflow-y-auto no-scrollbar">
             <Routes>
-              <Route path="/" element={<LandingScreen isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} appLogo={appLogo} />} />
+              <Route path="/" element={
+                <LandingScreen 
+                  isDarkMode={isDarkMode} 
+                  setIsDarkMode={setIsDarkMode} 
+                  appLogo={appLogo} 
+                  isAdmin={isAdminLoggedIn}
+                  onLogoChange={handleLogoChange}
+                />
+              } />
               <Route path="/services" element={<Home notices={notices} isAdmin={isAdminLoggedIn} user={currentUser} />} />
               <Route path="/category/:id/*" element={<CategoryView />} />
               <Route path="/hotline" element={<HotlineDetail />} />

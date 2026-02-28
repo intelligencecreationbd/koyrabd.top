@@ -1,6 +1,25 @@
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { ref, onValue } from 'firebase/database';
+import { 
+  collection, 
+  doc, 
+  setDoc, 
+  onSnapshot, 
+  query, 
+  where, 
+  orderBy, 
+  addDoc, 
+  updateDoc, 
+  deleteDoc, 
+  getDoc,
+  serverTimestamp,
+  increment,
+  deleteField
+} from 'firebase/firestore';
+import { chatDb } from '../Firebase-kpchat';
+import { db } from '../firebase';
 import { 
   ChevronLeft, 
   Search, 
@@ -130,10 +149,9 @@ const KPCommunityChat: React.FC = () => {
           navigate(location.pathname, { replace: true });
       }
 
-      // Presence simulation
-      const presence = JSON.parse(localStorage.getItem('kp_presence') || '{}');
-      presence[u.memberId] = { status: 'online', lastActive: Date.now() };
-      localStorage.setItem('kp_presence', JSON.stringify(presence));
+      // Presence in Firestore
+      const presenceRef = doc(chatDb, 'presence', u.memberId);
+      setDoc(presenceRef, { status: 'online', lastActive: Date.now() }, { merge: true });
       
       setIsLoading(false);
       return;
@@ -145,83 +163,82 @@ const KPCommunityChat: React.FC = () => {
     }
   }, [navigate, location]);
 
-  // Global user listener
+  // Global user listener from main DB
   useEffect(() => {
     if (!currentUser || isGuest) return;
-    const loadUsers = () => {
-      const list = JSON.parse(localStorage.getItem('kp_users') || '[]');
-      setUsers(list);
-    };
-    loadUsers();
-    const interval = setInterval(loadUsers, 5000);
-    return () => clearInterval(interval);
+    const usersRef = ref(db, 'users');
+    const unsubscribe = onValue(usersRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) setUsers(Object.values(data));
+      else setUsers([]);
+    });
+    return () => unsubscribe();
   }, [currentUser, isGuest]);
 
   useEffect(() => {
     if (!currentUser || isGuest) return;
 
-    const loadSocialData = () => {
-      const allFriends = JSON.parse(localStorage.getItem('kp_user_friends') || '{}');
-      setFriends(allFriends[currentUser.memberId] || {});
+    // Friends list
+    const friendsRef = doc(chatDb, 'friends', currentUser.memberId);
+    const unsubscribeFriends = onSnapshot(friendsRef, (docSnap) => {
+      setFriends(docSnap.data() || {});
+    });
 
-      const allOutgoing = JSON.parse(localStorage.getItem('kp_user_outgoing_requests') || '{}');
-      setSentRequests(allOutgoing[currentUser.memberId] || {});
+    // Outgoing requests
+    const outgoingRef = doc(chatDb, 'requests_outgoing', currentUser.memberId);
+    const unsubscribeOutgoing = onSnapshot(outgoingRef, (docSnap) => {
+      setSentRequests(docSnap.data() || {});
+    });
 
-      const allIncoming = JSON.parse(localStorage.getItem('kp_user_incoming_requests') || '{}');
-      const myIncoming = allIncoming[currentUser.memberId] || {};
-      setReceivedRequests(Object.keys(myIncoming).map(k => ({ ...myIncoming[k], senderId: k })));
+    // Incoming requests
+    const incomingRef = collection(chatDb, `requests_incoming/${currentUser.memberId}/items`);
+    const unsubscribeIncoming = onSnapshot(incomingRef, (snapshot) => {
+      const list = snapshot.docs.map(d => d.data());
+      setReceivedRequests(list);
+    });
 
-      const allChats = JSON.parse(localStorage.getItem('kp_user_chats') || '{}');
-      const myChats = allChats[currentUser.memberId] || {};
-      const list = Object.keys(myChats).map(k => ({ ...myChats[k], otherId: k }));
-      const filteredList = list.filter(room => room.otherId !== HELPLINE_ID);
-      setChatRooms(filteredList.sort((a, b) => b.lastTimestamp - a.lastTimestamp));
+    // Chat rooms (Recent Chats)
+    const roomsRef = collection(chatDb, `user_rooms/${currentUser.memberId}/rooms`);
+    const qRooms = query(roomsRef, orderBy('lastTimestamp', 'desc'));
+    const unsubscribeRooms = onSnapshot(qRooms, (snapshot) => {
+      const list = snapshot.docs.map(d => d.data());
+      setChatRooms(list);
+    });
+
+    return () => {
+      unsubscribeFriends();
+      unsubscribeOutgoing();
+      unsubscribeIncoming();
+      unsubscribeRooms();
     };
-
-    loadSocialData();
-    const interval = setInterval(loadSocialData, 3000);
-    return () => clearInterval(interval);
   }, [currentUser, isGuest]);
 
   useEffect(() => {
     if (!activeChat || !currentUser) return;
+
+    // Clear unseen count for this chat
+    const myRoomRef = doc(chatDb, `user_rooms/${currentUser.memberId}/rooms`, activeChat.memberId);
+    setDoc(myRoomRef, { unseenCount: 0 }, { merge: true }).catch(err => console.error("Clear unseen error:", err));
+
     const chatId = [currentUser.memberId, activeChat.memberId].sort().join('_');
     
-    const loadMessages = () => {
-      const allMessages = JSON.parse(localStorage.getItem(`kp_messages_${chatId}`) || '[]');
-      const now = Date.now();
-      const list: any[] = [];
-      const updatedMessages = allMessages.filter((m: any) => {
-        if (now - m.timestamp > MESSAGE_EXPIRY_MS) return false;
-        
-        if (m.receiverId === currentUser.memberId && m.status !== 'seen') {
-          m.status = 'seen';
-        }
-        list.push(m);
-        return true;
-      });
+    const messagesRef = collection(chatDb, `messages/${chatId}/list`);
+    const qMessages = query(messagesRef, orderBy('timestamp', 'asc'));
+    const unsubscribeMessages = onSnapshot(qMessages, (snapshot) => {
+      const list = snapshot.docs.map(d => d.data());
+      setMessages(list);
+    });
 
-      if (JSON.stringify(allMessages) !== JSON.stringify(updatedMessages)) {
-        localStorage.setItem(`kp_messages_${chatId}`, JSON.stringify(updatedMessages));
-      }
+    // Listen for typing status
+    const typingRef = doc(chatDb, 'typing', `${chatId}_${activeChat.memberId}`);
+    const unsubscribeTyping = onSnapshot(typingRef, (docSnap) => {
+      setOtherTyping(!!docSnap.data()?.isTyping);
+    });
 
-      setMessages(list.sort((a, b) => a.timestamp - b.timestamp));
-      
-      if (!isGuest) {
-        const allChats = JSON.parse(localStorage.getItem('kp_user_chats') || '{}');
-        if (allChats[currentUser.memberId]?.[activeChat.memberId]) {
-          allChats[currentUser.memberId][activeChat.memberId].unseenCount = 0;
-          localStorage.setItem('kp_user_chats', JSON.stringify(allChats));
-        }
-      }
-
-      const allTyping = JSON.parse(localStorage.getItem('kp_typing') || '{}');
-      setOtherTyping(!!allTyping[chatId]?.[activeChat.memberId]);
+    return () => {
+      unsubscribeMessages();
+      unsubscribeTyping();
     };
-
-    loadMessages();
-    const interval = setInterval(loadMessages, 2000);
-    return () => clearInterval(interval);
   }, [activeChat, currentUser, isGuest]);
 
   useEffect(() => {
@@ -229,137 +246,150 @@ const KPCommunityChat: React.FC = () => {
   }, [messages]);
 
   const handleSendMessage = async () => {
-    if (!inputText.trim() || !currentUser || !activeChat) return;
+    const textToSend = inputText.trim();
+    if (!textToSend || !currentUser || !activeChat) return;
+    
+    setInputText(''); // Clear immediately for better UX
     const chatId = [currentUser.memberId, activeChat.memberId].sort().join('_');
-    const msgId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+    const timestamp = Date.now();
     
-    const messageData = {
-        id: msgId,
-        senderId: currentUser.memberId,
-        senderName: currentUser.fullName,
-        receiverId: activeChat.memberId,
-        text: inputText,
-        timestamp: Date.now(),
-        status: 'sent',
-        reactions: {}
-    };
-
-    const presence = JSON.parse(localStorage.getItem('kp_presence') || '{}');
-    if (presence[activeChat.memberId]?.status === 'online') {
-      messageData.status = 'delivered';
-    }
-
-    const allMessages = JSON.parse(localStorage.getItem(`kp_messages_${chatId}`) || '[]');
-    allMessages.push(messageData);
-    localStorage.setItem(`kp_messages_${chatId}`, JSON.stringify(allMessages));
-
-    const updateRoom = (userId: string, otherId: string, otherData: any, isSender: boolean) => {
-        if (userId.startsWith('GUEST-')) return; 
-        const allChats = JSON.parse(localStorage.getItem('kp_user_chats') || '{}');
-        if (!allChats[userId]) allChats[userId] = {};
-        
-        const currentUnseen = allChats[userId][otherId]?.unseenCount || 0;
-        
-        allChats[userId][otherId] = {
-            lastMessage: inputText,
-            lastTimestamp: Date.now(),
-            otherName: otherData.fullName || otherData.name,
-            otherPhoto: otherData.photoURL || otherData.photo || '',
-            unseenCount: isSender ? 0 : currentUnseen + 1
+    try {
+        const messageData = {
+            id: `msg_${timestamp}`,
+            senderId: currentUser.memberId,
+            receiverId: activeChat.memberId,
+            text: textToSend,
+            timestamp: timestamp,
+            status: 'sent'
         };
-        localStorage.setItem('kp_user_chats', JSON.stringify(allChats));
-    };
 
-    updateRoom(currentUser.memberId, activeChat.memberId, activeChat, true);
-    updateRoom(activeChat.memberId, currentUser.memberId, currentUser, false);
-    
-    setInputText('');
-    const typing = JSON.parse(localStorage.getItem('kp_typing') || '{}');
-    if (!typing[chatId]) typing[chatId] = {};
-    typing[chatId][currentUser.memberId] = false;
-    localStorage.setItem('kp_typing', JSON.stringify(typing));
-    setIsTyping(false);
+        // Add message to Firestore
+        const messagesRef = collection(chatDb, `messages/${chatId}/list`);
+        await addDoc(messagesRef, messageData);
+
+        // Update rooms for both users
+        const myRoomRef = doc(chatDb, `user_rooms/${currentUser.memberId}/rooms`, activeChat.memberId);
+        await setDoc(myRoomRef, {
+            otherId: activeChat.memberId,
+            otherName: activeChat.fullName,
+            otherPhoto: activeChat.photoURL || '',
+            lastMessage: textToSend,
+            lastTimestamp: timestamp,
+            unseenCount: 0
+        }, { merge: true });
+
+        const theirRoomRef = doc(chatDb, `user_rooms/${activeChat.memberId}/rooms`, currentUser.memberId);
+        await setDoc(theirRoomRef, {
+            otherId: currentUser.memberId,
+            otherName: currentUser.fullName,
+            otherPhoto: currentUser.photoURL || '',
+            lastMessage: textToSend,
+            lastTimestamp: timestamp,
+            unseenCount: increment(1)
+        }, { merge: true });
+
+        // Clear typing
+        const typingRef = doc(chatDb, 'typing', `${chatId}_${currentUser.memberId}`);
+        await setDoc(typingRef, { isTyping: false }, { merge: true });
+    } catch (error) {
+        console.error("Send message error:", error);
+        alert("মেসেজ পাঠানো সম্ভব হয়নি! ফায়ারস্টোর রুলস চেক করুন।");
+    }
   };
 
   const sendFriendRequest = async (user: any) => {
     if (!currentUser) return;
-    const requestData = {
-        senderName: currentUser.fullName,
-        senderPhoto: currentUser.photoURL || '',
-        senderVillage: currentUser.village || '',
-        timestamp: Date.now()
-    };
-
-    const allIncoming = JSON.parse(localStorage.getItem('kp_user_incoming_requests') || '{}');
-    if (!allIncoming[user.memberId]) allIncoming[user.memberId] = {};
-    allIncoming[user.memberId][currentUser.memberId] = requestData;
-    localStorage.setItem('kp_user_incoming_requests', JSON.stringify(allIncoming));
-
-    const allOutgoing = JSON.parse(localStorage.getItem('kp_user_outgoing_requests') || '{}');
-    if (!allOutgoing[currentUser.memberId]) allOutgoing[currentUser.memberId] = {};
-    allOutgoing[currentUser.memberId][user.memberId] = { timestamp: Date.now() };
-    localStorage.setItem('kp_user_outgoing_requests', JSON.stringify(allOutgoing));
-
-    alert(`${user.fullName} কে বন্ধুত্বের অনুরোধ পাঠানো হয়েছে।`);
+    
+    try {
+        // Set outgoing for me
+        const outgoingRef = doc(chatDb, 'requests_outgoing', currentUser.memberId);
+        await setDoc(outgoingRef, { [user.memberId]: true }, { merge: true });
+        
+        // Set incoming for target
+        const incomingRef = doc(chatDb, `requests_incoming/${user.memberId}/items`, currentUser.memberId);
+        await setDoc(incomingRef, { 
+            senderId: currentUser.memberId, 
+            senderName: currentUser.fullName,
+            senderPhoto: currentUser.photoURL || '',
+            senderVillage: currentUser.village || '',
+            timestamp: Date.now() 
+        });
+        
+        alert(`${user.fullName} কে বন্ধুত্বের অনুরোধ পাঠানো হয়েছে।`);
+    } catch (error) {
+        console.error("Friend request error:", error);
+        alert("অনুরোধ পাঠানো সম্ভব হয়নি! ফায়ারস্টোর পারমিশন চেক করুন।");
+    }
   };
 
   const acceptFriendRequest = async (request: any) => {
     if (!currentUser) return;
     const { senderId, senderName } = request;
 
-    const allFriends = JSON.parse(localStorage.getItem('kp_user_friends') || '{}');
-    if (!allFriends[currentUser.memberId]) allFriends[currentUser.memberId] = {};
-    if (!allFriends[senderId]) allFriends[senderId] = {};
-    allFriends[currentUser.memberId][senderId] = true;
-    allFriends[senderId][currentUser.memberId] = true;
-    localStorage.setItem('kp_user_friends', JSON.stringify(allFriends));
-
-    const allIncoming = JSON.parse(localStorage.getItem('kp_user_incoming_requests') || '{}');
-    if (allIncoming[currentUser.memberId]) delete allIncoming[currentUser.memberId][senderId];
-    localStorage.setItem('kp_user_incoming_requests', JSON.stringify(allIncoming));
-
-    const allOutgoing = JSON.parse(localStorage.getItem('kp_user_outgoing_requests') || '{}');
-    if (allOutgoing[senderId]) delete allOutgoing[senderId][currentUser.memberId];
-    localStorage.setItem('kp_user_outgoing_requests', JSON.stringify(allOutgoing));
-
-    alert(`${senderName} এখন আপনার বন্ধু!`);
+    try {
+        // Update my friends
+        const myFriendsRef = doc(chatDb, 'friends', currentUser.memberId);
+        await setDoc(myFriendsRef, { [senderId]: true }, { merge: true });
+        
+        // Remove from my incoming
+        const myIncomingRef = doc(chatDb, `requests_incoming/${currentUser.memberId}/items`, senderId);
+        await deleteDoc(myIncomingRef);
+        
+        // Update their friends
+        const theirFriendsRef = doc(chatDb, 'friends', senderId);
+        await setDoc(theirFriendsRef, { [currentUser.memberId]: true }, { merge: true });
+        
+        // Remove from their outgoing
+        const theirOutgoingRef = doc(chatDb, 'requests_outgoing', senderId);
+        await setDoc(theirOutgoingRef, { [currentUser.memberId]: deleteField() }, { merge: true });
+        
+        alert(`${senderName} এখন আপনার বন্ধু!`);
+    } catch (error) {
+        console.error("Accept friend error:", error);
+    }
   };
 
   const rejectFriendRequest = async (request: any) => {
     if (!currentUser) return;
-    const allIncoming = JSON.parse(localStorage.getItem('kp_user_incoming_requests') || '{}');
-    if (allIncoming[currentUser.memberId]) delete allIncoming[currentUser.memberId][request.senderId];
-    localStorage.setItem('kp_user_incoming_requests', JSON.stringify(allIncoming));
-
-    const allOutgoing = JSON.parse(localStorage.getItem('kp_user_outgoing_requests') || '{}');
-    if (allOutgoing[request.senderId]) delete allOutgoing[request.senderId][currentUser.memberId];
-    localStorage.setItem('kp_user_outgoing_requests', JSON.stringify(allOutgoing));
+    const { senderId } = request;
+    
+    try {
+        const myIncomingRef = doc(chatDb, `requests_incoming/${currentUser.memberId}/items`, senderId);
+        await deleteDoc(myIncomingRef);
+        
+        const theirOutgoingRef = doc(chatDb, 'requests_outgoing', senderId);
+        await setDoc(theirOutgoingRef, { [currentUser.memberId]: deleteField() }, { merge: true });
+    } catch (error) {
+        console.error("Reject friend error:", error);
+    }
   };
 
   const unfriend = async (otherId: string, otherName: string) => {
     if (!currentUser || !window.confirm(`${otherName} কে কি আনফ্রেন্ড করতে চান?`)) return;
-    const allFriends = JSON.parse(localStorage.getItem('kp_user_friends') || '{}');
-    if (allFriends[currentUser.memberId]) delete allFriends[currentUser.memberId][otherId];
-    if (allFriends[otherId]) delete allFriends[otherId][currentUser.memberId];
-    localStorage.setItem('kp_user_friends', JSON.stringify(allFriends));
+    
+    try {
+        const myFriendsRef = doc(chatDb, 'friends', currentUser.memberId);
+        await setDoc(myFriendsRef, { [otherId]: deleteField() }, { merge: true });
+        
+        const theirFriendsRef = doc(chatDb, 'friends', otherId);
+        await setDoc(theirFriendsRef, { [currentUser.memberId]: deleteField() }, { merge: true });
+    } catch (error) {
+        console.error("Unfriend error:", error);
+    }
   };
 
   const handleTyping = (val: string) => {
     setInputText(val);
     if (!currentUser || !activeChat) return;
     const chatId = [currentUser.memberId, activeChat.memberId].sort().join('_');
-    const typing = JSON.parse(localStorage.getItem('kp_typing') || '{}');
-    if (!typing[chatId]) typing[chatId] = {};
+    const typingRef = doc(chatDb, 'typing', `${chatId}_${currentUser.memberId}`);
     
-    if (val.length > 0 && !isTyping) { 
-      setIsTyping(true); 
-      typing[chatId][currentUser.memberId] = true;
-      localStorage.setItem('kp_typing', JSON.stringify(typing));
-    } 
-    else if (val.length === 0) { 
-      setIsTyping(false); 
-      typing[chatId][currentUser.memberId] = false;
-      localStorage.setItem('kp_typing', JSON.stringify(typing));
+    if (val.trim()) {
+        setDoc(typingRef, { isTyping: true }, { merge: true });
+        // Auto clear typing after 3 seconds
+        setTimeout(() => setDoc(typingRef, { isTyping: false }, { merge: true }), 3000);
+    } else {
+        setDoc(typingRef, { isTyping: false }, { merge: true });
     }
   };
 
@@ -378,7 +408,25 @@ const KPCommunityChat: React.FC = () => {
   const friendsList = useMemo(() => users.filter(u => !!friends[u.memberId]), [users, friends]);
 
   const roomsWithVerification = useMemo(() => {
-    return chatRooms.map(room => {
+    // Start with existing chat rooms
+    const roomsMap = new Map();
+    chatRooms.forEach(room => roomsMap.set(room.otherId, room));
+
+    // Add friends who don't have a room yet
+    friendsList.forEach(friend => {
+      if (!roomsMap.has(friend.memberId)) {
+        roomsMap.set(friend.memberId, {
+          otherId: friend.memberId,
+          otherName: friend.fullName,
+          otherPhoto: friend.photoURL || '',
+          lastMessage: '',
+          lastTimestamp: 0,
+          unseenCount: 0
+        });
+      }
+    });
+
+    return Array.from(roomsMap.values()).map((room: any) => {
         const u = users.find(usr => usr.memberId === room.otherId);
         return {
             ...room,
@@ -386,8 +434,8 @@ const KPCommunityChat: React.FC = () => {
             fullName: u?.fullName || room.otherName,
             photoURL: u?.photoURL || room.otherPhoto
         };
-    });
-  }, [chatRooms, users]);
+    }).sort((a: any, b: any) => b.lastTimestamp - a.lastTimestamp);
+  }, [chatRooms, users, friendsList]);
 
   const activeChatWithVerification = useMemo(() => {
     if (!activeChat) return null;
@@ -457,7 +505,13 @@ const KPCommunityChat: React.FC = () => {
           <div className="p-4 bg-white border-t border-slate-50 flex items-end gap-3 pb-8">
               <button className="p-2 text-blue-500 active:scale-90"><Smile size={24}/></button>
               <div className="flex-1 bg-slate-50 rounded-3xl px-5 py-3 flex items-center border border-slate-100 focus-within:border-blue-200 transition-all">
-                  <textarea rows={1} className="flex-1 bg-transparent border-none outline-none font-bold text-sm text-slate-800 placeholder:text-slate-400 resize-none max-h-32" placeholder="মেসেজ লিখুন..." value={inputText} onChange={(e) => handleTyping(e.target.value)} />
+                  <textarea 
+                    rows={1} 
+                    className="flex-1 bg-transparent border-none outline-none font-bold text-sm text-slate-800 placeholder:text-slate-400 resize-none max-h-32" 
+                    placeholder="মেসেজ লিখুন..." 
+                    value={inputText} 
+                    onChange={(e) => handleTyping(e.target.value)}
+                  />
               </div>
               <button onClick={handleSendMessage} disabled={!inputText.trim()} className={`p-3.5 rounded-full shadow-lg transition-all active:scale-90 ${inputText.trim() ? 'bg-blue-600 text-white shadow-blue-500/20' : 'bg-slate-100 text-slate-300'}`}><Send size={20} /></button>
           </div>

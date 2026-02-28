@@ -19,8 +19,8 @@ import {
 } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import { LegalServiceContact } from '../types';
-
-// Firebase removed for paid hosting migration
+import { ref, onValue } from 'firebase/database';
+import { directoryDb } from '../Firebase-directory';
 
 const convertBnToEn = (str: string) => {
   const bn = ['০','১','২','৩','৪','৫','৬','৭','৮','৯'], en = ['0','1','2','3','4','5','6','7','8','9'];
@@ -70,22 +70,31 @@ const PublicLegal: React.FC<{
 
   useEffect(() => {
     setIsLoading(true);
-    const saved = localStorage.getItem('kp_legal_services');
-    if (saved) {
-      const data = JSON.parse(saved);
-      const list: LegalServiceContact[] = [];
-      const subMenus: any[] = [];
-      Object.keys(data).forEach(catId => {
-        const items = Object.values(data[catId]) as LegalServiceContact[];
-        if (items.length > 0) {
-          list.push(...items);
-          if (!subMenus.find(s => s.id === catId)) subMenus.push({ id: catId, name: items[0].categoryName });
-        }
-      });
-      setLegalData(list);
-      setDynamicSubMenus(subMenus);
-    }
-    setIsLoading(false);
+    const legalRef = ref(directoryDb, 'আইনি সেবা');
+    const unsubscribe = onValue(legalRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const list = Object.entries(data).map(([id, value]: [string, any]) => ({
+          ...value,
+          id
+        }));
+        
+        const subMenus: any[] = [];
+        list.forEach(item => {
+          if (!subMenus.find(s => s.id === item.categoryId)) {
+            subMenus.push({ id: item.categoryId, name: item.categoryName });
+          }
+        });
+        
+        setLegalData(list);
+        setDynamicSubMenus(subMenus);
+      } else {
+        setLegalData([]);
+        setDynamicSubMenus([]);
+      }
+      setIsLoading(false);
+    });
+    return () => unsubscribe();
   }, []);
 
   const filteredContacts = useMemo(() => legalData.filter(l => l.categoryId === subId), [legalData, subId]);

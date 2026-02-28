@@ -9,8 +9,8 @@ import {
   Navigation
 } from 'lucide-react';
 import { BusCounter } from '../types';
-
-// Firebase removed for paid hosting migration
+import { ref, onValue } from 'firebase/database';
+import { directoryDb } from '../Firebase-directory';
 
 const convertBnToEn = (str: string) => {
   const bn = ['০','১','২','৩','৪','৫','৬','৭','৮','৯'], en = ['0','1','2','3','4','5','6','7','8','9'];
@@ -50,11 +50,21 @@ const PublicTransport: React.FC<{
 
   useEffect(() => {
     setIsLoading(true);
-    const saved = localStorage.getItem('kp_bus_counters');
-    if (saved) {
-      setBusData(JSON.parse(saved));
-    }
-    setIsLoading(false);
+    const busRef = ref(directoryDb, 'বাস');
+    const unsubscribe = onValue(busRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const list = Object.entries(data).map(([id, value]: [string, any]) => ({
+          ...value,
+          id
+        }));
+        setBusData(list);
+      } else {
+        setBusData([]);
+      }
+      setIsLoading(false);
+    });
+    return () => unsubscribe();
   }, []);
 
   const uniqueRoutes = useMemo(() => Array.from(new Set(busData.map(b => b.route))).filter(Boolean).map(r => ({ id: r, name: r })), [busData]);

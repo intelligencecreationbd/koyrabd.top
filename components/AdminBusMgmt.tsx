@@ -12,8 +12,9 @@ import {
   Tag
 } from 'lucide-react';
 import { BusCounter } from '../types';
-
-// Firebase removed for paid hosting migration
+import { ref, onValue, set, push, remove } from 'firebase/database';
+import { directoryDb } from '../Firebase-directory';
+import { uploadImageToServer } from '../src/services/uploadService';
 
 // INTERNAL COMPONENTS
 const Header: React.FC<{ title: string; onBack: () => void }> = ({ title, onBack }) => (
@@ -50,14 +51,27 @@ const AdminBusMgmt: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const [busCounters, setBusCounters] = useState<BusCounter[]>([]);
   const [showBusForm, setShowBusForm] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [editingBusId, setEditingBusId] = useState<string | null>(null);
-  const [busForm, setBusForm] = useState<Omit<BusCounter, 'id'>>({
-    route: '', busName: '', acFare: '', nonAcFare: '', counters: [{ name: '', mobile: '' }]
+  const [busForm, setBusForm] = useState<Omit<BusCounter, 'id'> & { photo?: string }>({
+    route: '', busName: '', acFare: '', nonAcFare: '', counters: [{ name: '', mobile: '' }], photo: ''
   });
 
   useEffect(() => {
-    const saved = localStorage.getItem('kp_bus_counters');
-    if (saved) setBusCounters(JSON.parse(saved));
+    const busRef = ref(directoryDb, 'বাস');
+    const unsubscribe = onValue(busRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const list = Object.entries(data).map(([id, value]: [string, any]) => ({
+          ...value,
+          id
+        }));
+        setBusCounters(list);
+      } else {
+        setBusCounters([]);
+      }
+    });
+    return () => unsubscribe();
   }, []);
 
   const handleBusSubmit = async (e: React.FormEvent) => {
@@ -65,21 +79,33 @@ const AdminBusMgmt: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     if (!busForm.busName || !busForm.route) return;
     setIsSubmitting(true);
     try {
-        const id = editingBusId || `bus_${Date.now()}`;
-        const newBus = { ...busForm, id };
+        let photoUrl = busForm.photo || '';
         
-        let updated;
+        if (selectedFile) {
+          try {
+            photoUrl = await uploadImageToServer(selectedFile);
+          } catch (uploadError: any) {
+            alert(uploadError.message || 'ইমেজ আপলোড ব্যর্থ হয়েছে!');
+            setIsSubmitting(false);
+            return;
+          }
+        }
+
+        const finalData = { ...busForm, photo: photoUrl };
+
         if (editingBusId) {
-          updated = busCounters.map(b => b.id === editingBusId ? newBus : b);
+          const busRef = ref(directoryDb, `বাস/${editingBusId}`);
+          await set(busRef, { ...finalData, id: editingBusId });
         } else {
-          updated = [...busCounters, newBus];
+          const busRef = ref(directoryDb, 'বাস');
+          const newRef = push(busRef);
+          await set(newRef, { ...finalData, id: newRef.key });
         }
         
-        setBusCounters(updated);
-        localStorage.setItem('kp_bus_counters', JSON.stringify(updated));
-        
+        alert('সফলভাবে সংরক্ষিত হয়েছে!');
         setShowBusForm(false);
         setEditingBusId(null);
+        setSelectedFile(null);
     } catch (e) { alert('ত্রুটি!'); }
     finally { setIsSubmitting(false); }
   };
@@ -87,9 +113,8 @@ const AdminBusMgmt: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const handleDeleteBus = async (id: string) => {
     if (confirm('আপনি কি এই বাস সার্ভিসের তথ্য মুছে ফেলতে চান?')) {
       try {
-        const updated = busCounters.filter(b => b.id !== id);
-        setBusCounters(updated);
-        localStorage.setItem('kp_bus_counters', JSON.stringify(updated));
+        const busRef = ref(directoryDb, `বাস/${id}`);
+        await remove(busRef);
       } catch (e) {
         alert('মুছে ফেলা সম্ভব হয়নি।');
       }
@@ -107,6 +132,16 @@ const AdminBusMgmt: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     const updatedCounters = [...busForm.counters];
     updatedCounters[index][field] = value;
     setBusForm({ ...busForm, counters: updatedCounters });
+  };
+
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setSelectedFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => setBusForm(prev => ({ ...prev, photo: reader.result as string }));
+      reader.readAsDataURL(file);
+    }
   };
 
   return (
@@ -164,6 +199,17 @@ const AdminBusMgmt: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                         <button onClick={()=>setShowBusForm(false)} className="p-2 text-slate-400 hover:text-red-500"><X/></button>
                     </div>
                     
+                    <div className="flex flex-col items-center pt-2">
+                        <div className="relative group">
+                            <div className="w-24 h-24 rounded-[35px] bg-slate-50 border-4 border-white shadow-lg overflow-hidden flex items-center justify-center text-slate-200">
+                                {busForm.photo ? <img src={busForm.photo} className="w-full h-full object-cover" /> : <Bus size={40} />}
+                            </div>
+                            <button type="button" onClick={() => (document.getElementById('bus-photo-input') as HTMLInputElement)?.click()} className="absolute bottom-0 right-0 p-3 bg-orange-600 text-white rounded-2xl shadow-xl border-4 border-white active:scale-90"><Plus size={18}/></button>
+                            <input id="bus-photo-input" type="file" className="hidden" accept="image/*" onChange={handlePhotoUpload} />
+                        </div>
+                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-4">বাসের ছবি সিলেক্ট করুন</p>
+                    </div>
+
                     <div className="space-y-4 pt-2">
                         <EditField 
                             label="রুটের নাম" 

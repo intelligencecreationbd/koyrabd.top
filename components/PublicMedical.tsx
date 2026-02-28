@@ -19,8 +19,8 @@ import {
   User,
   Clock
 } from 'lucide-react';
-
-// Firebase removed for paid hosting migration
+import { ref, onValue } from 'firebase/database';
+import { directoryDb } from '../Firebase-directory';
 
 const toBn = (num: string | number) => 
   (num || '').toString().replace(/\d/g, d => "০১২৩৪৫৬৭৮৯"[parseInt(d)]);
@@ -53,13 +53,21 @@ export default function PublicMedical({ onBack }: { onBack: () => void }) {
     }
 
     setIsLoading(true);
-    const saved = localStorage.getItem(`kp_medical_${selectedCategory}`);
-    if (saved) {
-      setItems(JSON.parse(saved));
-    } else {
-      setItems([]);
-    }
-    setIsLoading(false);
+    const medRef = ref(directoryDb, `চিকিৎসা সেবা/${selectedCategory}`);
+    const unsubscribe = onValue(medRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const list = Object.entries(data).map(([id, value]: [string, any]) => ({
+          ...value,
+          id
+        }));
+        setItems(list);
+      } else {
+        setItems([]);
+      }
+      setIsLoading(false);
+    });
+    return () => unsubscribe();
   }, [selectedCategory]);
 
   const filteredItems = useMemo(() => {

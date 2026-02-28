@@ -20,11 +20,11 @@ import {
   Camera, 
   Loader2,
   ArrowRight,
-  // Added missing Edit2 import
   Edit2
 } from 'lucide-react';
-
-// Firebase removed for paid hosting migration
+import { ref, onValue, set, push, remove } from 'firebase/database';
+import { directoryDb } from '../Firebase-directory';
+import { uploadImageToServer } from '../src/services/uploadService';
 
 const toBn = (num: string | number) => 
   (num || '').toString().replace(/\d/g, d => "০১২৩৪৫৬৭৮৯"[parseInt(d)]);
@@ -70,6 +70,7 @@ export default function AdminMedicalMgmt({ onBack }: { onBack: () => void }) {
   const [items, setItems] = useState<any[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   
   const [form, setForm] = useState({
@@ -78,14 +79,26 @@ export default function AdminMedicalMgmt({ onBack }: { onBack: () => void }) {
 
   useEffect(() => {
     if (!selectedCat) return;
-    const saved = localStorage.getItem(`kp_medical_${selectedCat}`);
-    if (saved) setItems(JSON.parse(saved));
-    else setItems([]);
+    const medRef = ref(directoryDb, `চিকিৎসা সেবা/${selectedCat}`);
+    const unsubscribe = onValue(medRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const list = Object.entries(data).map(([id, value]: [string, any]) => ({
+          ...value,
+          id
+        }));
+        setItems(list);
+      } else {
+        setItems([]);
+      }
+    });
+    return () => unsubscribe();
   }, [selectedCat]);
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      setSelectedFile(file);
       const reader = new FileReader();
       reader.onloadend = () => setForm(prev => ({ ...prev, photo: reader.result as string }));
       reader.readAsDataURL(file);
@@ -97,21 +110,33 @@ export default function AdminMedicalMgmt({ onBack }: { onBack: () => void }) {
     if (!form.name || !form.mobile) return;
     setIsSubmitting(true);
     try {
-        const id = editingId || `med_${Date.now()}`;
-        const newItem = { ...form, id };
+        let photoUrl = form.photo;
         
-        let updated;
+        if (selectedFile) {
+          try {
+            photoUrl = await uploadImageToServer(selectedFile);
+          } catch (uploadError: any) {
+            alert(uploadError.message || 'ইমেজ আপলোড ব্যর্থ হয়েছে!');
+            setIsSubmitting(false);
+            return;
+          }
+        }
+
+        const finalData = { ...form, photo: photoUrl };
+
         if (editingId) {
-          updated = items.map(item => item.id === editingId ? newItem : item);
+          const medRef = ref(directoryDb, `চিকিৎসা সেবা/${selectedCat}/${editingId}`);
+          await set(medRef, { ...finalData, id: editingId });
         } else {
-          updated = [...items, newItem];
+          const medRef = ref(directoryDb, `চিকিৎসা সেবা/${selectedCat}`);
+          const newRef = push(medRef);
+          await set(newRef, { ...finalData, id: newRef.key });
         }
         
-        setItems(updated);
-        localStorage.setItem(`kp_medical_${selectedCat}`, JSON.stringify(updated));
-        
+        alert('সফলভাবে সংরক্ষিত হয়েছে!');
         setShowForm(false);
         setEditingId(null);
+        setSelectedFile(null);
         setForm({ name: '', specialist: '', degree: '', mobile: '', location: '', photo: '', desc: '' });
     } catch (e) { alert('সংরক্ষণ ব্যর্থ হয়েছে!'); }
     finally { setIsSubmitting(false); }
@@ -120,9 +145,8 @@ export default function AdminMedicalMgmt({ onBack }: { onBack: () => void }) {
   const handleDelete = async (id: string) => {
     if (confirm('আপনি কি এই তথ্যটি ডিলিট করতে চান?')) {
       try {
-        const updated = items.filter(item => item.id !== id);
-        setItems(updated);
-        localStorage.setItem(`kp_medical_${selectedCat}`, JSON.stringify(updated));
+        const medRef = ref(directoryDb, `চিকিৎসা সেবা/${selectedCat}/${id}`);
+        await remove(medRef);
       } catch (e) {
         alert('মুছে ফেলা সম্ভব হয়নি!');
       }

@@ -33,8 +33,9 @@ import {
   UserCircle
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
-
-// Firebase removed for paid hosting migration
+import { ref, onValue, set, push, remove, update } from 'firebase/database';
+import { kppostDb } from '../Firebase-kppost';
+import { db } from '../firebase';
 
 const toBn = (num: string | number) => 
   (num || '').toString().replace(/\d/g, d => "০১২৩৪৫৬৭৮৯"[parseInt(d)]);
@@ -121,76 +122,87 @@ export default function PublicNews({ onBack }: { onBack: () => void }) {
   }, [location, navigate]);
 
   useEffect(() => {
-    const syncUser = () => {
-        const savedUser = localStorage.getItem('kp_logged_in_user');
-        if (savedUser) {
-            const u = JSON.parse(savedUser);
-            setCurrentUser(u);
-            setForm(prev => ({ ...prev, reporter: `${u.fullName} - ${u.village}` }));
-        } else {
-            setCurrentUser(null);
-        }
-    };
-    
-    syncUser();
-
-    // Sync all users
-    const savedUsers = localStorage.getItem('kp_users');
-    if (savedUsers) {
-      setAllUsers(JSON.parse(savedUsers));
+    const savedUser = localStorage.getItem('kp_logged_in_user');
+    if (savedUser) {
+        const u = JSON.parse(savedUser);
+        setCurrentUser(u);
+        setForm(prev => ({ ...prev, reporter: `${u.fullName} - ${u.village}` }));
     }
 
-    // Fetch categories
-    const savedCats = localStorage.getItem('kp_news_categories');
-    if (savedCats) {
-      const val = JSON.parse(savedCats);
-      const dynamic = Object.keys(val).map(k => ({ id: k, name: val[k].name }));
-      setCategories(dynamic);
-      if (dynamic.length > 0) setForm(prev => ({...prev, category: dynamic[0].id}));
-    }
+    // Fetch users from main Firebase
+    const usersRef = ref(db, 'users');
+    const unsubscribeUsers = onValue(usersRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        setAllUsers(Object.values(data));
+      } else {
+        setAllUsers([]);
+      }
+    });
+
+    // Fetch categories from Firebase
+    const catsRef = ref(kppostDb, 'categories');
+    const unsubscribeCats = onValue(catsRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const dynamic = Object.values(data);
+        setCategories(dynamic as any[]);
+        if (dynamic.length > 0) setForm(prev => ({...prev, category: (dynamic[0] as any).id}));
+      } else {
+        setCategories([]);
+      }
+    });
 
     setLoading(true);
-    // Fetch news
-    const savedNews = localStorage.getItem('kp_local_news');
-    if (savedNews) {
-      const val = JSON.parse(savedNews);
-      const main = val.main || {};
-      const list = Object.keys(main).map(key => ({ ...main[key], id: key }));
-      setNewsList(list.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0)));
-    }
+    // Fetch news from Firebase
+    const newsRef = ref(kppostDb, 'news_main');
+    const unsubscribeNews = onValue(newsRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const list = Object.values(data);
+        setNewsList(list.sort((a: any, b: any) => (b.timestamp || 0) - (a.timestamp || 0)));
+      } else {
+        setNewsList([]);
+      }
+      setLoading(false);
+    });
 
-    // Fetch breaking news
-    const savedBreaking = localStorage.getItem('kp_breaking_news');
-    if (savedBreaking) {
-      const val = JSON.parse(savedBreaking);
-      const list = Object.keys(val).map(k => ({...val[k], id: k})).sort((a, b) => b.timestamp - a.timestamp);
-      setBreakingNews(list);
-    }
-    setLoading(false);
+    // Fetch breaking news from Firebase
+    const breakingRef = ref(kppostDb, 'breaking_news');
+    const unsubscribeBreaking = onValue(breakingRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const list = Object.values(data).sort((a: any, b: any) => (b.timestamp || 0) - (a.timestamp || 0));
+        setBreakingNews(list);
+      } else {
+        setBreakingNews([]);
+      }
+    });
 
     const saved = localStorage.getItem('kp_saved_news');
     if (saved) setSavedNewsIds(JSON.parse(saved));
 
+    return () => {
+      unsubscribeUsers();
+      unsubscribeCats();
+      unsubscribeNews();
+      unsubscribeBreaking();
+    };
   }, []);
 
   useEffect(() => {
     if (selectedNews) {
-        const savedInter = localStorage.getItem('kp_news_interactions') || '{}';
-        const interactionsObj = JSON.parse(savedInter);
-        const newsInter = interactionsObj[selectedNews.id] || { likes: 0, dislikes: 0, loves: 0, angrys: 0, comments: {} };
-        
-        setInteractions({
-          likes: newsInter.likes || 0,
-          dislikes: newsInter.dislikes || 0,
-          loves: newsInter.loves || 0,
-          angrys: newsInter.angrys || 0
-        });
-        
-        const comms = newsInter.comments || {};
-        setComments(Object.values(comms).sort((a:any, b:any) => b.timestamp - a.timestamp));
-
         const myVotes = JSON.parse(localStorage.getItem('kp_news_votes') || '{}');
         setUserVote(myVotes[selectedNews.id] || null);
+        
+        // Use local data for interactions and comments
+        setInteractions({
+            likes: selectedNews.likes || 0,
+            dislikes: selectedNews.dislikes || 0,
+            loves: selectedNews.loves || 0,
+            angrys: selectedNews.angrys || 0
+        });
+        setComments((selectedNews.comments || []).sort((a: any, b: any) => b.timestamp - a.timestamp));
     }
   }, [selectedNews]);
 
@@ -212,28 +224,14 @@ export default function PublicNews({ onBack }: { onBack: () => void }) {
     const prevVote = myVotes[selectedNews.id];
     if (prevVote === type.replace('s', '')) return;
     
-    const savedInter = localStorage.getItem('kp_news_interactions') || '{}';
-    const interactionsObj = JSON.parse(savedInter);
-    if (!interactionsObj[selectedNews.id]) {
-      interactionsObj[selectedNews.id] = { likes: 0, dislikes: 0, loves: 0, angrys: 0, comments: {} };
-    }
-    
-    const newsInter = interactionsObj[selectedNews.id];
-    
+    const updates: any = {};
     if (prevVote) {
-      const prevKey = prevVote === 'like' ? 'likes' : prevVote === 'love' ? 'loves' : prevVote === 'angry' ? 'angrys' : 'dislikes';
-      newsInter[prevKey] = Math.max(0, (newsInter[prevKey] || 0) - 1);
+        const prevKey = prevVote === 'like' ? 'likes' : prevVote === 'love' ? 'loves' : prevVote === 'angry' ? 'angrys' : 'dislikes';
+        updates[prevKey] = Math.max(0, (selectedNews[prevKey] || 0) - 1);
     }
+    updates[type] = (selectedNews[type] || 0) + 1;
     
-    newsInter[type] = (newsInter[type] || 0) + 1;
-    
-    localStorage.setItem('kp_news_interactions', JSON.stringify(interactionsObj));
-    setInteractions({
-      likes: newsInter.likes,
-      dislikes: newsInter.dislikes,
-      loves: newsInter.loves,
-      angrys: newsInter.angrys
-    });
+    await update(ref(kppostDb, `news_main/${selectedNews.id}`), updates);
     
     myVotes[selectedNews.id] = type.replace('s', '');
     localStorage.setItem('kp_news_votes', JSON.stringify(myVotes));
@@ -243,29 +241,18 @@ export default function PublicNews({ onBack }: { onBack: () => void }) {
 
   const handleCommentSubmit = async () => {
     if (!commentInput.trim() || !selectedNews) return;
-    const commentId = `comm_${Date.now()}`;
     const newComment = {
-        id: commentId,
+        id: `comment_${Date.now()}`,
         userName: currentUser ? currentUser.fullName : 'অজ্ঞাতনামা',
         text: commentInput,
         timestamp: Date.now(),
         userPhoto: currentUser?.photoURL || ''
     };
     
-    const savedInter = localStorage.getItem('kp_news_interactions') || '{}';
-    const interactionsObj = JSON.parse(savedInter);
-    if (!interactionsObj[selectedNews.id]) {
-      interactionsObj[selectedNews.id] = { likes: 0, dislikes: 0, loves: 0, angrys: 0, comments: {} };
-    }
+    const updatedComments = [newComment, ...(selectedNews.comments || [])];
+    await update(ref(kppostDb, `news_main/${selectedNews.id}`), { comments: updatedComments });
     
-    if (!interactionsObj[selectedNews.id].comments) {
-      interactionsObj[selectedNews.id].comments = {};
-    }
-    
-    interactionsObj[selectedNews.id].comments[commentId] = newComment;
-    localStorage.setItem('kp_news_interactions', JSON.stringify(interactionsObj));
-    
-    setComments(prev => [newComment, ...prev]);
+    setComments(updatedComments);
     setCommentInput('');
   };
 
@@ -314,20 +301,16 @@ export default function PublicNews({ onBack }: { onBack: () => void }) {
     }
     setIsSubmitting(true);
     try {
-        const id = `news_${Date.now()}`;
+        const id = `pending_${Date.now()}`;
         const finalData = { 
             ...form, 
-            id, 
+            id,
             status: 'pending',
             userId: currentUser.memberId,
             timestamp: Date.now()
         };
         
-        const savedNews = localStorage.getItem('kp_local_news') || '{"main": {}, "pending": {}}';
-        const newsObj = JSON.parse(savedNews);
-        if (!newsObj.pending) newsObj.pending = {};
-        newsObj.pending[id] = finalData;
-        localStorage.setItem('kp_local_news', JSON.stringify(newsObj));
+        await set(ref(kppostDb, `news_pending/${id}`), finalData);
         
         setShowSubmitForm(false);
         setShowSuccessMessage(true);

@@ -22,8 +22,8 @@ import {
   FileText
 } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
-
-// Firebase removed for paid hosting migration
+import { ref, onValue } from 'firebase/database';
+import { directoryDb } from '../Firebase-directory';
 
 const toBn = (num: string | number | undefined | null) => {
   const val = num ?? '';
@@ -106,6 +106,8 @@ const PublicDirectory: React.FC<PublicDirectoryProps> = ({ id, categoryName, pat
   const searchParams = new URLSearchParams(location.search);
   const profileIdFromUrl = searchParams.get('item');
 
+  const rootNode = useMemo(() => id === '15' ? 'মোবাইল নাম্বার' : 'জনপ্রতিনিধি', [id]);
+
   const selections = useMemo(() => pathParts, [pathParts]);
 
   const selectedItem = useMemo(() => {
@@ -121,27 +123,38 @@ const PublicDirectory: React.FC<PublicDirectoryProps> = ({ id, categoryName, pat
 
   useEffect(() => {
     setIsLoading(true);
-    const saved = localStorage.getItem('kp_directory_categories');
-    if (saved) {
-      setAllCategories(JSON.parse(saved));
-    }
-    setIsLoading(false);
-  }, []);
+    const catsRef = ref(directoryDb, `${rootNode}/categories`);
+    const unsubscribe = onValue(catsRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        setAllCategories(Object.values(data));
+      } else {
+        setAllCategories([]);
+      }
+      setIsLoading(false);
+    });
+    return () => unsubscribe();
+  }, [rootNode]);
 
   useEffect(() => {
-    const saved = localStorage.getItem('kp_directory_data');
-    if (saved) {
-      const val = JSON.parse(saved);
-      let all: any[] = [];
-      Object.keys(val).forEach(catId => {
-        const items = val[catId];
-        Object.keys(items).forEach(itemId => {
-          all.push({ ...items[itemId], id: itemId, categoryId: catId });
+    const dataRef = ref(directoryDb, `${rootNode}/data`);
+    const unsubscribe = onValue(dataRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        let all: any[] = [];
+        Object.keys(data).forEach(catId => {
+          const items = data[catId];
+          Object.keys(items).forEach(itemId => {
+            all.push({ ...items[itemId], id: itemId, categoryId: catId });
+          });
         });
-      });
-      setGlobalData(all);
-    }
-  }, []);
+        setGlobalData(all);
+      } else {
+        setGlobalData([]);
+      }
+    });
+    return () => unsubscribe();
+  }, [rootNode]);
 
   const levels = useMemo(() => {
     const result = [];
@@ -172,12 +185,11 @@ const PublicDirectory: React.FC<PublicDirectoryProps> = ({ id, categoryName, pat
       return;
     }
     setIsLoading(true);
-    const saved = localStorage.getItem('kp_directory_data');
-    if (saved) {
-      const val = JSON.parse(saved);
-      const catData = val[leafId];
-      if (catData) {
-        const list = Object.keys(catData).map(key => ({ ...catData[key], id: key }));
+    const dataRef = ref(directoryDb, `${rootNode}/data/${leafId}`);
+    const unsubscribe = onValue(dataRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const list = Object.keys(data).map(key => ({ ...data[key], id: key }));
         setDataList(list.sort((a, b) => {
           const isA = (a.designation || '').includes('চেয়ারম্যান');
           const isB = (b.designation || '').includes('চেয়ারম্যান');
@@ -188,24 +200,23 @@ const PublicDirectory: React.FC<PublicDirectoryProps> = ({ id, categoryName, pat
       } else {
         setDataList([]);
       }
-    } else {
-      setDataList([]);
-    }
-    setIsLoading(false);
-  }, [leafId]);
+      setIsLoading(false);
+    });
+    return () => unsubscribe();
+  }, [leafId, rootNode]);
 
   const handleSelection = (levelIdx: number, value: string) => {
     if (!value) {
-      if (levelIdx === 0) onNavigate(`/category/15`);
+      if (levelIdx === 0) onNavigate(`/category/${id}`);
       else {
         const parentPath = selections.slice(0, levelIdx).join('/');
-        onNavigate(`/category/15/${parentPath}`);
+        onNavigate(`/category/${id}/${parentPath}`);
       }
       return;
     }
     const newPath = selections.slice(0, levelIdx);
     newPath.push(value);
-    onNavigate(`/category/15/${newPath.join('/')}`);
+    onNavigate(`/category/${id}/${newPath.join('/')}`);
   };
 
   const openProfile = (item: any) => {

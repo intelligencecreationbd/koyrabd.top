@@ -16,8 +16,9 @@ import {
   Loader2 
 } from 'lucide-react';
 import { HotlineContact } from '../types';
-
-// Firebase removed for paid hosting migration
+import { ref, onValue, set, push, remove } from 'firebase/database';
+import { directoryDb } from '../Firebase-directory';
+import { uploadImageToServer } from '../src/services/uploadService';
 
 // INTERNAL COMPONENTS
 const Header: React.FC<{ title: string; onBack: () => void }> = ({ title, onBack }) => (
@@ -55,19 +56,33 @@ const AdminHotlineMgmt: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const [hotlineContacts, setHotlineContacts] = useState<HotlineContact[]>([]);
   const [showHotlineForm, setShowHotlineForm] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [editingHotlineId, setEditingHotlineId] = useState<string | null>(null);
   const [hotlineForm, setHotlineForm] = useState<Omit<HotlineContact, 'id'>>({
     serviceType: '', name: '', address: '', mobile: '', centralHotline: '', photo: ''
   });
 
   useEffect(() => {
-    const saved = localStorage.getItem('kp_hotline');
-    if (saved) setHotlineContacts(JSON.parse(saved));
+    const hotlineRef = ref(directoryDb, 'হটলাইন');
+    const unsubscribe = onValue(hotlineRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const list = Object.entries(data).map(([id, value]: [string, any]) => ({
+          ...value,
+          id
+        }));
+        setHotlineContacts(list);
+      } else {
+        setHotlineContacts([]);
+      }
+    });
+    return () => unsubscribe();
   }, []);
 
   const handleHotlinePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      setSelectedFile(file);
       const reader = new FileReader();
       reader.onloadend = () => {
         setHotlineForm(prev => ({ ...prev, photo: reader.result as string }));
@@ -81,21 +96,34 @@ const AdminHotlineMgmt: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     if (!hotlineForm.name || !hotlineForm.mobile) return;
     setIsSubmitting(true);
     try {
-        const id = editingHotlineId || `hotline_${Date.now()}`;
-        const newContact = { ...hotlineForm, id };
+        let photoUrl = hotlineForm.photo;
         
-        let updated;
+        // If a new file is selected, upload it first
+        if (selectedFile) {
+          try {
+            photoUrl = await uploadImageToServer(selectedFile);
+          } catch (uploadError: any) {
+            alert(uploadError.message || 'ইমেজ আপলোড ব্যর্থ হয়েছে!');
+            setIsSubmitting(false);
+            return;
+          }
+        }
+
+        const finalData = { ...hotlineForm, photo: photoUrl };
+
         if (editingHotlineId) {
-          updated = hotlineContacts.map(h => h.id === editingHotlineId ? newContact : h);
+          const hotlineRef = ref(directoryDb, `হটলাইন/${editingHotlineId}`);
+          await set(hotlineRef, { ...finalData, id: editingHotlineId });
         } else {
-          updated = [...hotlineContacts, newContact];
+          const hotlineRef = ref(directoryDb, 'হটলাইন');
+          const newRef = push(hotlineRef);
+          await set(newRef, { ...finalData, id: newRef.key });
         }
         
-        setHotlineContacts(updated);
-        localStorage.setItem('kp_hotline', JSON.stringify(updated));
-        
+        alert('সফলভাবে সংরক্ষিত হয়েছে!');
         setShowHotlineForm(false);
         setEditingHotlineId(null);
+        setSelectedFile(null);
     } catch (e) { alert('ত্রুটি!'); }
     finally { setIsSubmitting(false); }
   };
@@ -103,9 +131,8 @@ const AdminHotlineMgmt: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const handleDeleteHotline = async (id: string) => {
     if (confirm('আপনি কি এই তথ্যটি মুছে ফেলতে চান?')) {
       try {
-        const updated = hotlineContacts.filter(h => h.id !== id);
-        setHotlineContacts(updated);
-        localStorage.setItem('kp_hotline', JSON.stringify(updated));
+        const hotlineRef = ref(directoryDb, `হটলাইন/${id}`);
+        await remove(hotlineRef);
       } catch (e) {
         alert('মুছে ফেলা সম্ভব হয়নি।');
       }

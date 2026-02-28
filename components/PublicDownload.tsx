@@ -53,7 +53,7 @@ const PublicDownload: React.FC<PublicDownloadProps> = ({ appLogo, isAdminLoggedI
   const logoInputRef = useRef<HTMLInputElement>(null);
 
   const handleDownload = () => {
-    window.open('https://apk.e-droid.net/apk/app3918325-2w7cqi.apk?v=4', '_blank');
+    window.open('https://getapp.koyrabd.top', '_blank');
   };
 
   return (

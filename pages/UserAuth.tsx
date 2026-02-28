@@ -40,7 +40,8 @@ import {
 } from 'lucide-react';
 import { User as AppUser } from '../types';
 
-// Firebase removed for paid hosting migration
+import { db } from '../firebase';
+import { ref, get, set, update, child } from "firebase/database";
 
 const toBn = (num: string | number | undefined) => 
     (num || '').toString().replace(/\d/g, d => "০১২৩৪৫৬৭৮৯"[parseInt(d)]);
@@ -91,18 +92,32 @@ const UserAuth: React.FC<UserAuthProps> = ({ onLogin }) => {
     fullName: '', email: '', mobile: '', dob: '', village: '', password: '', confirmPassword: ''
   });
 
+  // OTP States
+  const [showOTPModal, setShowOTPModal] = useState(false);
+  const [otpInput, setOtpInput] = useState('');
+  const [otpTarget, setOtpTarget] = useState<'register' | 'forgot'>('register');
+  const [showCongratsModal, setShowCongratsModal] = useState(false);
+  const [showNewPassModal, setShowNewPassModal] = useState(false);
+  const [newPassword, setNewPassword] = useState({ pass: '', confirm: '' });
+  const [resetEmail, setResetEmail] = useState('');
+
   useEffect(() => {
     if (loggedInUser) {
       const syncUserStatus = async () => {
-        // Mock sync from localStorage
-        const users = JSON.parse(localStorage.getItem('kp_users') || '[]');
-        const freshData = users.find((u: any) => u.uid === loggedInUser.uid);
-        if (freshData) {
-          const syncedUser = { ...loggedInUser, ...freshData };
-          setLoggedInUser(syncedUser);
-          localStorage.setItem('kp_logged_in_user', JSON.stringify(syncedUser));
-          onLogin(syncedUser as any);
-        } else {
+        try {
+          const userRef = ref(db, `users/${loggedInUser.uid}`);
+          const snapshot = await get(userRef);
+          if (snapshot.exists()) {
+            const freshData = snapshot.val();
+            const syncedUser = { ...loggedInUser, ...freshData };
+            setLoggedInUser(syncedUser);
+            localStorage.setItem('kp_logged_in_user', JSON.stringify(syncedUser));
+            onLogin(syncedUser as any);
+          } else {
+            onLogin(loggedInUser);
+          }
+        } catch (err) {
+          console.error("Sync error:", err);
           onLogin(loggedInUser);
         }
       };
@@ -127,9 +142,14 @@ const UserAuth: React.FC<UserAuthProps> = ({ onLogin }) => {
 
     setIsSubmitting(true);
     try {
-      // Mock Login from localStorage
-      const users = JSON.parse(localStorage.getItem('kp_users') || '[]');
-      const userData = users.find((u: any) => u.mobile === cleanMobile && u.password === loginData.password);
+      const usersRef = ref(db, 'users');
+      const snapshot = await get(usersRef);
+      
+      let userData = null;
+      if (snapshot.exists()) {
+        const users = snapshot.val();
+        userData = Object.values(users).find((u: any) => u.mobile === cleanMobile && u.password === loginData.password);
+      }
 
       if (!userData) {
         setErrorMsg('মোবাইল নম্বর অথবা পাসওয়ার্ডটি সঠিক নয়।');
@@ -137,13 +157,13 @@ const UserAuth: React.FC<UserAuthProps> = ({ onLogin }) => {
         return;
       }
 
-      if (userData.status === 'suspended') {
+      if ((userData as any).status === 'suspended') {
         setErrorMsg('আপনার একাউন্টটি সাসপেন্ড করা হয়েছে। এডমিনের সাথে যোগাযোগ করুন।');
         setIsSubmitting(false);
         return;
       }
 
-      const finalUser = { ...userData };
+      const finalUser = { ...(userData as any) };
       
       setLoggedInUser(finalUser);
       localStorage.setItem('kp_logged_in_user', JSON.stringify(finalUser));
@@ -180,15 +200,97 @@ const UserAuth: React.FC<UserAuthProps> = ({ onLogin }) => {
 
     setIsSubmitting(true);
     try {
-      const users = JSON.parse(localStorage.getItem('kp_users') || '[]');
-      if (users.some((u: any) => u.mobile === cleanMobile)) {
-          setErrorMsg('এই মোবাইল নম্বরটি দিয়ে ইতিমধ্যে একাউন্ট খোলা হয়েছে।');
-          setIsSubmitting(false);
-          return;
+      const usersRef = ref(db, 'users');
+      const snapshot = await get(usersRef);
+      
+      if (snapshot.exists()) {
+        const users = snapshot.val();
+        const userList = Object.values(users);
+        if (userList.some((u: any) => u.mobile === cleanMobile)) {
+            setErrorMsg('এই মোবাইল নম্বরটি দিয়ে ইতিমধ্যে একাউন্ট খোলা হয়েছে।');
+            setIsSubmitting(false);
+            return;
+        }
+        if (userList.some((u: any) => u.email === email)) {
+            setErrorMsg('এই ইমেইলটি দিয়ে ইতিমধ্যে একাউন্ট খোলা হয়েছে।');
+            setIsSubmitting(false);
+            return;
+        }
       }
 
+      // Send OTP via custom PHP endpoint
+      const response = await fetch('https://koyrabd.top/auth.php', {
+        method: 'POST',
+        mode: 'cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'send_otp', email })
+      });
+      
+      if (!response.ok) {
+        throw new Error('সার্ভারের সাথে যোগাযোগ করা সম্ভব হচ্ছে না।');
+      }
+
+      const data = await response.json();
+
+      if (data.success) {
+        setOtpTarget('register');
+        setShowOTPModal(true);
+        setSuccessMsg('আপনার ইমেইলে একটি ওটিপি পাঠানো হয়েছে।');
+      } else {
+        setErrorMsg(data.message || 'ওটিপি পাঠাতে সমস্যা হয়েছে।');
+      }
+      
+    } catch (err: any) {
+      setErrorMsg('নিবন্ধন প্রক্রিয়ায় সমস্যা হয়েছে।');
+    } finally { setIsSubmitting(false); }
+  };
+
+  const handleVerifyOTP = async () => {
+    if (!otpInput || otpInput.length !== 6) {
+      setErrorMsg('৬ সংখ্যার ওটিপি প্রদান করুন।');
+      return;
+    }
+
+    setIsSubmitting(true);
+    setErrorMsg('');
+    try {
+      const email = otpTarget === 'register' ? regData.email : resetEmail;
+      const response = await fetch('https://koyrabd.top/auth.php', {
+        method: 'POST',
+        mode: 'cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'verify_otp', email, otp: otpInput })
+      });
+      
+      if (!response.ok) throw new Error('সার্ভার রেসপন্স করছে না।');
+      
+      const data = await response.json();
+
+      if (data.success) {
+        if (otpTarget === 'register') {
+          await finalizeRegistration();
+        } else {
+          setShowOTPModal(false);
+          setShowNewPassModal(true);
+          setIsSubmitting(false);
+        }
+      } else {
+        setErrorMsg(data.message || 'ভুল ওটিপি।');
+        setIsSubmitting(false);
+      }
+    } catch (err) {
+      setErrorMsg('ভেরিফিকেশন ব্যর্থ হয়েছে। ইন্টারনেটে সমস্যা হতে পারে।');
+      setIsSubmitting(false);
+    }
+  };
+
+  const finalizeRegistration = async () => {
+    try {
+      const cleanMobile = convertToEn(regData.mobile);
+      const { fullName, email, dob, village, password } = regData;
       const uid = `user_${Date.now()}`;
       const memberId = `KP${Date.now().toString().slice(-8)}`;
+      
       const userData = {
         uid,
         memberId,
@@ -200,35 +302,96 @@ const UserAuth: React.FC<UserAuthProps> = ({ onLogin }) => {
         password,
         status: 'active',
         createdAt: new Date().toISOString(),
-        isVerified: true // Auto-verify for mock
+        isVerified: true
       };
       
-      users.push(userData);
-      localStorage.setItem('kp_users', JSON.stringify(users));
+      // Firebase save with timeout protection
+      const savePromise = set(ref(db, `users/${uid}`), userData);
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Firebase Timeout')), 10000)
+      );
+
+      await Promise.race([savePromise, timeoutPromise]);
       
-      setSuccessMsg('নিবন্ধন সফল হয়েছে! এখন লগইন করুন।');
-      setMode('login');
+      setShowOTPModal(false);
+      setShowCongratsModal(true);
       setRegData({ fullName: '', email: '', mobile: '', dob: '', village: '', password: '', confirmPassword: '' });
-      
     } catch (err: any) {
-      setErrorMsg('নিবন্ধন ব্যর্থ হয়েছে।');
-    } finally { setIsSubmitting(false); }
+      console.error("Registration Finalize Error:", err);
+      setErrorMsg('ডাটাবেসে তথ্য সেভ করতে সমস্যা হয়েছে। আবার চেষ্টা করুন।');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const handleResetPassword = async () => {
+  const handleForgotPassword = async () => {
     setErrorMsg('');
     setSuccessMsg('');
-    if (!regData.email) {
+    if (!resetEmail) {
       setErrorMsg('অনুগ্রহ করে আপনার একাউন্টের ইমেইল এড্রেসটি দিন।');
       return;
     }
     setIsSubmitting(true);
     try {
-      // Mock Reset
-      setSuccessMsg('পাসওয়ার্ড রিসেট করার লিঙ্কটি আপনার ইমেইলে পাঠানো হয়েছে (সিমুলেটেড)।');
-      setMode('login');
+      const usersRef = ref(db, 'users');
+      const snapshot = await get(usersRef);
+      
+      let userExists = false;
+      if (snapshot.exists()) {
+        const users = snapshot.val();
+        userExists = Object.values(users).some((u: any) => u.email === resetEmail);
+      }
+
+      if (!userExists) {
+        setErrorMsg('এই ইমেইলটি দিয়ে কোনো একাউন্ট পাওয়া যায়নি।');
+        setIsSubmitting(false);
+        return;
+      }
+
+      const response = await fetch('https://koyrabd.top/auth.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'send_otp', email: resetEmail })
+      });
+      const data = await response.json();
+
+      if (data.success) {
+        setOtpTarget('forgot');
+        setShowOTPModal(true);
+        setSuccessMsg('পাসওয়ার্ড রিসেট করার ওটিপি আপনার ইমেইলে পাঠানো হয়েছে।');
+      } else {
+        setErrorMsg(data.message || 'ওটিপি পাঠাতে সমস্যা হয়েছে।');
+      }
     } catch (err: any) {
-      setErrorMsg('রিসেট লিঙ্ক পাঠাতে সমস্যা হয়েছে।');
+      setErrorMsg('ওটিপি পাঠাতে সমস্যা হয়েছে।');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleUpdateNewPassword = async () => {
+    if (!newPassword.pass || newPassword.pass !== newPassword.confirm) {
+      setErrorMsg('পাসওয়ার্ড অমিল।');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const usersRef = ref(db, 'users');
+      const snapshot = await get(usersRef);
+      
+      if (snapshot.exists()) {
+        const users = snapshot.val();
+        const user: any = Object.values(users).find((u: any) => u.email === resetEmail);
+        if (user) {
+          await update(ref(db, `users/${user.uid}`), { password: newPassword.pass });
+          setShowNewPassModal(false);
+          setSuccessMsg('পাসওয়ার্ড সফলভাবে আপডেট হয়েছে! এখন লগইন করুন।');
+          setMode('login');
+        }
+      }
+    } catch (err) {
+      setErrorMsg('পাসওয়ার্ড আপডেট করতে সমস্যা হয়েছে।');
     } finally {
       setIsSubmitting(false);
     }
@@ -245,17 +408,11 @@ const UserAuth: React.FC<UserAuthProps> = ({ onLogin }) => {
     if (!loggedInUser?.uid) return;
     setIsSubmitting(true);
     try {
-        const users = JSON.parse(localStorage.getItem('kp_users') || '[]');
-        const userIndex = users.findIndex((u: any) => u.uid === loggedInUser.uid);
-        
         const updates = {
             photoURL: profileEditForm.photoURL || loggedInUser.photoURL || ''
         };
         
-        if (userIndex !== -1) {
-          users[userIndex] = { ...users[userIndex], ...updates };
-          localStorage.setItem('kp_users', JSON.stringify(users));
-        }
+        await update(ref(db, `users/${loggedInUser.uid}`), updates);
 
         const updatedUser = { ...loggedInUser, ...updates };
         setLoggedInUser(updatedUser);
@@ -413,19 +570,86 @@ const UserAuth: React.FC<UserAuthProps> = ({ onLogin }) => {
               <div className="space-y-8 animate-in zoom-in duration-300">
                 <div className="flex flex-col items-center gap-4">
                   <div className="w-20 h-20 bg-blue-50 text-blue-600 rounded-[28px] flex items-center justify-center shadow-inner group"><Key size={36} className="group-hover:rotate-12 transition-transform duration-300" /></div>
-                  <p className="text-xs font-bold text-slate-400 text-center px-4 leading-relaxed">আপনার একাউন্টের ইমেইল দিন। আমরা পাসওয়ার্ড রিসেট লিঙ্ক পাঠাবো।</p>
+                  <p className="text-xs font-bold text-slate-400 text-center px-4 leading-relaxed">আপনার একাউন্টের ইমেইল দিন। আমরা পাসওয়ার্ড রিসেট ওটিপি পাঠাবো।</p>
                 </div>
-                <Field label="ইমেইল এড্রেস" value={regData.email} type="email" placeholder="example@gmail.com" onChange={v => setRegData({...regData, email: v})} icon={<Mail size={18}/>} />
+                <Field label="ইমেইল এড্রেস" value={resetEmail} type="email" placeholder="example@gmail.com" onChange={setResetEmail} icon={<Mail size={18}/>} />
                 <button 
-                  onClick={handleResetPassword} 
+                  onClick={handleForgotPassword} 
                   disabled={isSubmitting}
                   className="w-full py-5 bg-[#0056b3] text-white font-black rounded-[22px] shadow-xl shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center gap-2"
                 >
-                  {isSubmitting ? <Loader2 className="animate-spin" /> : 'লিঙ্ক পাঠান'}
+                  {isSubmitting ? <Loader2 className="animate-spin" /> : 'ওটিপি পাঠান'}
                 </button>
                 <button onClick={() => { setMode('login'); setErrorMsg(''); setSuccessMsg(''); }} className="w-full py-3 text-slate-400 font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2 hover:text-blue-500 transition-colors"><ChevronLeft size={16}/> লগইনে ফিরে যান</button>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* OTP Verification Modal */}
+      {showOTPModal && (
+        <div className="fixed inset-0 z-[300] bg-slate-900/60 backdrop-blur-md p-5 flex items-center justify-center">
+          <div className="bg-white w-full max-w-xs rounded-[40px] p-8 shadow-2xl space-y-6 animate-in zoom-in duration-300 text-center">
+            <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mx-auto">
+              <ShieldCheck size={32} />
+            </div>
+            <div>
+              <h3 className="font-black text-xl text-slate-800">ওটিপি ভেরিফিকেশন</h3>
+              <p className="text-[10px] font-bold text-slate-400 mt-2 uppercase tracking-widest">আপনার ইমেইলে পাঠানো ৬ সংখ্যার কোডটি দিন</p>
+            </div>
+            <input 
+              type="text" 
+              maxLength={6}
+              className="w-full py-4 bg-slate-50 border border-slate-100 rounded-2xl text-center text-2xl font-black tracking-[10px] outline-none focus:border-blue-400 transition-all"
+              placeholder="000000"
+              value={otpInput}
+              onChange={e => setOtpInput(convertToEn(e.target.value))}
+            />
+            <div className="grid grid-cols-2 gap-3">
+              <button onClick={() => setShowOTPModal(false)} className="py-4 bg-slate-100 text-slate-500 font-black rounded-2xl active:scale-95 transition-all text-sm">বাতিল</button>
+              <button onClick={handleVerifyOTP} disabled={isSubmitting} className="py-4 bg-[#0056b3] text-white font-black rounded-2xl shadow-lg flex items-center justify-center gap-2 active:scale-95 transition-all text-sm">
+                {isSubmitting ? <Loader2 className="animate-spin" size={18}/> : 'যাচাই করুন'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Congratulations Modal */}
+      {showCongratsModal && (
+        <div className="fixed inset-0 z-[310] bg-white p-10 flex flex-col items-center justify-center text-center animate-in zoom-in duration-500">
+          <div className="w-24 h-24 bg-emerald-50 rounded-[35px] flex items-center justify-center text-emerald-600 mb-8 icon-pulse shadow-xl shadow-emerald-500/10">
+            <CheckCircle2 size={56} strokeWidth={1.5} />
+          </div>
+          <h2 className="text-3xl font-black mb-4 text-slate-800 tracking-tight">অভিনন্দন!</h2>
+          <p className="text-slate-500 text-sm leading-relaxed max-w-xs mx-auto font-bold">
+            আপনার নিবন্ধন সফলভাবে সম্পন্ন হয়েছে। এখন আপনি আপনার একাউন্টে লগইন করতে পারবেন।
+          </p>
+          <button 
+            onClick={() => { setShowCongratsModal(false); setMode('login'); }}
+            className="mt-12 w-full max-w-[200px] py-5 bg-emerald-600 text-white font-black rounded-[25px] shadow-xl shadow-emerald-500/20 active:scale-95 transition-all"
+          >
+            লগইন করুন
+          </button>
+        </div>
+      )}
+
+      {/* New Password Modal */}
+      {showNewPassModal && (
+        <div className="fixed inset-0 z-[300] bg-slate-900/60 backdrop-blur-md p-5 flex items-center justify-center">
+          <div className="bg-white w-full max-w-xs rounded-[40px] p-8 shadow-2xl space-y-6 animate-in zoom-in duration-300 text-left">
+            <div className="flex justify-between items-center border-b pb-4">
+              <h3 className="font-black text-xl text-slate-800">নতুন পাসওয়ার্ড</h3>
+              <button onClick={()=>setShowNewPassModal(false)} className="p-2 text-slate-400 hover:text-red-500"><X size={24}/></button>
+            </div>
+            <div className="space-y-4">
+              <Field label="নতুন পাসওয়ার্ড" type="password" value={newPassword.pass} onChange={v => setNewPassword({...newPassword, pass: v})} icon={<Lock size={18}/>} />
+              <Field label="নিশ্চিত করুন" type="password" value={newPassword.confirm} onChange={v => setNewPassword({...newPassword, confirm: v})} icon={<Lock size={18}/>} />
+            </div>
+            <button onClick={handleUpdateNewPassword} disabled={isSubmitting} className="w-full py-5 bg-[#0056b3] text-white font-black rounded-[25px] shadow-xl active:scale-95 transition-all">
+              {isSubmitting ? <Loader2 className="animate-spin" /> : 'পাসওয়ার্ড আপডেট করুন'}
+            </button>
           </div>
         </div>
       )}

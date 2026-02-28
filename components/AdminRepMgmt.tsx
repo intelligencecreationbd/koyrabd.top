@@ -23,8 +23,9 @@ import {
   Type,
   CheckCircle2
 } from 'lucide-react';
-
-// Firebase removed for paid hosting migration
+import { ref, onValue, set, push, remove } from 'firebase/database';
+import { directoryDb } from '../Firebase-directory';
+import { uploadImageToServer } from '../src/services/uploadService';
 
 const Header: React.FC<{ title: string; onBack: () => void }> = ({ title, onBack }) => (
   <div className="flex items-center gap-4 mb-6 text-left">
@@ -62,7 +63,8 @@ interface CustomField {
   value: string;
 }
 
-const AdminDirectoryMgmt: React.FC<{ onBack: () => void }> = ({ onBack }) => {
+const AdminRepMgmt: React.FC<{ onBack: () => void }> = ({ onBack }) => {
+  const rootNode = 'জনপ্রতিনিধি';
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [currentPath, setCurrentPath] = useState<Category[]>([]);
@@ -72,6 +74,7 @@ const AdminDirectoryMgmt: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const [showCatForm, setShowCatForm] = useState(false);
   const [showContactForm, setShowContactForm] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [editingContactId, setEditingContactId] = useState<string | null>(null);
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -92,18 +95,34 @@ const AdminDirectoryMgmt: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const parentId = useMemo(() => currentPath.length > 0 ? currentPath[currentPath.length - 1].id : 'root', [currentPath]);
 
   useEffect(() => {
-    const savedCats = localStorage.getItem('kp_directory_categories');
-    if (savedCats) setAllCategories(JSON.parse(savedCats));
-  }, []);
+    const catsRef = ref(directoryDb, `${rootNode}/categories`);
+    const unsubscribe = onValue(catsRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        setAllCategories(Object.values(data));
+      } else {
+        setAllCategories([]);
+      }
+    });
+    return () => unsubscribe();
+  }, [rootNode]);
 
   useEffect(() => {
-    const savedData = localStorage.getItem(`kp_directory_data_${parentId}`);
-    if (savedData) {
-      setCurrentContacts(JSON.parse(savedData));
-    } else {
-      setCurrentContacts([]);
-    }
-  }, [parentId]);
+    const dataRef = ref(directoryDb, `${rootNode}/data/${parentId}`);
+    const unsubscribe = onValue(dataRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const list = Object.entries(data).map(([id, value]: [string, any]) => ({
+          ...value,
+          id
+        }));
+        setCurrentContacts(list);
+      } else {
+        setCurrentContacts([]);
+      }
+    });
+    return () => unsubscribe();
+  }, [rootNode, parentId]);
 
   const subCategories = useMemo(() => 
     allCategories.filter(c => c.parentId === parentId), 
@@ -119,15 +138,8 @@ const AdminDirectoryMgmt: React.FC<{ onBack: () => void }> = ({ onBack }) => {
             : parentId;
 
         const newCat = { id, name: catName, parentId: currentParentId };
-        let updatedCats;
-        if (editingCategoryId) {
-          updatedCats = allCategories.map(c => c.id === editingCategoryId ? newCat : c);
-        } else {
-          updatedCats = [...allCategories, newCat];
-        }
-        
-        setAllCategories(updatedCats);
-        localStorage.setItem('kp_directory_categories', JSON.stringify(updatedCats));
+        const catRef = ref(directoryDb, `${rootNode}/categories/${id}`);
+        await set(catRef, newCat);
         
         setCatName('');
         setEditingCategoryId(null);
@@ -144,21 +156,33 @@ const AdminDirectoryMgmt: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     if (!contactForm.name || !contactForm.mobile) return;
     setIsSubmitting(true);
     try {
-        const id = editingContactId || `contact_${Date.now()}`;
-        const newContact = { ...contactForm, id };
+        let photoUrl = contactForm.photo;
         
-        let updated;
+        if (selectedFile) {
+          try {
+            photoUrl = await uploadImageToServer(selectedFile);
+          } catch (uploadError: any) {
+            alert(uploadError.message || 'ইমেজ আপলোড ব্যর্থ হয়েছে!');
+            setIsSubmitting(false);
+            return;
+          }
+        }
+
+        const finalData = { ...contactForm, photo: photoUrl };
+
         if (editingContactId) {
-          updated = currentContacts.map(c => c.id === editingContactId ? newContact : c);
+          const contactRef = ref(directoryDb, `${rootNode}/data/${parentId}/${editingContactId}`);
+          await set(contactRef, { ...finalData, id: editingContactId });
         } else {
-          updated = [...currentContacts, newContact];
+          const dataRef = ref(directoryDb, `${rootNode}/data/${parentId}`);
+          const newRef = push(dataRef);
+          await set(newRef, { ...finalData, id: newRef.key });
         }
         
-        setCurrentContacts(updated);
-        localStorage.setItem(`kp_directory_data_${parentId}`, JSON.stringify(updated));
-        
+        alert('সফলভাবে সংরক্ষিত হয়েছে!');
         setShowContactForm(false);
         setEditingContactId(null);
+        setSelectedFile(null);
         setContactForm({ name: '', designation: '', mobile: '', extraMobiles: [], email: '', address: '', customInfo: [], description: '', photo: '' });
     } catch (e) { alert('তথ্য সেভ করতে সমস্যা হয়েছে!'); }
     finally { setIsSubmitting(false); }
@@ -168,10 +192,10 @@ const AdminDirectoryMgmt: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     if (window.confirm('এই ক্যাটাগরি এবং এর ভেতরের সকল তথ্য স্থায়ীভাবে মুছে যাবে। আপনি কি নিশ্চিত?')) {
         try {
             setIsSubmitting(true);
-            const updatedCats = allCategories.filter(c => c.id !== id);
-            setAllCategories(updatedCats);
-            localStorage.setItem('kp_directory_categories', JSON.stringify(updatedCats));
-            localStorage.removeItem(`kp_directory_data_${id}`);
+            const catRef = ref(directoryDb, `${rootNode}/categories/${id}`);
+            await remove(catRef);
+            const dataRef = ref(directoryDb, `${rootNode}/data/${id}`);
+            await remove(dataRef);
         } catch (error) {
             alert('মুছে ফেলা সম্ভব হয়নি। আবার চেষ্টা করুন।');
         } finally {
@@ -183,9 +207,8 @@ const AdminDirectoryMgmt: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const handleDeleteContact = async (contactId: string) => {
     if (window.confirm('এই কন্টাক্ট নম্বরটি মুছে ফেলতে চান?')) {
         try {
-            const updated = currentContacts.filter(c => c.id !== contactId);
-            setCurrentContacts(updated);
-            localStorage.setItem(`kp_directory_data_${parentId}`, JSON.stringify(updated));
+            const contactRef = ref(directoryDb, `${rootNode}/data/${parentId}/${contactId}`);
+            await remove(contactRef);
         } catch (error) {
             alert('মুছে ফেলা সম্ভব হয়নি!');
         }
@@ -195,6 +218,7 @@ const AdminDirectoryMgmt: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      setSelectedFile(file);
       const reader = new FileReader();
       reader.onloadend = () => setContactForm(prev => ({ ...prev, photo: reader.result as string }));
       reader.readAsDataURL(file);
@@ -260,7 +284,7 @@ const AdminDirectoryMgmt: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                     <button 
                         type="button"
                         onClick={() => fileInputRef.current?.click()}
-                        className="absolute bottom-0 right-0 p-3 bg-[#673AB7] text-white rounded-2xl shadow-xl border-4 border-white active:scale-90 transition-all"
+                        className="absolute bottom-0 right-0 p-3 bg-[#3498DB] text-white rounded-2xl shadow-xl border-4 border-white active:scale-90 transition-all"
                     >
                         <Camera size={18} strokeWidth={3} />
                     </button>
@@ -285,7 +309,7 @@ const AdminDirectoryMgmt: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                       </div>
                     ))}
                     
-                    <button type="button" onClick={handleAddExtraMobile} className="flex items-center gap-2 text-xs font-black text-[#673AB7] pl-1 hover:opacity-70 transition-all">
+                    <button type="button" onClick={handleAddExtraMobile} className="flex items-center gap-2 text-xs font-black text-[#3498DB] pl-1 hover:opacity-70 transition-all">
                       <Plus size={16} /> + আরও মোবাইল নম্বর
                     </button>
                 </div>
@@ -331,7 +355,7 @@ const AdminDirectoryMgmt: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                   <button 
                       onClick={handleContactSubmit} 
                       disabled={isSubmitting || !contactForm.name || !contactForm.mobile} 
-                      className="flex-[2] py-5 bg-[#673AB7] text-white font-black rounded-3xl shadow-xl shadow-purple-500/20 flex items-center justify-center gap-2 active:scale-95 transition-all disabled:opacity-50"
+                      className="flex-[2] py-5 bg-[#3498DB] text-white font-black rounded-3xl shadow-xl shadow-blue-500/20 flex items-center justify-center gap-2 active:scale-95 transition-all disabled:opacity-50"
                   >
                       {isSubmitting ? <Loader2 className="animate-spin" /> : (editingContactId ? 'আপডেট করুন' : 'সংরক্ষণ করুন')}
                   </button>
@@ -344,7 +368,7 @@ const AdminDirectoryMgmt: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 
   return (
     <div className="space-y-6 animate-in slide-in-from-right-4 duration-500 pb-20">
-        <Header title="মোবাইল নাম্বার ম্যানেজার" onBack={onBack} />
+        <Header title="জনপ্রতিনিধি ম্যানেজার" onBack={onBack} />
         
         <div className="bg-slate-50 p-4 rounded-[26px] flex items-center gap-2 overflow-x-auto no-scrollbar border border-slate-100 shadow-inner">
             <button onClick={resetToRoot} className={`p-2 rounded-lg transition-colors shrink-0 ${currentPath.length === 0 ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-200'}`}>
@@ -376,7 +400,7 @@ const AdminDirectoryMgmt: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                   setContactForm({name:'', designation:'', mobile:'', extraMobiles: [], email: '', address:'', customInfo: [], description:'', photo:''}); 
                   setShowContactForm(true); 
                 }}
-                className="py-4 bg-[#673AB7] text-white font-black rounded-[24px] shadow-lg flex items-center justify-center gap-2 active:scale-95 transition-all text-xs"
+                className="py-4 bg-[#3498DB] text-white font-black rounded-[24px] shadow-lg flex items-center justify-center gap-2 active:scale-95 transition-all text-xs"
             >
                 <Plus size={18}/> কন্টাক্ট যোগ করুন
             </button>
@@ -490,4 +514,4 @@ const AdminDirectoryMgmt: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   );
 };
 
-export default AdminDirectoryMgmt;
+export default AdminRepMgmt;

@@ -11,8 +11,8 @@ import {
   Search 
 } from 'lucide-react';
 import { HotlineContact } from '../types';
-
-// Firebase removed for paid hosting migration
+import { ref, onValue } from 'firebase/database';
+import { directoryDb } from '../Firebase-directory';
 
 const convertBnToEn = (str: string) => {
   const bn = ['০','১','২','৩','৪','৫','৬','৭','৮','৯'], en = ['0','1','2','3','4','5','6','7','8','9'];
@@ -50,16 +50,24 @@ const PublicHotline: React.FC<{
   const [isLoading, setIsLoading] = useState(contacts.length === 0);
 
   useEffect(() => {
-    const saved = localStorage.getItem('kp_hotline');
-    if (saved) {
-      const list = JSON.parse(saved);
-      setContacts(list);
-      localStorage.setItem('kp_cache_hotline', JSON.stringify(list));
-    } else {
-      setContacts([]);
-      localStorage.removeItem('kp_cache_hotline');
-    }
-    setIsLoading(false);
+    setIsLoading(true);
+    const hotlineRef = ref(directoryDb, 'হটলাইন');
+    const unsubscribe = onValue(hotlineRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const list = Object.entries(data).map(([id, value]: [string, any]) => ({
+          ...value,
+          id
+        }));
+        setContacts(list);
+        localStorage.setItem('kp_cache_hotline', JSON.stringify(list));
+      } else {
+        setContacts([]);
+        localStorage.removeItem('kp_cache_hotline');
+      }
+      setIsLoading(false);
+    });
+    return () => unsubscribe();
   }, []);
 
   const serviceTypes = useMemo(() => 
