@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom';
-import { Sun, Moon, Lock, ChevronLeft, LogOut, Home as HomeIcon, User as UserIcon, PlusCircle, Menu, X, ArrowRight, Sparkles, NotebookTabs, MessageSquare, UserCircle, Download, ShieldCheck, Zap, Heart, Star, Smartphone, Camera, Gift, Bus, CloudSun, Newspaper, Scale, Phone, HeartPulse, Calculator, CheckCircle2 } from 'lucide-react';
+import { Sun, Moon, Lock, ChevronLeft, LogOut, Home as HomeIcon, User as UserIcon, PlusCircle, Menu, X, ArrowRight, Sparkles, NotebookTabs, MessageSquare, UserCircle, Download, ShieldCheck, Zap, Heart, Star, Smartphone, Camera, Gift, Bus, CloudSun, Newspaper, Scale, Phone, HeartPulse, Calculator, CheckCircle2, Instagram, Facebook, Youtube } from 'lucide-react';
 import Home from './pages/Home';
 import CategoryView from './pages/CategoryView';
 import InfoSubmit from './pages/InfoSubmit';
@@ -24,6 +24,22 @@ import { ref, onValue, set, get } from 'firebase/database';
 
 const LogInIcon = ({ size }: { size: number }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" x2="3" y2="12"/></svg>
+);
+
+const ThreadsIcon = ({ size }: { size: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 12c0-3 2.5-5.5 5.5-5.5S23 9 23 12s-2.5 5.5-5.5 5.5S12 15 12 12z"/>
+    <path d="M12 12c0 3-2.5 5.5-5.5 5.5S1 15 1 12s2.5-5.5 5.5-5.5S12 9 12 12z"/>
+    <circle cx="12" cy="12" r="10"/>
+  </svg>
+);
+
+const PinterestIcon = ({ size }: { size: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="8" y1="20" x2="12" y2="11" />
+    <path d="M12 11c1.5 0 3 .5 3 2.5s-1.5 2.5-3 2.5c-1.5 0-2-1-2-1" />
+    <circle cx="12" cy="12" r="10" />
+  </svg>
 );
 
 const MenuLink: React.FC<{ icon: React.ReactNode, label: string, onClick: () => void }> = ({ icon, label, onClick }) => (
@@ -122,45 +138,86 @@ const LandingScreen: React.FC<{
 }> = ({ isDarkMode, setIsDarkMode, appLogo, isAdmin, onLogoChange }) => {
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [scale, setScale] = useState(1);
+
+  useEffect(() => {
+    const handleResize = () => {
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+      
+      // Reference dimensions for the design
+      const refWidth = 380;
+      const refHeight = 800;
+      
+      const scaleW = width / refWidth;
+      const scaleH = height / refHeight;
+      
+      // Use the smaller scale to ensure it fits both ways
+      let newScale = Math.min(scaleW, scaleH);
+      
+      // On larger screens, don't scale up too much
+      if (width > 450) {
+        newScale = Math.min(newScale, 1);
+      }
+      
+      // On very small screens, don't scale down too much to keep it readable
+      if (newScale < 0.75) newScale = 0.75;
+      
+      setScale(newScale);
+    };
+
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   return (
-    <div className={`h-full w-full relative flex flex-col items-center pt-2 pb-6 px-6 transition-colors duration-500 overflow-hidden ${isDarkMode ? 'bg-slate-950' : 'bg-white'}`}>
-      <button 
-        onClick={() => setIsDarkMode(!isDarkMode)}
-        className="absolute top-4 right-6 p-3.5 rounded-[18px] bg-slate-900 dark:bg-slate-800 shadow-2xl text-white transition-all active:scale-90 z-20"
+    <div className={`h-full w-full relative flex flex-col items-center justify-center transition-colors duration-500 overflow-hidden ${isDarkMode ? 'bg-slate-950' : 'bg-white'}`}>
+      <div 
+        className="flex flex-col items-center justify-between w-full max-w-sm px-6 py-4"
+        style={{ 
+          transform: `scale(${scale})`, 
+          transformOrigin: 'center center',
+          minHeight: '800px' // Ensure enough height for the layout
+        }}
       >
-        {isDarkMode ? <Sun size={22} /> : <Moon size={22} />}
-      </button>
+        <button 
+          onClick={() => setIsDarkMode(!isDarkMode)}
+          className="absolute top-4 right-6 p-3.5 rounded-[18px] bg-slate-900 dark:bg-slate-800 shadow-2xl text-white transition-all active:scale-90 z-20"
+        >
+          {isDarkMode ? <Sun size={22} /> : <Moon size={22} />}
+        </button>
 
-      <div className="flex-1 flex flex-col items-center justify-start w-full max-w-sm pt-2">
-         <div className="relative mb-3 animate-in zoom-in duration-1000">
-            <div className="absolute inset-0 bg-blue-400/20 rounded-full blur-[80px] animate-pulse"></div>
-            <div className="relative w-44 h-44 bg-white rounded-full shadow-[0_25px_60px_-12px_rgba(0,0,0,0.2)] flex items-center justify-center border-[10px] border-white overflow-hidden p-2.5 group">
-              <img 
-                src={appLogo} 
-                className="w-full h-full object-cover rounded-full" 
-                alt="App Logo"
-                referrerPolicy="no-referrer"
-                onError={(e) => {
-                  (e.target as any).src = 'https://raw.githubusercontent.com/StackBlitz-User-Assets/logo/main/kp-logo.png';
-                }}
-              />
-              {isAdmin && (
-                <button 
-                  onClick={() => fileInputRef.current?.click()}
-                  className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-full"
-                >
-                  <Camera className="text-white" size={32} />
-                </button>
-              )}
-              <input 
-                type="file" 
-                ref={fileInputRef} 
-                className="hidden" 
-                accept="image/*" 
-                onChange={onLogoChange} 
-              />
+        <div className="flex-1 flex flex-col items-center justify-start w-full pt-2">
+         <div className="relative mb-6 animate-in zoom-in duration-1000">
+            <div className="rainbow-border-circle w-64 h-64">
+              <div className="w-full h-full rounded-full overflow-hidden flex items-center justify-center bg-white">
+                <img 
+                  src={appLogo} 
+                  className="w-full h-full object-cover rounded-full" 
+                  alt="App Logo"
+                  referrerPolicy="no-referrer"
+                  onError={(e) => {
+                    (e.target as any).src = 'https://raw.githubusercontent.com/StackBlitz-User-Assets/logo/main/kp-logo.png';
+                  }}
+                />
+              </div>
             </div>
+            {isAdmin && (
+              <button 
+                onClick={() => fileInputRef.current?.click()}
+                className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity rounded-full"
+              >
+                <Camera className="text-white" size={32} />
+              </button>
+            )}
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              className="hidden" 
+              accept="image/*" 
+              onChange={onLogoChange} 
+            />
          </div>
 
          <div className="space-y-4 text-center animate-in fade-in zoom-in duration-1000 delay-200">
@@ -179,9 +236,12 @@ const LandingScreen: React.FC<{
               <p className="text-slate-500 dark:text-slate-400 font-bold text-lg px-4 leading-snug max-w-[320px] mx-auto mt-4">
                 আপনার এলাকার সকল ডিজিটাল সেবা এখন এক ঠিকানায়
               </p>
+              <p className="text-[12px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.4em] mt-0.5">
+                www.koyrabd.top
+              </p>
             </div>
             
-            <div className="rainbow-border-container mx-auto max-w-[260px] mt-4">
+            <div className="rainbow-border-container mx-auto max-w-[260px] mt-12">
               <button 
                 onClick={() => navigate('/services')}
                 className="group relative w-full py-5 bg-[#0056b3] dark:bg-blue-600 text-white font-black text-xl rounded-[35px] shadow-[0_20px_40px_-10px_rgba(0,86,179,0.4)] overflow-hidden active:scale-95 transition-all flex items-center justify-center gap-4"
@@ -190,14 +250,15 @@ const LandingScreen: React.FC<{
               </button>
             </div>
          </div>
-      </div>
 
-      <div className="w-full pb-4 flex flex-col items-center justify-center gap-1 opacity-90 animate-in slide-in-from-bottom-4 duration-1000 delay-500">
-          <p className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.3em]">Development by</p>
-          <p className="text-[12px] font-black tracking-[0.05em] text-[#0056b3] dark:text-blue-400 uppercase">Intelligence Creation BD</p>
+         <div className="w-full pb-4 flex flex-col items-center justify-center gap-1 opacity-90 animate-in slide-in-from-bottom-4 duration-1000 delay-500 mt-auto">
+            <p className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.3em]">Development by</p>
+            <p className="text-[12px] font-black tracking-[0.05em] text-[#0056b3] dark:text-blue-400 uppercase">Intelligence Creation BD</p>
+         </div>
       </div>
     </div>
-  );
+  </div>
+);
 };
 
 const App = () => {
@@ -416,10 +477,38 @@ const App = () => {
                   </button>
                 )}
 
-                <button onClick={() => { setIsDrawerOpen(false); navigate('/download'); }} className="w-full py-4 download-btn-animate text-white rounded-2xl font-black flex items-center justify-center gap-3 active:scale-95 transition-all overflow-hidden relative group">
-                    <Download size={22} className="group-hover:animate-pulse" />
-                    <span className="text-xs uppercase tracking-widest font-black">এপস ডাউনলোড</span>
-                </button>
+                <div className="grid grid-cols-5 gap-2 pt-2">
+                  <a href="https://www.instagram.com/koyrapaikgachacommunityapp" target="_blank" rel="noopener noreferrer" className="flex flex-col items-center gap-1 group">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#f9ce34] via-[#ee2a7b] to-[#6228d7] flex items-center justify-center text-white shadow-sm active:scale-90 transition-all">
+                      <Instagram size={20} />
+                    </div>
+                    <span className="text-[8px] font-bold text-slate-500 dark:text-slate-400">ইনস্টাগ্রাম</span>
+                  </a>
+                  <a href="https://www.threads.net/@koyrapaikgachacommunityapp" target="_blank" rel="noopener noreferrer" className="flex flex-col items-center gap-1 group">
+                    <div className="w-10 h-10 rounded-xl bg-black flex items-center justify-center text-white shadow-sm active:scale-90 transition-all">
+                      <ThreadsIcon size={20} />
+                    </div>
+                    <span className="text-[8px] font-bold text-slate-500 dark:text-slate-400">থ্রেডস</span>
+                  </a>
+                  <a href="https://www.pinterest.com/koyrapaikgachacommunityapp" target="_blank" rel="noopener noreferrer" className="flex flex-col items-center gap-1 group">
+                    <div className="w-10 h-10 rounded-xl bg-[#E60023] flex items-center justify-center text-white shadow-sm active:scale-90 transition-all">
+                      <PinterestIcon size={20} />
+                    </div>
+                    <span className="text-[8px] font-bold text-slate-500 dark:text-slate-400">পিন্টারেস্ট</span>
+                  </a>
+                  <a href="https://www.youtube.com/@koyrapaikgachacommunityapp" target="_blank" rel="noopener noreferrer" className="flex flex-col items-center gap-1 group">
+                    <div className="w-10 h-10 rounded-xl bg-[#FF0000] flex items-center justify-center text-white shadow-sm active:scale-90 transition-all">
+                      <Youtube size={20} />
+                    </div>
+                    <span className="text-[8px] font-bold text-slate-500 dark:text-slate-400">ইউটিউব</span>
+                  </a>
+                  <a href="https://www.facebook.com/share/18Hf7ptZRt/" target="_blank" rel="noopener noreferrer" className="flex flex-col items-center gap-1 group">
+                    <div className="w-10 h-10 rounded-xl bg-[#1877F2] flex items-center justify-center text-white shadow-sm active:scale-90 transition-all">
+                      <Facebook size={20} />
+                    </div>
+                    <span className="text-[8px] font-bold text-slate-500 dark:text-slate-400">ফেসবুক</span>
+                  </a>
+                </div>
 
                 <div className="flex flex-col items-center justify-center gap-0.5 mt-3 opacity-60">
                   <p className="text-[8px] font-black uppercase tracking-[0.2em]">Developed by</p>

@@ -50,36 +50,36 @@ const WhatsAppIcon = ({ size = 20 }: { size?: number }) => (
 
 // Updated Profile Component Row with better padding and icon colors
 const ContactInfoRow: React.FC<{ icon: any, label: string, value: string, colorClass?: string, iconColor?: string }> = ({ icon: Icon, label, value, colorClass = "bg-slate-50", iconColor = "text-slate-400" }) => (
-  <div className={`${colorClass}/50 p-5 rounded-[32px] border border-slate-100 flex items-start gap-4 text-left shadow-sm`}>
-    <div className={`w-11 h-11 bg-white rounded-2xl flex items-center justify-center shrink-0 shadow-sm ${iconColor}`}><Icon size={20} /></div>
-    <div className="overflow-hidden">
-      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1.5">{label}</p>
-      <p className="text-sm font-bold text-slate-700 leading-relaxed">{value}</p>
+  <div className={`${colorClass}/50 p-3.5 rounded-[24px] border border-slate-100 flex items-start gap-4 text-left shadow-sm`}>
+    <div className={`w-10 h-10 bg-white rounded-xl flex items-center justify-center shrink-0 shadow-sm ${iconColor}`}><Icon size={18} /></div>
+    <div className="flex-1 min-w-0">
+      <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">{label}</p>
+      <p className="text-sm font-bold text-slate-700 leading-tight break-words">{value}</p>
     </div>
   </div>
 );
 
 // Matching the screenshot style for mobile numbers
 const MobileActionRow: React.FC<{ mobile: string, label: string }> = ({ mobile, label }) => (
-  <div className="bg-slate-50/50 p-5 rounded-[32px] border border-slate-100 flex items-center justify-between shadow-sm">
-    <div className="flex items-center gap-4 text-left overflow-hidden">
-      <div className="w-11 h-11 bg-emerald-50 text-emerald-500 rounded-2xl flex items-center justify-center shadow-sm shrink-0"><Smartphone size={20} /></div>
-      <div className="overflow-hidden">
-         <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1.5">{label}</p>
-         <p className="text-base font-black text-slate-800 font-inter tracking-tight truncate">{mobile}</p>
+  <div className="bg-slate-50/50 p-3.5 rounded-[24px] border border-slate-100 flex items-center justify-between shadow-sm gap-2">
+    <div className="flex items-center gap-3 text-left flex-1 min-w-0">
+      <div className="w-10 h-10 bg-emerald-50 text-emerald-500 rounded-xl flex items-center justify-center shadow-sm shrink-0"><Smartphone size={18} /></div>
+      <div className="flex-1 min-w-0">
+         <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">{label}</p>
+         <p className="text-sm font-black text-slate-800 font-inter tracking-tight break-all">{mobile}</p>
       </div>
     </div>
-    <div className="flex items-center gap-2">
-      <a href={`tel:${convertBnToEn(mobile)}`} className="p-3 bg-blue-600 text-white rounded-xl shadow-lg shadow-blue-500/20 active:scale-90 transition-all flex items-center justify-center">
-        <PhoneCall size={18} />
+    <div className="flex items-center gap-2 shrink-0">
+      <a href={`tel:${convertBnToEn(mobile)}`} className="p-2.5 bg-blue-600 text-white rounded-lg shadow-lg shadow-blue-500/20 active:scale-90 transition-all flex items-center justify-center">
+        <PhoneCall size={16} />
       </a>
       <a 
         href={`https://wa.me/${formatWhatsAppNumber(mobile)}`} 
         target="_blank" 
         rel="noopener noreferrer" 
-        className="p-3 bg-[#25D366] text-white rounded-xl shadow-lg shadow-emerald-500/20 active:scale-90 transition-all flex items-center justify-center"
+        className="p-2.5 bg-[#25D366] text-white rounded-lg shadow-lg shadow-emerald-500/20 active:scale-90 transition-all flex items-center justify-center"
       >
-        <WhatsAppIcon size={18} />
+        <WhatsAppIcon size={16} />
       </a>
     </div>
   </div>
@@ -242,18 +242,25 @@ const PublicDirectory: React.FC<PublicDirectoryProps> = ({ id, categoryName, pat
 
   return (
     <div className="flex flex-col h-[calc(100vh-64px)] animate-in fade-in duration-500">
-      <header className="flex items-center justify-between mb-4 shrink-0 px-1">
-        <div className="flex items-center gap-4">
-          <button onClick={selectedItem ? () => onNavigate(location.pathname) : onBack} className="p-3 bg-white border border-slate-100 rounded-xl shadow-sm transition-transform active:scale-90 shrink-0">
-            <ChevronLeft size={20} className="text-slate-800" />
-          </button>
-          <div className="text-left overflow-hidden">
-            <h2 className="text-xl font-black text-slate-800 leading-tight truncate">{categoryName}</h2>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
-              {selectedItem ? 'বিস্তারিত তথ্য' : isSearchMode ? 'পুরো ডিরেক্টরিতে খুঁজুন' : 'আপনার পছন্দ মত সিলেক্ট করুন'}
-            </p>
+      <header className={`flex items-center shrink-0 px-1 ${selectedItem ? 'mb-1 justify-center' : 'mb-4 justify-between'}`}>
+        {!selectedItem ? (
+          <div className="flex items-center gap-4">
+            <button onClick={onBack} className="p-3 bg-white border border-slate-100 rounded-xl shadow-sm transition-transform active:scale-90 shrink-0">
+              <ChevronLeft size={20} className="text-slate-800" />
+            </button>
+            <div className="text-left overflow-hidden">
+              <h2 className="text-xl font-black text-slate-800 leading-tight truncate">{categoryName}</h2>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
+                {isSearchMode ? 'পুরো ডিরেক্টরিতে খুঁজুন' : 'আপনার পছন্দ মত সিলেক্ট করুন'}
+              </p>
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="text-center">
+            <h2 className="text-xl font-black text-slate-800 leading-tight">{categoryName}</h2>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">বিস্তারিত তথ্য</p>
+          </div>
+        )}
         {!selectedItem && (
           <button 
             onClick={() => { setIsSearchMode(!isSearchMode); setSearchTerm(''); }}
@@ -266,22 +273,22 @@ const PublicDirectory: React.FC<PublicDirectoryProps> = ({ id, categoryName, pat
 
       <div className="flex-1 overflow-y-auto no-scrollbar pb-40 space-y-5">
         {selectedItem ? (
-          <div className="animate-in slide-in-from-bottom-6 duration-500 w-full flex flex-col items-center space-y-6 px-1">
-            <div className="w-full bg-white p-8 rounded-[45px] shadow-[0_20px_60px_rgba(0,0,0,0.06)] border border-slate-50 space-y-8">
+          <div className="animate-in slide-in-from-bottom-6 duration-500 w-full flex flex-col items-center space-y-4 px-0 mt-14">
+            <div className="w-full bg-white px-4 pt-0 pb-6 rounded-[40px] shadow-[0_20px_60px_rgba(0,0,0,0.06)] border border-slate-50 space-y-6">
                 {/* Profile Section matching Screenshot */}
-                <div className="flex flex-col items-center gap-5">
-                  <div className="relative">
-                    <div className="w-40 h-40 rounded-full border-[6px] border-white shadow-2xl overflow-hidden bg-slate-50 flex items-center justify-center text-slate-200">
-                      {selectedItem.photo ? <img src={selectedItem.photo} className="w-full h-full object-cover" alt="" /> : <UserCircle size={80} strokeWidth={1} />}
+                <div className="flex flex-col items-center gap-4">
+                  <div className="relative -mt-16">
+                    <div className="w-32 h-32 rounded-full border-[5px] border-white shadow-xl overflow-hidden bg-slate-50 flex items-center justify-center text-slate-200">
+                      {selectedItem.photo ? <img src={selectedItem.photo} className="w-full h-full object-cover" alt="" /> : <UserCircle size={64} strokeWidth={1} />}
                     </div>
                     {/* Blue Verified Badge exactly as screenshot */}
-                    <div className="absolute bottom-2 right-2 p-3 bg-blue-600 text-white rounded-full shadow-lg border-[3px] border-white flex items-center justify-center">
-                       <CheckCircle2 size={18} fill="currentColor" className="text-white" />
+                    <div className="absolute bottom-1 right-1 p-2.5 bg-blue-600 text-white rounded-full shadow-lg border-[2px] border-white flex items-center justify-center">
+                       <CheckCircle2 size={14} fill="currentColor" className="text-white" />
                     </div>
                   </div>
-                  <div className="text-center space-y-1.5">
-                    <h1 className="text-2xl font-black text-slate-800 leading-tight">{selectedItem.name}</h1>
-                    <p className="text-sm font-black text-blue-600 uppercase tracking-widest">{selectedItem.designation || 'বিস্তারিত তথ্য'}</p>
+                  <div className="text-center space-y-1">
+                    <h1 className="text-xl font-black text-slate-800 leading-tight">{selectedItem.name}</h1>
+                    <p className="text-[12px] font-black text-blue-600 uppercase tracking-widest">{selectedItem.designation || 'বিস্তারিত তথ্য'}</p>
                   </div>
                 </div>
 

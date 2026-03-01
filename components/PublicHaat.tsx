@@ -28,7 +28,9 @@ import {
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 
-// Firebase removed for paid hosting migration
+import { ref, onValue, push, set } from "firebase/database";
+import { onlineHaatDb } from "../Firebase-onlinehaat";
+import { settingsDb } from "../Firebase-appsettings";
 
 const toBn = (num: string | number) => 
   (num || '').toString().replace(/\d/g, d => "০১২৩৪৫৬৭৮৯"[parseInt(d)]);
@@ -149,36 +151,52 @@ const PublicHaat: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 
   useEffect(() => {
     setLoading(true);
-    // Fetch products
-    const savedProducts = localStorage.getItem('kp_online_haat');
-    if (savedProducts) {
-      const val = JSON.parse(savedProducts);
-      setProducts(Object.keys(val).map(k => ({ ...val[k], id: k })).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
-    }
     
-    // Fetch categories
-    const savedCategories = localStorage.getItem('kp_online_haat_categories');
-    if (savedCategories) {
-      const val = JSON.parse(savedCategories);
-      const list = Object.keys(val).map(k => ({ id: k, name: val[k].name }));
-      setCategories(list);
-      if (list.length > 0 && !form.category) setForm(prev => ({ ...prev, category: list[0].id }));
-    }
+    // Fetch products from Firebase
+    const productsRef = ref(onlineHaatDb, 'পণ্য');
+    const unsubscribeProducts = onValue(productsRef, (snapshot) => {
+      const val = snapshot.val();
+      if (val) {
+        setProducts(Object.keys(val).map(k => ({ ...val[k], id: k })).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
+      } else {
+        setProducts([]);
+      }
+      setLoading(false);
+    });
 
-    // Fetch terms
-    const savedSettings = localStorage.getItem('kp_online_haat_settings');
-    if (savedSettings) {
-      const val = JSON.parse(savedSettings);
+    // Fetch categories from Firebase
+    const categoriesRef = ref(onlineHaatDb, 'ক্যাটাগরি');
+    const unsubscribeCategories = onValue(categoriesRef, (snapshot) => {
+      const val = snapshot.val();
+      if (val) {
+        const list = Object.keys(val).map(k => ({ id: k, name: val[k].name }));
+        setCategories(list);
+        if (list.length > 0 && !form.category) setForm(prev => ({ ...prev, category: list[0].id }));
+      }
+    });
+
+    // Fetch terms from Firebase
+    const settingsRef = ref(onlineHaatDb, 'সেটিংস');
+    const unsubscribeSettings = onValue(settingsRef, (snapshot) => {
+      const val = snapshot.val();
       if (val && val.terms) setTerms(val.terms);
-    }
+    });
 
-    // Sync all users for verified badges
-    const savedUsers = localStorage.getItem('kp_users');
-    if (savedUsers) {
-      setAllUsers(JSON.parse(savedUsers));
-    }
-    
-    setLoading(false);
+    // Sync all users for verified badges (from settingsDb)
+    const usersRef = ref(settingsDb, 'ইউজার');
+    const unsubscribeUsers = onValue(usersRef, (snapshot) => {
+      const val = snapshot.val();
+      if (val) {
+        setAllUsers(Object.values(val));
+      }
+    });
+
+    return () => {
+      unsubscribeProducts();
+      unsubscribeCategories();
+      unsubscribeSettings();
+      unsubscribeUsers();
+    };
   }, []);
 
   const getProductWithVerified = (p: Product) => {
@@ -236,27 +254,25 @@ const PublicHaat: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     }
     setIsSubmitting(true);
     try {
-        const id = `prod_${Date.now()}`;
+        const productsRef = ref(onlineHaatDb, 'পণ্য');
+        const newProductRef = push(productsRef);
         const finalData = { 
           ...form, 
-          id, 
+          id: newProductRef.key, 
           timestamp: new Date().toISOString(),
           userId: currentUser.memberId,
           status: 'published'
         };
         
-        const savedProducts = localStorage.getItem('kp_online_haat') || '{}';
-        const productsObj = JSON.parse(savedProducts);
-        productsObj[id] = finalData;
-        localStorage.setItem('kp_online_haat', JSON.stringify(productsObj));
-        
-        // Update local state
-        setProducts(prev => [finalData, ...prev]);
+        await set(newProductRef, finalData);
         
         setShowSubmitForm(false);
         setShowSuccessMessage(true);
         setForm({ name: '', category: categories[0]?.id || '', price: '', offerPrice: '', condition: 'new', unit: 'কেজি', sellerName: currentUser.fullName, mobile: currentUser.mobile, location: currentUser.village, description: '', photo: '' });
-    } catch (e) { alert('সংরক্ষণ ব্যর্থ হয়েছে!'); }
+    } catch (e) { 
+        console.error(e);
+        alert('সংরক্ষণ ব্যর্থ হয়েছে!'); 
+    }
     finally { setIsSubmitting(false); }
   };
 

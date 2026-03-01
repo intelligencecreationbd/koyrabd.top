@@ -57,7 +57,7 @@ const CategoryView: React.FC = () => {
   // Public Directory (ID 15) & Public Representatives (ID 22) Logic
   if (id === '15' || id === '22') {
     return (
-      <div className="p-5 pb-24 min-h-screen">
+      <div className="px-1.5 pt-0 pb-24 min-h-screen">
         <PublicDirectory 
           id={id} 
           pathParts={pathParts}
