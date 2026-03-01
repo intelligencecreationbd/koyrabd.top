@@ -478,36 +478,51 @@ const App = () => {
                 )}
 
                 <div className="grid grid-cols-5 gap-2 pt-2">
-                  <a href="https://www.instagram.com/koyrapaikgachacommunityapp" target="_blank" rel="noopener noreferrer" className="flex flex-col items-center gap-1 group">
+                  <button 
+                    onClick={() => { window.open("https://www.instagram.com/koyrapaikgachacommunityapp", "_blank"); setIsDrawerOpen(false); }}
+                    className="flex flex-col items-center gap-1 group outline-none"
+                  >
                     <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#f9ce34] via-[#ee2a7b] to-[#6228d7] flex items-center justify-center text-white shadow-sm active:scale-90 transition-all">
                       <Instagram size={20} />
                     </div>
                     <span className="text-[8px] font-bold text-slate-500 dark:text-slate-400">ইনস্টাগ্রাম</span>
-                  </a>
-                  <a href="https://www.threads.net/@koyrapaikgachacommunityapp" target="_blank" rel="noopener noreferrer" className="flex flex-col items-center gap-1 group">
+                  </button>
+                  <button 
+                    onClick={() => { window.open("https://www.threads.net/@koyrapaikgachacommunityapp", "_blank"); setIsDrawerOpen(false); }}
+                    className="flex flex-col items-center gap-1 group outline-none"
+                  >
                     <div className="w-10 h-10 rounded-xl bg-black flex items-center justify-center text-white shadow-sm active:scale-90 transition-all">
                       <ThreadsIcon size={20} />
                     </div>
                     <span className="text-[8px] font-bold text-slate-500 dark:text-slate-400">থ্রেডস</span>
-                  </a>
-                  <a href="https://www.pinterest.com/koyrapaikgachacommunityapp" target="_blank" rel="noopener noreferrer" className="flex flex-col items-center gap-1 group">
+                  </button>
+                  <button 
+                    onClick={() => { window.open("https://www.pinterest.com/koyrapaikgachacommunityapp", "_blank"); setIsDrawerOpen(false); }}
+                    className="flex flex-col items-center gap-1 group outline-none"
+                  >
                     <div className="w-10 h-10 rounded-xl bg-[#E60023] flex items-center justify-center text-white shadow-sm active:scale-90 transition-all">
                       <PinterestIcon size={20} />
                     </div>
                     <span className="text-[8px] font-bold text-slate-500 dark:text-slate-400">পিন্টারেস্ট</span>
-                  </a>
-                  <a href="https://www.youtube.com/@koyrapaikgachacommunityapp" target="_blank" rel="noopener noreferrer" className="flex flex-col items-center gap-1 group">
+                  </button>
+                  <button 
+                    onClick={() => { window.open("https://www.youtube.com/@koyrapaikgachacommunityapp", "_blank"); setIsDrawerOpen(false); }}
+                    className="flex flex-col items-center gap-1 group outline-none"
+                  >
                     <div className="w-10 h-10 rounded-xl bg-[#FF0000] flex items-center justify-center text-white shadow-sm active:scale-90 transition-all">
                       <Youtube size={20} />
                     </div>
                     <span className="text-[8px] font-bold text-slate-500 dark:text-slate-400">ইউটিউব</span>
-                  </a>
-                  <a href="https://www.facebook.com/share/18Hf7ptZRt/" target="_blank" rel="noopener noreferrer" className="flex flex-col items-center gap-1 group">
+                  </button>
+                  <button 
+                    onClick={() => { window.open("https://www.facebook.com/share/18Hf7ptZRt/", "_blank"); setIsDrawerOpen(false); }}
+                    className="flex flex-col items-center gap-1 group outline-none"
+                  >
                     <div className="w-10 h-10 rounded-xl bg-[#1877F2] flex items-center justify-center text-white shadow-sm active:scale-90 transition-all">
                       <Facebook size={20} />
                     </div>
                     <span className="text-[8px] font-bold text-slate-500 dark:text-slate-400">ফেসবুক</span>
-                  </a>
+                  </button>
                 </div>
 
                 <div className="flex flex-col items-center justify-center gap-0.5 mt-3 opacity-60">
