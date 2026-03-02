@@ -172,13 +172,12 @@ const LandingScreen: React.FC<{
   }, []);
 
   return (
-    <div className={`h-full w-full relative flex flex-col items-center justify-center transition-colors duration-500 overflow-hidden ${isDarkMode ? 'bg-slate-950' : 'bg-white'}`}>
+    <div className={`fixed inset-0 z-[100] flex flex-col items-center justify-center transition-colors duration-500 overflow-hidden ${isDarkMode ? 'bg-slate-950' : 'bg-white'}`}>
       <div 
-        className="flex flex-col items-center justify-between w-full max-w-sm px-6 py-4"
+        className="flex flex-col items-center justify-between w-full max-w-sm px-6 py-4 h-full max-h-[850px]"
         style={{ 
           transform: `scale(${scale})`, 
-          transformOrigin: 'center center',
-          minHeight: '800px' // Ensure enough height for the layout
+          transformOrigin: 'center center'
         }}
       >
         <button 
@@ -288,6 +287,15 @@ const App = () => {
   const isLanding = location.pathname === '/';
   const isChatPage = location.pathname === '/chat';
   const isNewsPage = location.pathname.startsWith('/category/14');
+
+  // Google Analytics Page View Tracking
+  useEffect(() => {
+    if (typeof (window as any).gtag === 'function') {
+      (window as any).gtag('config', 'G-V4ZF9WWNN5', {
+        page_path: location.pathname,
+      });
+    }
+  }, [location]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -591,8 +599,8 @@ const App = () => {
         </div>
       )}
 
-      <main className={`flex-1 relative w-full overflow-hidden ${isLanding ? '' : 'bg-white dark:bg-slate-950'}`}>
-        <div className="h-full w-full overflow-y-auto no-scrollbar">
+      <main className={`flex-1 relative w-full ${isLanding ? 'overflow-hidden' : 'overflow-hidden'} ${isLanding ? '' : 'bg-white dark:bg-slate-950'}`}>
+        <div className={`h-full w-full ${isLanding ? 'overflow-hidden' : 'overflow-y-auto'} no-scrollbar`}>
             <Routes>
               <Route path="/" element={
                 <LandingScreen 
