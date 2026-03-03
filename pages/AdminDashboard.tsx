@@ -106,6 +106,7 @@ const AnalyticsSection: React.FC = () => {
     todayVisitors: number;
     topPages: Array<{ page: string; hits: string; val: number }>;
     isMock: boolean;
+    source?: 'google' | 'website';
     debug?: string;
   } | null>(null);
   const [loading, setLoading] = useState(true);
@@ -157,7 +158,7 @@ const AnalyticsSection: React.FC = () => {
           </span>
         </div>
         <span className="text-[9px] font-bold text-slate-400 uppercase">
-          {data?.isMock ? (data.debug || 'Demo Mode Active') : 'G-V4ZF9WWNN5 Tracking Active'}
+          {data?.isMock ? (data.debug || 'Demo Mode Active') : (data?.source === 'website' ? 'Website Tracking Active' : 'G-V4ZF9WWNN5 Tracking Active')}
         </span>
       </div>
 

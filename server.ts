@@ -3,6 +3,8 @@ import { createServer as createViteServer } from "vite";
 import cors from "cors";
 import dotenv from "dotenv";
 import { BetaAnalyticsDataClient } from "@google-analytics/data";
+import fs from 'fs';
+import path from 'path';
 
 dotenv.config();
 
@@ -12,8 +14,76 @@ const PORT = 3000;
 app.use(cors());
 app.use(express.json());
 
+// --- Website Visit Tracking ---
+const VISITS_FILE = path.join(process.cwd(), 'visits.json');
+
+interface VisitData {
+  total: number;
+  today: { [date: string]: number };
+  pages: { [page: string]: number };
+  active: { [ip: string]: number };
+}
+
+function loadVisits(): VisitData {
+  if (fs.existsSync(VISITS_FILE)) {
+    try {
+      return JSON.parse(fs.readFileSync(VISITS_FILE, 'utf-8'));
+    } catch (e) { /* ignore */ }
+  }
+  return { total: 0, today: {}, pages: {}, active: {} };
+}
+
+function saveVisits(data: VisitData) {
+  try {
+    fs.writeFileSync(VISITS_FILE, JSON.stringify(data, null, 2));
+  } catch (e) { /* ignore */ }
+}
+
+let visitData = loadVisits();
+
+// Middleware to track visits
+app.use((req, res, next) => {
+  // Only track main page loads, not API or static assets
+  if (req.path.startsWith('/api') || req.path.includes('.') || req.method !== 'GET') {
+    return next();
+  }
+  
+  const ip = (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress || 'unknown';
+  const page = (req.query.p as string) || req.path;
+  const date = new Date().toISOString().split('T')[0];
+
+  visitData.total++;
+  visitData.today[date] = (visitData.today[date] || 0) + 1;
+  visitData.pages[page] = (visitData.pages[page] || 0) + 1;
+  visitData.active[ip] = Date.now();
+
+  // Cleanup active users (older than 5 mins)
+  const now = Date.now();
+  Object.keys(visitData.active).forEach(key => {
+    if (now - visitData.active[key] > 300000) delete visitData.active[key];
+  });
+
+  saveVisits(visitData);
+  next();
+});
+
 // Analytics Proxy Endpoint
 app.get("/api/analytics", async (req, res) => {
+  const date = new Date().toISOString().split('T')[0];
+  const websiteStats = {
+    totalVisitors: visitData.total,
+    activeUsers: Object.keys(visitData.active).length,
+    todayVisitors: visitData.today[date] || 0,
+    topPages: Object.entries(visitData.pages)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 15)
+      .map(([page, hits]) => ({
+        page: page === '/' ? 'Home' : page.replace(/^\//, ''),
+        hits: hits > 1000 ? (hits / 1000).toFixed(1) + 'k' : hits.toString(),
+        val: hits
+      }))
+  };
+
   try {
     const propertyId = process.env.GA_PROPERTY_ID;
     let clientEmail = process.env.GA_CLIENT_EMAIL;
@@ -43,37 +113,14 @@ app.get("/api/analytics", async (req, res) => {
       }
     }
 
-    // 3. Validation & Mock Fallback
+    // 3. Validation & Fallback to Website Stats
     const isInvalid = !propertyId || !clientEmail || !privateKey || !privateKey.includes('BEGIN PRIVATE KEY');
     
     if (isInvalid) {
-      const missing = [];
-      if (!propertyId) missing.push("GA_PROPERTY_ID");
-      if (!clientEmail) missing.push("GA_CLIENT_EMAIL");
-      if (!privateKey || !privateKey?.includes('BEGIN PRIVATE KEY')) missing.push("GA_PRIVATE_KEY (invalid format)");
-      
-      console.warn(`Analytics credentials missing or invalid: ${missing.join(', ')}. Returning mock data.`);
       return res.json({
-        totalVisitors: 12450,
-        activeUsers: 42 + Math.floor(Math.random() * 5),
-        todayVisitors: 850 + Math.floor(Math.random() * 20),
-        topPages: [
-          { page: 'হটলাইন', hits: '৫.২k', val: 5200 },
-          { page: 'আবহাওয়া', hits: '৪.৮k', val: 4800 },
-          { page: 'ডিজিটাল খাতা', hits: '৪.৫k', val: 4500 },
-          { page: 'বাস', hits: '৪.২k', val: 4200 },
-          { page: 'জনপ্রতিনিধি', hits: '৩.৯k', val: 3900 },
-          { page: 'মোবাইল নাম্বার', hits: '৩.৬k', val: 3600 },
-          { page: 'অনলাইন হাট', hits: '৩.৩k', val: 3300 },
-          { page: 'কেপি পোস্ট', hits: '৩.০k', val: 3000 },
-          { page: 'কেপি চ্যাট', hits: '২.৭k', val: 2700 },
-          { page: 'আইনি সেবা', hits: '২.৪k', val: 2400 },
-          { page: 'চিকিৎসা সেবা', hits: '২.১k', val: 2100 },
-          { page: 'ঐতিহ্য', hits: '১.৮k', val: 1800 },
-          { page: 'বয়স ক্যালকুলেটর', hits: '১.৫k', val: 1500 }
-        ],
-        isMock: true,
-        debug: `Missing/Invalid: ${missing.join(', ')}`
+        ...websiteStats,
+        isMock: false,
+        source: 'website'
       });
     }
 

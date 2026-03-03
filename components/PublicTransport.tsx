@@ -81,19 +81,27 @@ const PublicTransport: React.FC<{
 
   return (
     <div className="flex flex-col h-[calc(100vh-64px)] animate-in fade-in duration-500">
-      <header className="flex items-center justify-between mb-4 shrink-0">
-        <div className="flex items-center gap-4 text-left overflow-hidden">
-          <button onClick={onBack} className="p-3 bg-white border border-slate-100 rounded-xl shadow-sm transition-transform active:scale-90 shrink-0">
-            <ChevronLeft size={24} className="text-slate-800" />
-          </button>
-          <div className="overflow-hidden">
-            <h2 className="text-xl font-black text-slate-800 leading-tight truncate">
-              {!subId ? 'বাস' : !busId ? subId : currentBus?.busName}
-            </h2>
+      <header className="flex items-center justify-center mb-6 shrink-0">
+        <div className="w-full text-center overflow-hidden">
+          <h2 className="text-2xl font-black text-slate-800 leading-tight truncate">
+            {!subId ? 'বাস' : !busId ? subId : currentBus?.busName}
+          </h2>
+          {!busId ? (
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
-              {!subId ? 'রুটের তালিকা নির্বাচন করুন' : !busId ? 'বাস সার্ভিসের তালিকা' : 'কাউন্টার ও যোগাযোগ'}
+              {!subId ? 'রুটের তালিকা নির্বাচন করুন' : 'বাস সার্ভিসের তালিকা'}
             </p>
-          </div>
+          ) : (
+            <div className="mt-1 flex flex-col items-center">
+              <p className="text-[10px] font-bold text-blue-600 uppercase tracking-widest">
+                রুট: {subId}
+              </p>
+              {fareInfo && (
+                <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mt-0.5">
+                  {fareInfo}
+                </p>
+              )}
+            </div>
+          )}
         </div>
       </header>
 
@@ -133,7 +141,6 @@ const PublicTransport: React.FC<{
           </div>
         ) : currentBus && (
           <div className="space-y-6">
-            {fareInfo && <div className="mx-1 p-4 bg-blue-50/50 rounded-2xl border border-blue-100 text-center font-black text-blue-600 text-xs uppercase tracking-widest">{fareInfo}</div>}
             <div className="space-y-3">
               <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] pl-2 text-left">কাউন্টার লিস্ট</p>
               {currentBus.counters?.map((c, idx) => {

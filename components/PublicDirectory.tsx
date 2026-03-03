@@ -19,11 +19,13 @@ import {
   Type,
   Info,
   MessageCircle,
-  FileText
+  FileText,
+  Layout
 } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import { ref, onValue } from 'firebase/database';
 import { directoryDb } from '../Firebase-directory';
+import ComboPageView from './ComboPageView';
 
 const toBn = (num: string | number | undefined | null) => {
   const val = num ?? '';
@@ -178,6 +180,14 @@ const PublicDirectory: React.FC<PublicDirectoryProps> = ({ id, categoryName, pat
     const hasChildren = allCategories.some(c => c.parentId === lastId);
     return hasChildren ? null : lastId;
   }, [allCategories, selections]);
+
+  const selectedCategory = useMemo(() => {
+    if (selections.length === 0) return null;
+    const lastId = selections[selections.length - 1];
+    return allCategories.find(c => c.id === lastId);
+  }, [allCategories, selections]);
+
+  const isComboPage = selectedCategory?.isComboPage;
 
   useEffect(() => {
     if (!leafId) {
@@ -407,6 +417,12 @@ const PublicDirectory: React.FC<PublicDirectoryProps> = ({ id, categoryName, pat
                 <div className="space-y-4 animate-in fade-in duration-500 px-1">
                     {isLoading ? (
                       <div className="py-20 flex flex-col items-center justify-center gap-4 opacity-20"><Clock className="animate-spin" size={40} /></div>
+                    ) : isComboPage ? (
+                      <ComboPageView 
+                        title={`${selectedCategory?.name} পরিষদ`}
+                        contacts={dataList}
+                        onOpenProfile={openProfile}
+                      />
                     ) : filteredSearchResults.length === 0 ? (
                       <div className="py-20 text-center opacity-30 flex flex-col items-center gap-4">
                           <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center text-slate-200"><Search size={32} /></div>

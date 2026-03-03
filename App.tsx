@@ -172,12 +172,12 @@ const LandingScreen: React.FC<{
   }, []);
 
   return (
-    <div className={`fixed inset-0 z-[100] flex flex-col items-center justify-center transition-colors duration-500 overflow-hidden ${isDarkMode ? 'bg-slate-950' : 'bg-white'}`}>
+    <div className={`fixed inset-0 z-[100] flex flex-col items-center justify-start pt-12 transition-colors duration-500 overflow-hidden ${isDarkMode ? 'bg-slate-950' : 'bg-white'}`}>
       <div 
-        className="flex flex-col items-center justify-between w-full max-w-sm px-6 py-4 h-full max-h-[850px]"
+        className="flex flex-col items-center justify-start w-full max-w-sm px-6 py-0 h-full max-h-[850px]"
         style={{ 
           transform: `scale(${scale})`, 
-          transformOrigin: 'center center'
+          transformOrigin: 'top center'
         }}
       >
         <button 
@@ -187,8 +187,8 @@ const LandingScreen: React.FC<{
           {isDarkMode ? <Sun size={22} /> : <Moon size={22} />}
         </button>
 
-        <div className="flex-1 flex flex-col items-center justify-start w-full pt-2">
-         <div className="relative mb-6 animate-in zoom-in duration-1000">
+        <div className="flex flex-col items-center justify-start w-full pt-0">
+         <div className="relative mb-2 animate-in zoom-in duration-1000">
             <div className="rainbow-border-circle w-64 h-64">
               <div className="w-full h-full rounded-full overflow-hidden flex items-center justify-center bg-white">
                 <img 
@@ -250,7 +250,7 @@ const LandingScreen: React.FC<{
             </div>
          </div>
 
-         <div className="w-full pb-4 flex flex-col items-center justify-center gap-1 opacity-90 animate-in slide-in-from-bottom-4 duration-1000 delay-500 mt-auto">
+         <div className="w-full flex-1 flex flex-col items-center justify-center gap-1 opacity-90 animate-in slide-in-from-bottom-4 duration-1000 delay-500 mt-6">
             <p className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.3em]">Development by</p>
             <p className="text-[12px] font-black tracking-[0.05em] text-[#0056b3] dark:text-blue-400 uppercase">Intelligence Creation BD</p>
          </div>

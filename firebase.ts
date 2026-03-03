@@ -4,13 +4,14 @@ import { getDatabase } from "firebase/database";
 // Firebase configuration
 // Note: Replace placeholders with actual values from your Firebase project settings
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "user-d2031.firebaseapp.com",
-  databaseURL: "https://user-d2031-default-rtdb.asia-southeast1.firebasedatabase.app/",
-  projectId: "user-d2031",
-  storageBucket: "user-d2031.firebasestorage.app",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyCHuA1I4krz9VqBSvZfx45MPiGL9u-JF3c",
+  authDomain: "appsettings-60fa1.firebaseapp.com",
+  databaseURL: "https://appsettings-60fa1-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "appsettings-60fa1",
+  storageBucket: "appsettings-60fa1.firebasestorage.app",
+  messagingSenderId: "596039947664",
+  appId: "1:596039947664:web:681c687e3c99b5036fcf15",
+  measurementId: "G-9HYLN088W7"
 };
 
 // Initialize Firebase

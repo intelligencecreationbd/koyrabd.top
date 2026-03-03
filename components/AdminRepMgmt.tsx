@@ -73,6 +73,9 @@ const AdminRepMgmt: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   
   const [showCatForm, setShowCatForm] = useState(false);
   const [showContactForm, setShowContactForm] = useState(false);
+  const [showComboMenu, setShowComboMenu] = useState(false);
+  const [showUnionForm, setShowUnionForm] = useState(false);
+  const [activeInlineField, setActiveInlineField] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [editingContactId, setEditingContactId] = useState<string | null>(null);
@@ -87,6 +90,7 @@ const AdminRepMgmt: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     extraMobiles: [] as string[],
     email: '',
     address: '', 
+    politicalIdentity: '',
     customInfo: [] as CustomField[],
     description: '', 
     photo: ''
@@ -183,7 +187,7 @@ const AdminRepMgmt: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         setShowContactForm(false);
         setEditingContactId(null);
         setSelectedFile(null);
-        setContactForm({ name: '', designation: '', mobile: '', extraMobiles: [], email: '', address: '', customInfo: [], description: '', photo: '' });
+        setContactForm({ name: '', designation: '', mobile: '', extraMobiles: [], email: '', address: '', politicalIdentity: '', customInfo: [], description: '', photo: '' });
     } catch (e) { alert('তথ্য সেভ করতে সমস্যা হয়েছে!'); }
     finally { setIsSubmitting(false); }
   };
@@ -256,7 +260,247 @@ const AdminRepMgmt: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const resetToRoot = () => {
     setCurrentPath([]);
     setShowContactForm(false);
+    setShowUnionForm(false);
+    setActiveInlineField(null);
   };
+
+  if (showUnionForm) {
+    const currentCategoryName = currentPath.length > 0 ? currentPath[currentPath.length - 1].name : '';
+    const autoTitle = currentCategoryName ? `${currentCategoryName} পরিষদ` : '';
+
+    const sections = [
+      {
+        title: 'জনপ্রতিনিধি',
+        fields: [
+          'চেয়ারম্যান',
+          'মেম্বার ১নং ওয়ার্ড', 'মেম্বার ২নং ওয়ার্ড', 'মেম্বার ৩নং ওয়ার্ড',
+          'মেম্বার ৪নং ওয়ার্ড', 'মেম্বার ৫নং ওয়ার্ড', 'মেম্বার ৬নং ওয়ার্ড',
+          'মেম্বার ৭নং ওয়ার্ড', 'মেম্বার ৮নং ওয়ার্ড', 'মেম্বার ৯নং ওয়ার্ড',
+          'সংরক্ষিত মহিলা আসন (১,২ এবং ৩ নং ওয়ার্ড)',
+          'সংরক্ষিত মহিলা আসন (৪,৫ এবং ৬ নং ওয়ার্ড)',
+          'সংরক্ষিত মহিলা আসন (৭,৮ এবং ৯ নং ওয়ার্ড)'
+        ]
+      },
+      {
+        title: 'অফিসিয়াল জরুরি তথ্য',
+        fields: ['সচিব', 'হিসাব সহকারী কাম কম্পিউটার অপারেটর']
+      },
+      {
+        title: 'গ্রাম পুলিশ',
+        fields: [
+          'দফাদার',
+          'চৌকিদার ১নং ওয়ার্ড', 'চৌকিদার ২নং ওয়ার্ড', 'চৌকিদার ৩নং ওয়ার্ড',
+          'চৌকিদার ৪নং ওয়ার্ড', 'চৌকিদার ৫নং ওয়ার্ড', 'চৌকিদার ৬নং ওয়ার্ড',
+          'চৌকিদার ৭নং ওয়ার্ড', 'চৌকিদার ৮নং ওয়ার্ড', 'চৌকিদার ৯নং ওয়ার্ড'
+        ]
+      }
+    ];
+
+    return (
+      <div className="animate-in slide-in-from-right-4 duration-500 pb-20 space-y-6">
+        <div className="flex items-center gap-4 mb-2 text-left">
+          <button onClick={() => setShowUnionForm(false)} className="p-3 bg-white rounded-xl shadow-sm active:scale-90 transition-all">
+            <ChevronLeft size={20} className="text-slate-800" />
+          </button>
+          <div className="text-left">
+            <h2 className="text-2xl font-black text-slate-800 tracking-tight">ইউনিয়ন পরিষদ ফর্ম</h2>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">কম্বো পেইজ সেটআপ</p>
+          </div>
+        </div>
+
+        <div className="bg-white p-6 rounded-[40px] border border-slate-100 shadow-xl space-y-8">
+          <div className="text-left">
+            <label className="text-[10px] font-bold text-slate-400 block mb-1.5 uppercase tracking-wider pl-1">পেইজ টাইটেল (অটো ইনপুট)</label>
+            <input 
+              type="text" 
+              readOnly 
+              className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl font-black text-blue-600 outline-none shadow-inner"
+              value={autoTitle}
+            />
+          </div>
+
+          {sections.map((section, sIdx) => (
+            <div key={sIdx} className="space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="h-[1px] flex-1 bg-slate-100"></div>
+                <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">{section.title}</h3>
+                <div className="h-[1px] flex-1 bg-slate-100"></div>
+              </div>
+              
+              <div className="grid grid-cols-1 gap-3">
+                {section.fields.map((field, fIdx) => {
+                  const isActive = activeInlineField === field;
+                  const existingContact = currentContacts.find(c => c.designation === field);
+
+                  return (
+                    <div key={fIdx} className="space-y-3">
+                      <button 
+                        onClick={() => {
+                          if (isActive) {
+                            setActiveInlineField(null);
+                          } else {
+                            setActiveInlineField(field);
+                            if (existingContact) {
+                              setEditingContactId(existingContact.id);
+                              setContactForm({
+                                name: existingContact.name || '',
+                                designation: existingContact.designation || field,
+                                mobile: existingContact.mobile || '',
+                                extraMobiles: existingContact.extraMobiles || [],
+                                email: existingContact.email || '',
+                                address: existingContact.address || currentCategoryName,
+                                politicalIdentity: existingContact.politicalIdentity || '',
+                                customInfo: existingContact.customInfo || [],
+                                description: existingContact.description || '',
+                                photo: existingContact.photo || ''
+                              });
+                            } else {
+                              setEditingContactId(null);
+                              setContactForm({
+                                name: '',
+                                designation: field,
+                                mobile: '',
+                                extraMobiles: [],
+                                email: '',
+                                address: currentCategoryName,
+                                politicalIdentity: '',
+                                customInfo: [],
+                                description: '',
+                                photo: ''
+                              });
+                            }
+                          }
+                        }}
+                        className={`w-full flex items-center justify-between p-4 border rounded-2xl transition-all group active:scale-[0.98] ${isActive ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-500/20' : 'bg-slate-50/50 hover:bg-blue-50 border-slate-100 text-slate-700'}`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-sm border transition-all ${isActive ? 'bg-white text-blue-600 border-white' : 'bg-white text-blue-500 border-slate-100 group-hover:bg-blue-600 group-hover:text-white'}`}>
+                            {existingContact ? <CheckCircle2 size={18} /> : <Plus size={18} />}
+                          </div>
+                          <span className={`font-bold text-sm ${isActive ? 'text-white' : 'text-slate-700'}`}>{field}</span>
+                        </div>
+                        <ChevronDown size={16} className={`transition-transform duration-300 ${isActive ? 'rotate-180 text-white' : 'text-slate-300'}`} />
+                      </button>
+
+                      {isActive && (
+                        <div className="animate-in slide-in-from-top-4 duration-300 bg-white p-5 rounded-3xl border border-blue-100 shadow-xl space-y-5 mx-1">
+                          {(() => {
+                            const handleSaveContact = async () => {
+                              if (!contactForm.name || !contactForm.mobile) {
+                                alert('নাম এবং মোবাইল নম্বর আবশ্যক!');
+                                return;
+                              }
+                              setIsSubmitting(true);
+                              try {
+                                let photoUrl = contactForm.photo;
+                                if (selectedFile) {
+                                  photoUrl = await uploadImageToServer(selectedFile);
+                                }
+                                
+                                const finalData = { ...contactForm, photo: photoUrl };
+                                const contactId = editingContactId || push(ref(directoryDb, `${rootNode}/data/${parentId}`)).key;
+                                const contactRef = ref(directoryDb, `${rootNode}/data/${parentId}/${contactId}`);
+                                
+                                await set(contactRef, { ...finalData, id: contactId });
+                                alert('সফলভাবে সংরক্ষিত হয়েছে!');
+                                setActiveInlineField(null);
+                                setEditingContactId(null);
+                                setSelectedFile(null);
+                              } catch (e) {
+                                alert('তথ্য সেভ করতে সমস্যা হয়েছে!');
+                              } finally {
+                                setIsSubmitting(false);
+                              }
+                            };
+
+                            return (
+                              <>
+                                <div className="flex flex-col items-center pt-2">
+                                  <div className="relative group">
+                                    <div className="w-24 h-24 rounded-[30px] bg-slate-50 border-4 border-white shadow-lg overflow-hidden flex items-center justify-center text-slate-200">
+                                      {contactForm.photo ? (
+                                        <img src={contactForm.photo} className="w-full h-full object-cover" alt="" />
+                                      ) : (
+                                        <UserIcon size={40} strokeWidth={1.5} />
+                                      )}
+                                    </div>
+                                    <button 
+                                      type="button"
+                                      onClick={() => fileInputRef.current?.click()}
+                                      className="absolute bottom-0 right-0 p-2.5 bg-blue-500 text-white rounded-xl shadow-xl border-4 border-white active:scale-90 transition-all"
+                                    >
+                                      <Camera size={16} strokeWidth={3} />
+                                    </button>
+                                    <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handlePhotoUpload} />
+                                  </div>
+                                  <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mt-3">ছবি নির্বাচন করুন</p>
+                                </div>
+
+                                <div className="space-y-4">
+                                  <EditField label="নাম *" value={contactForm.name} onChange={v=>setContactForm({...contactForm, name:v})} placeholder="নাম লিখুন" icon={<UserIcon size={16}/>} />
+                                  <EditField label="পদবি (অটো ইনপুট)" value={contactForm.designation} onChange={()=>{}} readOnly placeholder="পদবি" icon={<Tag size={16}/>} />
+                                  <EditField label="মোবাইল নং *" value={contactForm.mobile} onChange={v=>setContactForm({...contactForm, mobile:v})} placeholder="০১xxxxxxxxx" icon={<Smartphone size={16}/>} />
+                                  <EditField label="ইমেইল" value={contactForm.email} onChange={v=>setContactForm({...contactForm, email:v})} placeholder="example@mail.com" icon={<Mail size={16}/>} />
+                                  <EditField label="ঠিকানা (অটো ইনপুট)" value={contactForm.address} onChange={()=>{}} readOnly placeholder="ঠিকানা" icon={<MapPin size={16}/>} />
+
+                                  <div className="space-y-3">
+                                    {contactForm.customInfo.map((info, idx) => (
+                                      <div key={idx} className="p-4 bg-slate-50/50 rounded-2xl border border-slate-100 space-y-3 relative">
+                                        <button type="button" onClick={() => handleRemoveCustomInfo(idx)} className="absolute top-2 right-2 p-1 text-slate-300 hover:text-red-500"><X size={16}/></button>
+                                        <div className="grid grid-cols-2 gap-2">
+                                          <EditField label="টাইটেল" value={info.label} onChange={v => handleCustomInfoChange(idx, 'label', v)} placeholder="যেমন: ব্লাড গ্রুপ" icon={<Type size={14}/>} />
+                                          <EditField label="তথ্য" value={info.value} onChange={v => handleCustomInfoChange(idx, 'value', v)} placeholder="যেমন: O+" icon={<Info size={14}/>} />
+                                        </div>
+                                      </div>
+                                    ))}
+                                    <button type="button" onClick={handleAddCustomInfo} className="flex items-center gap-2 text-[10px] font-black text-blue-600 pl-1 hover:opacity-70 transition-all">
+                                      <Plus size={14} /> + কাস্টমস ঘর যোগ করুন
+                                    </button>
+                                  </div>
+
+                                  <button 
+                                    onClick={handleSaveContact}
+                                    disabled={isSubmitting}
+                                    className="w-full py-4 bg-blue-600 text-white font-black rounded-2xl shadow-lg shadow-blue-500/20 flex items-center justify-center gap-2 active:scale-95 transition-all disabled:opacity-50"
+                                  >
+                                    {isSubmitting ? <Loader2 className="animate-spin" size={18} /> : <CheckCircle2 size={18} />}
+                                    {existingContact ? 'তথ্য আপডেট করুন' : 'তথ্য সেভ করুন'}
+                                  </button>
+                                </div>
+                              </>
+                            );
+                          })()}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+
+          <button 
+            onClick={() => {
+              // Mark this category as a combo page in Firebase
+              if (parentId !== 'root') {
+                const catRef = ref(directoryDb, `${rootNode}/categories/${parentId}`);
+                set(catRef, {
+                  ...allCategories.find(c => c.id === parentId),
+                  isComboPage: true,
+                  comboType: 'union'
+                });
+                alert('কম্বো পেইজ সফলভাবে কনফিগার করা হয়েছে!');
+                setShowUnionForm(false);
+              }
+            }}
+            className="w-full py-5 bg-emerald-600 text-white font-black rounded-3xl shadow-xl shadow-emerald-500/20 flex items-center justify-center gap-2 active:scale-95 transition-all"
+          >
+            <CheckCircle2 size={20} /> কনফিগারেশন সম্পন্ন করুন
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (showContactForm) {
     return (
@@ -295,12 +539,15 @@ const AdminRepMgmt: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 
             <div className="space-y-5">
                 <EditField label="নাম *" value={contactForm.name} onChange={v=>setContactForm({...contactForm, name:v})} placeholder="সম্পূর্ণ নাম লিখুন" icon={<UserIcon size={18}/>} />
-                <EditField label="উপাধি/পদবী" value={contactForm.designation} onChange={v=>setContactForm({...contactForm, designation:v})} placeholder="যেমন: ইউপি মেম্বার" icon={<Tag size={18}/>} />
+                
+                {!showUnionForm && (
+                    <EditField label="উপাধি/পদবী" value={contactForm.designation} onChange={v=>setContactForm({...contactForm, designation:v})} placeholder="যেমন: ইউপি মেম্বার" icon={<Tag size={18}/>} />
+                )}
                 
                 <div className="space-y-3">
-                    <EditField label="প্রাথমিক মোবাইল নম্বর *" value={contactForm.mobile} onChange={v=>setContactForm({...contactForm, mobile:v})} placeholder="০১xxxxxxxxx" icon={<Smartphone size={18}/>} />
+                    <EditField label="মোবাইল নং *" value={contactForm.mobile} onChange={v=>setContactForm({...contactForm, mobile:v})} placeholder="০১xxxxxxxxx" icon={<Smartphone size={18}/>} />
                     
-                    {contactForm.extraMobiles.map((mob, idx) => (
+                    {!showUnionForm && contactForm.extraMobiles.map((mob, idx) => (
                       <div key={idx} className="flex gap-2 animate-in slide-in-from-top-1 duration-200">
                         <EditField label={`অতিরিক্ত নম্বর (${idx + 1})`} value={mob} onChange={v => handleExtraMobileChange(idx, v)} placeholder="০১xxxxxxxxx" icon={<Smartphone size={18}/>} />
                         <button type="button" onClick={() => handleRemoveExtraMobile(idx)} className="mt-6 p-3 text-red-500 bg-red-50 rounded-xl active:scale-90 transition-all flex items-center justify-center h-[52px] w-[52px]">
@@ -309,14 +556,20 @@ const AdminRepMgmt: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                       </div>
                     ))}
                     
-                    <button type="button" onClick={handleAddExtraMobile} className="flex items-center gap-2 text-xs font-black text-[#3498DB] pl-1 hover:opacity-70 transition-all">
-                      <Plus size={16} /> + আরও মোবাইল নম্বর
-                    </button>
+                    {!showUnionForm && (
+                      <button type="button" onClick={handleAddExtraMobile} className="flex items-center gap-2 text-xs font-black text-[#3498DB] pl-1 hover:opacity-70 transition-all">
+                        <Plus size={16} /> + আরও মোবাইল নম্বর
+                      </button>
+                    )}
                 </div>
 
-                <EditField label="ইমেইল এড্রেস (ঐচ্ছিক)" value={contactForm.email} onChange={v=>setContactForm({...contactForm, email:v})} placeholder="example@mail.com" icon={<Mail size={18}/>} />
+                <EditField label="ইমেইল ঠিকানা (ঐচ্ছিক)" value={contactForm.email} onChange={v=>setContactForm({...contactForm, email:v})} placeholder="example@mail.com" icon={<Mail size={18}/>} />
                 
-                <EditField label="অফিস বা এলাকা (ঠিকানা)" value={contactForm.address} onChange={v=>setContactForm({...contactForm, address:v})} placeholder="ঠিকানা লিখুন" icon={<MapPin size={18}/>} />
+                <EditField label="ঠিকানা" value={contactForm.address} onChange={v=>setContactForm({...contactForm, address:v})} placeholder="ঠিকানা লিখুন" icon={<MapPin size={18}/>} />
+
+                {showUnionForm && (
+                    <EditField label="রাজনৈতিক পরিচয়" value={contactForm.politicalIdentity} onChange={v=>setContactForm({...contactForm, politicalIdentity:v})} placeholder="যেমন: বাংলাদেশ আওয়ামী লীগ" icon={<Tag size={18}/>} />
+                )}
 
                 <div className="space-y-3">
                     {contactForm.customInfo.map((info, idx) => (
@@ -330,19 +583,21 @@ const AdminRepMgmt: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                     ))}
                     
                     <button type="button" onClick={handleAddCustomInfo} className="flex items-center gap-2 text-xs font-black text-blue-600 pl-1 hover:opacity-70 transition-all">
-                      <Plus size={16} /> + আরও তথ্য (কাস্টম ফিল্ড)
+                      <Plus size={16} /> {showUnionForm ? '+ আরও তথ্য যোগ' : '+ আরও তথ্য (কাস্টম ফিল্ড)'}
                     </button>
                 </div>
 
-                <div className="text-left">
-                    <label className="text-[10px] font-bold text-slate-400 block mb-1.5 uppercase tracking-wider pl-1">অতিরিক্ত বিবরণ</label>
-                    <textarea 
-                        className="w-full p-4 bg-slate-50 border border-slate-100 rounded-3xl font-bold outline-none text-slate-800 h-28 text-sm leading-relaxed"
-                        value={contactForm.description}
-                        onChange={e => setContactForm({...contactForm, description: e.target.value})}
-                        placeholder="কন্টাক্ট সম্পর্কে অতিরিক্ত কোনো তথ্য থাকলে লিখুন..."
-                    />
-                </div>
+                {!showUnionForm && (
+                    <div className="text-left">
+                        <label className="text-[10px] font-bold text-slate-400 block mb-1.5 uppercase tracking-wider pl-1">অতিরিক্ত বিবরণ</label>
+                        <textarea 
+                            className="w-full p-4 bg-slate-50 border border-slate-100 rounded-3xl font-bold outline-none text-slate-800 h-28 text-sm leading-relaxed"
+                            value={contactForm.description}
+                            onChange={e => setContactForm({...contactForm, description: e.target.value})}
+                            placeholder="কন্টাক্ট সম্পর্কে অতিরিক্ত কোনো তথ্য থাকলে লিখুন..."
+                        />
+                    </div>
+                )}
 
                 <div className="flex gap-3 pt-4">
                   <button 
@@ -378,7 +633,7 @@ const AdminRepMgmt: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                 <React.Fragment key={node.id}>
                     <ChevronRight size={14} className="text-slate-300 shrink-0" />
                     <button 
-                        onClick={() => setCurrentPath(currentPath.slice(0, idx + 1))}
+                        onClick={() => { setCurrentPath(currentPath.slice(0, idx + 1)); setActiveInlineField(null); }}
                         className={`px-3 py-1.5 rounded-lg text-xs font-black whitespace-nowrap transition-colors ${idx === currentPath.length - 1 ? 'bg-blue-600 text-white shadow-md' : 'bg-white text-slate-500 border border-slate-200'}`}
                     >
                         {node.name}
@@ -387,24 +642,53 @@ const AdminRepMgmt: React.FC<{ onBack: () => void }> = ({ onBack }) => {
             ))}
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-3 gap-2">
             <button 
                 onClick={() => { setEditingCategoryId(null); setCatName(''); setShowCatForm(true); }}
-                className="py-4 bg-white border border-blue-100 text-blue-600 font-black rounded-[24px] shadow-sm flex items-center justify-center gap-2 active:scale-95 transition-all text-xs"
+                className="py-4 bg-white border border-blue-100 text-blue-600 font-black rounded-[24px] shadow-sm flex items-center justify-center gap-1.5 active:scale-95 transition-all text-[10px]"
             >
-                <FolderPlus size={18}/> ক্যাটাগরি যোগ করুন
+                <FolderPlus size={16}/> ক্যাটাগরি
             </button>
             <button 
                 onClick={() => { 
                   setEditingContactId(null); 
-                  setContactForm({name:'', designation:'', mobile:'', extraMobiles: [], email: '', address:'', customInfo: [], description:'', photo:''}); 
+                  setContactForm({name:'', designation:'', mobile:'', extraMobiles: [], email: '', address:'', politicalIdentity: '', customInfo: [], description:'', photo:''}); 
                   setShowContactForm(true); 
                 }}
-                className="py-4 bg-[#3498DB] text-white font-black rounded-[24px] shadow-lg flex items-center justify-center gap-2 active:scale-95 transition-all text-xs"
+                className="py-4 bg-[#3498DB] text-white font-black rounded-[24px] shadow-lg flex items-center justify-center gap-1 active:scale-95 transition-all text-[10px]"
             >
-                <Plus size={18}/> কন্টাক্ট যোগ করুন
+                <Plus size={16}/> কনট্যাক্ট
+            </button>
+            <button 
+                onClick={() => setShowComboMenu(!showComboMenu)}
+                className={`py-4 ${showComboMenu ? 'bg-emerald-600' : 'bg-emerald-500'} text-white font-black rounded-[24px] shadow-lg flex items-center justify-center gap-1 active:scale-95 transition-all text-[10px]`}
+            >
+                <Plus size={16}/> কম্বো পেইজ
             </button>
         </div>
+
+        {showComboMenu && (
+            <div className="grid grid-cols-1 gap-2 animate-in slide-in-from-top-2 duration-300">
+                <button 
+                    onClick={() => { setShowUnionForm(true); setShowComboMenu(false); }}
+                    className="w-full py-3.5 bg-emerald-50 text-emerald-700 font-bold rounded-2xl border border-emerald-100 text-xs active:scale-[0.98] transition-all"
+                >
+                    ইউনিয়ন পরিষদ ফর্ম
+                </button>
+                <button 
+                    onClick={() => { alert('পৌরসভা ফর্ম শীঘ্রই আসছে'); setShowComboMenu(false); }}
+                    className="w-full py-3.5 bg-emerald-50 text-emerald-700 font-bold rounded-2xl border border-emerald-100 text-xs active:scale-[0.98] transition-all"
+                >
+                    পৌরসভা ফর্ম
+                </button>
+                <button 
+                    onClick={() => { alert('উপজেলা পরিষদ ফর্ম শীঘ্রই আসছে'); setShowComboMenu(false); }}
+                    className="w-full py-3.5 bg-emerald-50 text-emerald-700 font-bold rounded-2xl border border-emerald-100 text-xs active:scale-[0.98] transition-all"
+                >
+                    উপজেলা পরিষদ ফর্ম
+                </button>
+            </div>
+        )}
 
         <div className="space-y-4">
             {subCategories.length > 0 && (
@@ -413,7 +697,7 @@ const AdminRepMgmt: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                     {subCategories.map(cat => (
                         <div key={cat.id} className="flex items-center gap-2 animate-in fade-in slide-in-from-bottom-2">
                             <button 
-                                onClick={() => setCurrentPath([...currentPath, cat])}
+                                onClick={() => { setCurrentPath([...currentPath, cat]); setActiveInlineField(null); }}
                                 className="flex-1 flex items-center justify-between p-5 bg-white rounded-[28px] border border-slate-100 shadow-sm active:scale-[0.98] transition-all group"
                             >
                                 <div className="flex items-center gap-4 overflow-hidden">
