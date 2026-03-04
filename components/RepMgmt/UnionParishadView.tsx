@@ -6,7 +6,8 @@ import {
   PhoneCall, 
   CheckCircle2,
   ChevronRight,
-  UserCircle
+  UserCircle,
+  Home
 } from 'lucide-react';
 
 const toBn = (num: string | number | undefined | null) => {
@@ -28,7 +29,7 @@ interface Contact {
   photo?: string;
 }
 
-interface ComboPageViewProps {
+interface UnionParishadViewProps {
   title: string;
   contacts: Contact[];
   onOpenProfile: (contact: Contact) => void;
@@ -86,7 +87,7 @@ const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title
   </div>
 );
 
-const ComboPageView: React.FC<ComboPageViewProps> = ({ title, contacts, onOpenProfile }) => {
+const UnionParishadView: React.FC<UnionParishadViewProps> = ({ title, contacts, onOpenProfile }) => {
   const getContactsByDesignation = (designation: string) => {
     return contacts.filter(c => c.designation === designation);
   };
@@ -105,28 +106,34 @@ const ComboPageView: React.FC<ComboPageViewProps> = ({ title, contacts, onOpenPr
       ]
     },
     {
-      title: 'অফিসিয়াল জরুরি তথ্য',
+      title: 'অফিসিয়াল',
       fields: ['সচিব', 'হিসাব সহকারী কাম কম্পিউটার অপারেটর']
     },
     {
       title: 'গ্রাম পুলিশ',
       fields: [
         'দফাদার',
-        'চৌকিদার ১নং ওয়ার্ড', 'চৌকিদার ২নং ওয়ার্ড', 'চৌকিদার ৩নং ওয়ার্ড',
-        'চৌকিদার ৪নং ওয়ার্ড', 'চৌকিদার ৫নং ওয়ার্ড', 'চৌকিদার ৬নং ওয়ার্ড',
-        'চৌকিদার ৭নং ওয়ার্ড', 'চৌকিদার ৮নং ওয়ার্ড', 'চৌকিদার ৯নং ওয়ার্ড'
+        'গ্রাম পুলিশ ১নং ওয়ার্ড', 'গ্রাম পুলিশ ২নং ওয়ার্ড', 'গ্রাম পুলিশ ৩নং ওয়ার্ড',
+        'গ্রাম পুলিশ ৪নং ওয়ার্ড', 'গ্রাম পুলিশ ৫নং ওয়ার্ড', 'গ্রাম পুলিশ ৬নং ওয়ার্ড',
+        'গ্রাম পুলিশ ৭নং ওয়ার্ড', 'গ্রাম পুলিশ ৮নং ওয়ার্ড', 'গ্রাম পুলিশ ৯নং ওয়ার্ড'
       ]
     }
   ];
 
   return (
     <div className="animate-in fade-in duration-700 space-y-8 px-1 pb-20">
-      <div className="text-center space-y-2">
-        <div className="inline-flex items-center justify-center p-3 bg-blue-50 text-blue-600 rounded-2xl mb-2">
-          <CheckCircle2 size={24} />
+      <div className="relative pt-2 pb-2">
+        <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-blue-50/50 to-transparent -z-10 rounded-t-[40px]"></div>
+        <div className="text-center space-y-3">
+          <div className="space-y-1">
+            <h2 className="text-3xl font-black text-slate-800 tracking-tight leading-tight px-4">{title}</h2>
+            <div className="flex items-center justify-center gap-2">
+              <div className="h-[2px] w-8 bg-blue-600 rounded-full"></div>
+              <p className="text-[10px] font-black text-blue-600 uppercase tracking-[0.4em]">ইউনিয়ন পরিষদ তথ্য</p>
+              <div className="h-[2px] w-8 bg-blue-600 rounded-full"></div>
+            </div>
+          </div>
         </div>
-        <h2 className="text-2xl font-black text-slate-800 tracking-tight leading-tight">{title}</h2>
-        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.3em]">সকল তথ্য এক নজরে</p>
       </div>
 
       {sections.map((section, idx) => {
@@ -159,4 +166,4 @@ const ComboPageView: React.FC<ComboPageViewProps> = ({ title, contacts, onOpenPr
   );
 };
 
-export default ComboPageView;
+export default UnionParishadView;

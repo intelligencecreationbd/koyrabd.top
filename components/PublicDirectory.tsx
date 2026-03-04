@@ -25,7 +25,7 @@ import {
 import { useLocation } from 'react-router-dom';
 import { ref, onValue } from 'firebase/database';
 import { directoryDb } from '../Firebase-directory';
-import ComboPageView from './ComboPageView';
+import UnionParishadView from './RepMgmt/UnionParishadView';
 
 const toBn = (num: string | number | undefined | null) => {
   const val = num ?? '';
@@ -418,7 +418,7 @@ const PublicDirectory: React.FC<PublicDirectoryProps> = ({ id, categoryName, pat
                     {isLoading ? (
                       <div className="py-20 flex flex-col items-center justify-center gap-4 opacity-20"><Clock className="animate-spin" size={40} /></div>
                     ) : isComboPage ? (
-                      <ComboPageView 
+                      <UnionParishadView 
                         title={`${selectedCategory?.name} পরিষদ`}
                         contacts={dataList}
                         onOpenProfile={openProfile}

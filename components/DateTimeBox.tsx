@@ -57,9 +57,8 @@ const DateTimeBox: React.FC = () => {
   };
 
   const getHijriDate = (date: Date) => {
-    // Manual Hijri calculation (Kuwaiti algorithm)
-    // This is more reliable than Intl.DateTimeFormat in some environments
-    const jd = Math.floor(date.getTime() / 86400000) + 2440588;
+    // Manual Hijri calculation (Kuwaiti algorithm) with -1 day adjustment for Bangladesh
+    const jd = Math.floor(date.getTime() / 86400000) + 2440588 - 1;
     const l = jd - 1948440 + 10632;
     const n = Math.floor((l - 1) / 10631);
     const l2 = l - 10631 * n + 354;
