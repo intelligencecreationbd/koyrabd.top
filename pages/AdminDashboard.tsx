@@ -30,7 +30,8 @@ import {
   Newspaper,
   ShoppingBag,
   HeartPulse,
-  BarChart3
+  BarChart3,
+  LayoutGrid
 } from 'lucide-react';
 import { Submission, Notice, User as AppUser, HotlineContact, BusCounter, LegalServiceContact } from '../types';
 import AdminHotlineMgmt from '../components/AdminHotlineMgmt';
@@ -42,6 +43,7 @@ import AdminNewsMgmt from '../components/AdminNewsMgmt';
 import AdminHaatMgmt from '../components/AdminHaatMgmt';
 import AdminUserList from '../components/AdminUserList';
 import AdminMedicalMgmt from '../components/AdminMedicalMgmt';
+import AdminMenuAccess from '../components/AdminMenuAccess';
 
 // Firebase removed for paid hosting migration
 
@@ -54,7 +56,7 @@ interface AdminDashboardProps {
   adminPassword: string;
 }
 
-type AdminView = 'menu' | 'users' | 'notices' | 'hotline_mgmt' | 'bus_mgmt' | 'legal_mgmt' | 'mobile_mgmt' | 'rep_mgmt' | 'news_mgmt' | 'haat_mgmt' | 'medical_mgmt' | 'change_pass' | 'user_submissions';
+type AdminView = 'menu' | 'users' | 'notices' | 'hotline_mgmt' | 'bus_mgmt' | 'legal_mgmt' | 'mobile_mgmt' | 'rep_mgmt' | 'news_mgmt' | 'haat_mgmt' | 'medical_mgmt' | 'change_pass' | 'user_submissions' | 'menu_access';
 
 const Header: React.FC<{ title: string; onBack: () => void }> = ({ title, onBack }) => (
   <div className="flex flex-col items-center gap-3 mb-6 text-center relative">
@@ -345,6 +347,7 @@ export default function AdminDashboard({ submissions, notices, onUpdateNotices, 
             {activeTab === 'settings' && (
               <>
                 <MenuListItem onClick={() => setCurrentView('user_submissions')} icon={<Inbox />} label="তথ্য পাঠিয়েছেন" color="#E91E63" badge={submissions.length} />
+                <MenuListItem onClick={() => setCurrentView('menu_access')} icon={<LayoutGrid />} label="মেনু একসেস" color="#0056b3" />
                 <MenuListItem onClick={() => setCurrentView('change_pass')} icon={<Lock />} label="পাসওয়ার্ড পরিবর্তন" color="#9B59B6" />
                 <MenuListItem onClick={() => setCurrentView('notices')} icon={<Megaphone />} label="নোটিশ" color="#FF9F43" />
               </>
@@ -374,6 +377,7 @@ export default function AdminDashboard({ submissions, notices, onUpdateNotices, 
       {currentView === 'bus_mgmt' && <AdminBusMgmt onBack={() => setCurrentView('menu')} />}
       {currentView === 'legal_mgmt' && <AdminLegalMgmt onBack={() => setCurrentView('menu')} />}
       {currentView === 'users' && <AdminUserList onBack={() => setCurrentView('menu')} />}
+      {currentView === 'menu_access' && <AdminMenuAccess onBack={() => setCurrentView('menu')} />}
       
       {currentView === 'notices' && (
         <div className="space-y-6 animate-in slide-in-from-right-4 duration-500">

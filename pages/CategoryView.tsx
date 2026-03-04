@@ -16,7 +16,11 @@ import PublicNews from '../components/PublicNews';
 
 // Firebase removed for paid hosting migration
 
-const CategoryView: React.FC = () => {
+interface CategoryViewProps {
+  checkAccess?: (id: string, name: string) => boolean;
+}
+
+const CategoryView: React.FC<CategoryViewProps> = ({ checkAccess }) => {
   const { id, '*': splat } = useParams<{ id: string; '*': string }>();
   const navigate = useNavigate();
   const category = CATEGORIES.find(c => c.id === id);

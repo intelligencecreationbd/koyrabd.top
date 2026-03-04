@@ -5,7 +5,7 @@ import { ChevronLeft, Calculator, Calendar, RefreshCw } from 'lucide-react';
 const toBn = (num: string | number) => 
   (num || '০').toString().replace(/\d/g, d => "০১২৩৪৫৬৭৮৯"[parseInt(d)]);
 
-export default function AgeCalculator({ onBack }: { onBack: () => void }) {
+export default function AgeCalculator({ onBack, checkAccess }: { onBack: () => void; checkAccess?: (id: string, name: string) => boolean }) {
   const [dob, setDob] = useState('');
   const [result, setResult] = useState<any>(null);
 

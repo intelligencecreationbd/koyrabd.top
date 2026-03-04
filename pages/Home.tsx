@@ -17,9 +17,10 @@ interface HomeProps {
   notices: Notice[];
   isAdmin: boolean;
   user: User | null;
+  checkAccess?: (id: string, name: string) => boolean;
 }
 
-export function Home({ notices, isAdmin, user }: HomeProps) {
+export function Home({ notices, isAdmin, user, checkAccess }: HomeProps) {
   const navigate = useNavigate();
   const [currentPage, setCurrentPage] = useState(0);
   const [chatNotifications, setChatNotifications] = useState(0);
@@ -70,7 +71,7 @@ export function Home({ notices, isAdmin, user }: HomeProps) {
           <div className="scrolling-text absolute whitespace-nowrap text-[13px] font-bold text-[#001f3f]">
             {notices.length > 0 
               ? notices.map(n => n.content).join('  •  ') 
-              : 'কয়রা-পাইকগাছা ডিজিটাল অ্যাপে আপনাকে স্বাগতম!'}
+              : 'কয়রা-পাইকগাছা কমিউনিটি অ্যাপে আপনাকে স্বাগতম!'}
           </div>
         </div>
       </div>
@@ -118,6 +119,8 @@ export function Home({ notices, isAdmin, user }: HomeProps) {
                   <button
                     key={category.id}
                     onClick={() => {
+                      if (checkAccess && !checkAccess(category.id, category.name)) return;
+                      
                       if (category.id === '1') navigate('/hotline');
                       else if (category.id === '11') navigate('/info-submit');
                       else if (category.id === '12') navigate('/auth');

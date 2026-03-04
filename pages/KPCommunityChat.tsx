@@ -52,7 +52,7 @@ import {
 // Firebase removed for paid hosting migration
 
 const HELPLINE_ID = 'KP37224995';
-const HELPLINE_NAME = 'কয়রা-পাইকগাছা কমিউনিটি এপস';
+const HELPLINE_NAME = 'কয়রা-পাইকগাছা কমিউনিটি অ্যাপস';
 const MESSAGE_EXPIRY_MS = 24 * 60 * 60 * 1000;
 
 const getGuestToken = () => {

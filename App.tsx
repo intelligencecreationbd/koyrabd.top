@@ -16,6 +16,7 @@ import PublicMedical from './components/PublicMedical';
 import AgeCalculator from './components/AgeCalculator';
 import DateTimeBox from './components/DateTimeBox';
 import PublicDownload from './components/PublicDownload';
+import MenuAccessNotice from './components/MenuAccessNotice';
 import { Submission, Notice, User } from './types';
 import { settingsDb } from './Firebase-appsettings';
 import { ref, onValue, set, get } from 'firebase/database';
@@ -51,7 +52,7 @@ const MenuLink: React.FC<{ icon: React.ReactNode, label: string, onClick: () => 
   </button>
 );
 
-const BottomNav: React.FC = () => {
+const BottomNav: React.FC<{ checkAccess?: (id: string, name: string) => boolean }> = ({ checkAccess }) => {
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -101,7 +102,10 @@ const BottomNav: React.FC = () => {
   return (
     <div className="fixed bottom-0 left-0 right-0 z-[80] flex justify-center items-end gap-5 pointer-events-none px-6 pb-6">
       <button 
-        onClick={() => navigate('/info-submit')}
+        onClick={() => {
+          if (checkAccess && !checkAccess('11', 'তথ্য প্রদান')) return;
+          navigate('/info-submit');
+        }}
         className={`w-12 h-12 rounded-full metallic-blue pointer-events-auto transition-all duration-300 ${isSubmit ? 'glow-active scale-110' : 'opacity-90 active:scale-95'}`}
       >
         <PlusCircle size={22} strokeWidth={isSubmit ? 3 : 2} className="text-white" />
@@ -115,7 +119,10 @@ const BottomNav: React.FC = () => {
       </button>
 
       <button 
-        onClick={() => navigate('/auth')}
+        onClick={() => {
+          if (checkAccess && !checkAccess('18', 'আমার প্রোফাইল')) return;
+          navigate('/auth');
+        }}
         className={`w-12 h-12 rounded-full metallic-blue pointer-events-auto transition-all duration-300 ${isProfile ? 'glow-active scale-110' : 'opacity-90 active:scale-95'}`}
       >
         <UserIcon size={22} strokeWidth={isProfile ? 3 : 2} className="text-white" />
@@ -221,10 +228,10 @@ const LandingScreen: React.FC<{
 
          <div className="space-y-4 text-center animate-in fade-in zoom-in duration-1000 delay-200">
             <div className="flex flex-col items-center">
-              <h1 className="text-5xl font-black tracking-tight text-[#0056b3] dark:text-blue-500 drop-shadow-sm leading-none">
+              <h1 className="text-4xl font-black tracking-tight text-[#0056b3] dark:text-blue-500 drop-shadow-sm leading-tight">
                 কয়রা-পাইকগাছা
               </h1>
-              <p className="text-[12px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.4em] mt-0.5">কমিউনিটি এপস</p>
+              <p className="text-[14px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mt-1">কমিউনিটি অ্যাপস</p>
             </div>
 
             <div className="w-full mb-4 animate-in slide-in-from-top-4 duration-1000">
@@ -272,6 +279,25 @@ const App = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [notices, setNotices] = useState<Notice[]>([]);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
+  const [menuAccess, setMenuAccess] = useState<Record<string, boolean>>({});
+  const [accessNotice, setAccessNotice] = useState<{ isOpen: boolean; menuName: string }>({ isOpen: false, menuName: '' });
+
+  useEffect(() => {
+    const accessRef = ref(settingsDb, 'menu_access');
+    const unsubscribe = onValue(accessRef, (snapshot) => {
+      setMenuAccess(snapshot.val() || {});
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const checkMenuAccess = (menuId: string, menuName: string) => {
+    if (menuAccess[menuId] === false) {
+      setAccessNotice({ isOpen: true, menuName });
+      return false;
+    }
+    return true;
+  };
+
   const [appLogo, setAppLogo] = useState('https://raw.githubusercontent.com/StackBlitz-User-Assets/logo/main/kp-logo.png');
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
     const saved = localStorage.getItem('kp_logged_in_user');
@@ -424,9 +450,9 @@ const App = () => {
               <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-900/50">
                 <div className="text-left flex flex-col overflow-hidden">
                   <div className="flex items-baseline gap-1.5 overflow-hidden">
-                    <h2 className="font-black text-xl text-[#0056b3] dark:text-blue-400 shimmer-text leading-none truncate">কয়রা-পাইকগাছা</h2>
+                    <h2 className="font-black text-lg text-[#0056b3] dark:text-blue-400 shimmer-text leading-none truncate">কয়রা-পাইকগাছা</h2>
                   </div>
-                  <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-0.5">কমিউনিটি এপস</p>
+                  <p className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-0.5">কমিউনিটি অ্যাপস</p>
                 </div>
                 <button 
                   onPointerDown={handleLongPressStart}
@@ -442,7 +468,12 @@ const App = () => {
                  <nav className="px-4 space-y-1">
                     {currentUser ? (
                       <button 
-                        onClick={() => { setIsDrawerOpen(false); navigate('/auth'); }}
+                        onClick={() => { 
+                          if (checkMenuAccess('18', 'আমার প্রোফাইল')) {
+                            setIsDrawerOpen(false); 
+                            navigate('/auth'); 
+                          }
+                        }}
                         className="w-full flex items-center gap-4 p-4 mb-2 bg-blue-50/50 dark:bg-blue-900/20 rounded-2xl text-left active:scale-[0.98] transition-all group"
                       >
                         <div className="w-12 h-12 rounded-xl border-2 border-white dark:border-slate-700 shadow-sm overflow-hidden bg-slate-100 shrink-0">
@@ -466,9 +497,19 @@ const App = () => {
                         <ArrowRight size={16} className="text-blue-400/50 group-hover:translate-x-1 transition-transform" />
                       </button>
                     ) : (
-                      <MenuLink icon={<UserIcon size={20} />} label="আমার প্রোফাইল" onClick={() => { setIsDrawerOpen(false); navigate('/auth'); }} />
+                      <MenuLink icon={<UserIcon size={20} />} label="আমার প্রোফাইল" onClick={() => { 
+                        if (checkMenuAccess('18', 'আমার প্রোফাইল')) {
+                          setIsDrawerOpen(false); 
+                          navigate('/auth'); 
+                        }
+                      }} />
                     )}
-                    <MenuLink icon={<PlusCircle size={20} />} label="তথ্য প্রদান" onClick={() => { setIsDrawerOpen(false); navigate('/info-submit'); }} />
+                    <MenuLink icon={<PlusCircle size={20} />} label="তথ্য প্রদান" onClick={() => { 
+                      if (checkMenuAccess('11', 'তথ্য প্রদান')) {
+                        setIsDrawerOpen(false); 
+                        navigate('/info-submit'); 
+                      }
+                    }} />
                     {isAdminLoggedIn && (
                        <MenuLink icon={<Lock size={20} />} label="এডমিন প্যানেল" onClick={() => { setIsDrawerOpen(false); navigate('/admin'); }} />
                     )}
@@ -550,13 +591,13 @@ const App = () => {
               </div>
               <div className="flex flex-col items-center overflow-hidden">
                 <div className="flex items-baseline gap-1.5 overflow-hidden">
-                  <h1 className="font-black text-xl tracking-tight text-white leading-none drop-shadow-sm truncate">
+                  <h1 className="font-black text-lg tracking-tight text-white leading-none drop-shadow-sm truncate">
                     {isChatPage ? 'কেপি চ্যাট' : isNewsPage ? 'কেপি পোস্ট' : 'কয়রা-পাইকগাছা'}
                   </h1>
                 </div>
                 <div className="relative h-4 flex items-center justify-center mt-0.5 overflow-hidden w-full px-2">
                   {(!isChatPage && !isNewsPage) ? (
-                    <span className="text-[9px] font-black tracking-wider uppercase text-white/80 whitespace-nowrap">কমিউনিটি এপস</span>
+                    <span className="text-[9px] font-black tracking-wider uppercase text-white/80 whitespace-nowrap">কমিউনিটি অ্যাপস</span>
                   ) : (
                     <span className="text-[9px] font-black tracking-wider uppercase whitespace-nowrap animate-rainbow-text">
                       {subtitles[subtitleIndex]}
@@ -611,24 +652,25 @@ const App = () => {
                   onLogoChange={handleLogoChange}
                 />
               } />
-              <Route path="/services" element={<Home notices={notices} isAdmin={isAdminLoggedIn} user={currentUser} />} />
-              <Route path="/category/:id/*" element={<CategoryView />} />
-              <Route path="/hotline" element={<HotlineDetail />} />
-              <Route path="/hotline/:serviceType" element={<HotlineDetail />} />
-              <Route path="/hotline/:serviceType/:upazila" element={<HotlineDetail />} />
-              <Route path="/info-submit" element={<InfoSubmit onSubmission={(s) => setSubmissions([...submissions, s])} />} />
-              <Route path="/auth" element={<UserAuth onLogin={setCurrentUser} />} />
-              <Route path="/ledger" element={currentUser ? <DigitalLedger /> : <Navigate to="/auth?to=ledger" />} />
-              <Route path="/online-haat" element={<OnlineHaat />} />
-              <Route path="/weather" element={<WeatherPage />} />
-              <Route path="/chat" element={<KPCommunityChat />} />
-              <Route path="/medical" element={<PublicMedical onBack={() => navigate('/services')} />} />
-              <Route path="/age-calculator" element={<AgeCalculator onBack={() => navigate('/services')} />} />
+              <Route path="/services" element={<Home notices={notices} isAdmin={isAdminLoggedIn} user={currentUser} checkAccess={checkMenuAccess} />} />
+              <Route path="/category/:id/*" element={<CategoryView checkAccess={checkMenuAccess} />} />
+              <Route path="/hotline" element={<HotlineDetail checkAccess={checkMenuAccess} />} />
+              <Route path="/hotline/:serviceType" element={<HotlineDetail checkAccess={checkMenuAccess} />} />
+              <Route path="/hotline/:serviceType/:upazila" element={<HotlineDetail checkAccess={checkMenuAccess} />} />
+              <Route path="/info-submit" element={<InfoSubmit onSubmission={(s) => setSubmissions([...submissions, s])} checkAccess={checkMenuAccess} />} />
+              <Route path="/auth" element={<UserAuth onLogin={setCurrentUser} checkAccess={checkMenuAccess} />} />
+              <Route path="/ledger" element={currentUser ? <DigitalLedger checkAccess={checkMenuAccess} /> : <Navigate to="/auth?to=ledger" />} />
+              <Route path="/online-haat" element={<OnlineHaat checkAccess={checkMenuAccess} />} />
+              <Route path="/weather" element={<WeatherPage checkAccess={checkMenuAccess} />} />
+              <Route path="/chat" element={<KPCommunityChat checkAccess={checkMenuAccess} />} />
+              <Route path="/medical" element={<PublicMedical onBack={() => navigate('/services')} checkAccess={checkMenuAccess} />} />
+              <Route path="/age-calculator" element={<AgeCalculator onBack={() => navigate('/services')} checkAccess={checkMenuAccess} />} />
               <Route path="/download" element={
                 <PublicDownload 
                   appLogo={appLogo} 
                   isAdminLoggedIn={isAdminLoggedIn} 
                   onLogoChange={handleLogoChange} 
+                  checkAccess={checkMenuAccess}
                 />
               } />
               <Route 
@@ -639,7 +681,12 @@ const App = () => {
             </Routes>
         </div>
       </main>
-      {!isLanding && <BottomNav />}
+      {!isLanding && <BottomNav checkAccess={checkMenuAccess} />}
+      <MenuAccessNotice 
+        isOpen={accessNotice.isOpen} 
+        onClose={() => setAccessNotice({ ...accessNotice, isOpen: false })} 
+        menuName={accessNotice.menuName} 
+      />
     </div>
   );
 }

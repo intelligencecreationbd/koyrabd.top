@@ -35,9 +35,9 @@ interface ComboPageViewProps {
 }
 
 const ContactCard: React.FC<{ contact: Contact; onClick: () => void }> = ({ contact, onClick }) => (
-  <button 
+  <div 
     onClick={onClick}
-    className="w-full flex items-center justify-between p-4 bg-white rounded-[28px] border border-slate-100 shadow-sm active:scale-[0.98] transition-all group text-left"
+    className="w-full flex items-center justify-between p-4 bg-white rounded-[28px] border border-slate-100 shadow-sm active:scale-[0.98] transition-all group text-left cursor-pointer"
   >
     <div className="flex items-center gap-3 overflow-hidden">
       <div className="w-12 h-12 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center overflow-hidden shrink-0 shadow-sm">
@@ -62,16 +62,15 @@ const ContactCard: React.FC<{ contact: Contact; onClick: () => void }> = ({ cont
       </div>
     </div>
     <div className="flex items-center gap-2 shrink-0">
-        <a 
-            href={`tel:${convertBnToEn(contact.mobile)}`} 
-            onClick={(e) => e.stopPropagation()}
-            className="p-2.5 bg-blue-600 text-white rounded-xl shadow-lg shadow-blue-500/20 active:scale-90 transition-all"
+        <button 
+            onClick={(e) => { e.stopPropagation(); onClick(); }}
+            className="px-3 py-2 bg-slate-50 text-blue-600 rounded-xl text-[10px] font-black uppercase active:scale-95 transition-all border border-blue-100 shadow-sm"
         >
-            <PhoneCall size={14} />
-        </a>
+            Details
+        </button>
         <ChevronRight size={18} className="text-slate-200 group-hover:text-blue-500 transition-colors" />
     </div>
-  </button>
+  </div>
 );
 
 const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (

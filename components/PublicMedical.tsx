@@ -40,7 +40,7 @@ const MEDICAL_SUBMENUS = [
   { id: 'tips', name: 'হেলথ টিপস', icon: Activity, color: '#EC4899' },
 ];
 
-export default function PublicMedical({ onBack }: { onBack: () => void }) {
+export default function PublicMedical({ onBack, checkAccess }: { onBack: () => void; checkAccess?: (id: string, name: string) => boolean }) {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [items, setItems] = useState<any[]>([]);

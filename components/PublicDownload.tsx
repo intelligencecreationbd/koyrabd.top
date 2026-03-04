@@ -41,6 +41,7 @@ interface PublicDownloadProps {
   appLogo: string;
   isAdminLoggedIn: boolean;
   onLogoChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  checkAccess?: (id: string, name: string) => boolean;
 }
 
 /**
@@ -48,7 +49,7 @@ interface PublicDownloadProps {
  * @Section Public Download Page
  * @Status Design & Logic Finalized - Locked - Version Text Removed
  */
-const PublicDownload: React.FC<PublicDownloadProps> = ({ appLogo, isAdminLoggedIn, onLogoChange }) => {
+const PublicDownload: React.FC<PublicDownloadProps> = ({ appLogo, isAdminLoggedIn, onLogoChange, checkAccess }) => {
   const navigate = useNavigate();
   const logoInputRef = useRef<HTMLInputElement>(null);
 
@@ -67,7 +68,7 @@ const PublicDownload: React.FC<PublicDownloadProps> = ({ appLogo, isAdminLoggedI
         </button>
         <div className="flex flex-col items-center text-center">
           <h2 className="text-xl font-black text-slate-800 tracking-tight leading-none">কয়রা-পাইকগাছা</h2>
-          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-0.5">কমিউনিটি এপস</p>
+          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-0.5">কমিউনিটি অ্যাপস</p>
         </div>
       </header>
 
