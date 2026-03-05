@@ -129,7 +129,7 @@ const PublicLegal: React.FC<{
   }, [selectedProfile]);
 
   return (
-    <div className="flex flex-col h-[calc(100vh-64px)] animate-in fade-in duration-500">
+    <div className="flex flex-col h-[calc(100vh-80px)] animate-in fade-in duration-500">
       <header className="flex items-center justify-between mb-4 shrink-0">
         <div className="flex items-center gap-4 text-left overflow-hidden">
           <button onClick={onBack} className="p-3 bg-white border border-slate-100 rounded-xl shadow-sm transition-transform active:scale-90 shrink-0">

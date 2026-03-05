@@ -271,7 +271,7 @@ const TraditionalHistory: React.FC<{ busId: string; onBack: () => void }> = ({ b
   if (!content) return <div className="py-20 text-center opacity-30">তথ্য পাওয়া যায়নি।</div>;
 
   return (
-    <div className="flex flex-col fixed inset-0 top-16 bg-white animate-in fade-in duration-700">
+    <div className="flex flex-col fixed inset-0 top-20 bg-white dark:bg-slate-950 animate-in fade-in duration-700">
       {/* Fixed Local Header */}
       <div className="shrink-0 p-5 pb-3 border-b border-slate-50 bg-white/80 backdrop-blur-md z-20">
         <div className="flex items-center gap-4 max-w-md mx-auto">

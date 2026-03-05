@@ -80,7 +80,7 @@ const PublicTransport: React.FC<{
   }, [currentBus]);
 
   return (
-    <div className="flex flex-col h-[calc(100vh-64px)] animate-in fade-in duration-500">
+    <div className="flex flex-col h-[calc(100vh-80px)] animate-in fade-in duration-500">
       <header className="flex items-center justify-center mb-6 shrink-0">
         <div className="w-full text-center overflow-hidden">
           <h2 className="text-2xl font-black text-slate-800 leading-tight truncate">

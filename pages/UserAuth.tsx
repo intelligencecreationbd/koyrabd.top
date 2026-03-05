@@ -40,8 +40,16 @@ import {
 } from 'lucide-react';
 import { User as AppUser } from '../types';
 
-import { db } from '../firebase';
+import { userDb as db, userAuth as auth } from '../Firebase-user';
 import { ref, get, set, update, child } from "firebase/database";
+import { 
+    signInWithEmailAndPassword, 
+    createUserWithEmailAndPassword, 
+    sendPasswordResetEmail,
+    updateProfile,
+    onAuthStateChanged,
+    signOut
+} from "firebase/auth";
 
 const toBn = (num: string | number | undefined) => 
     (num || '').toString().replace(/\d/g, d => "০১২৩৪৫৬৭৮৯"[parseInt(d)]);

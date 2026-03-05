@@ -279,7 +279,7 @@ const PublicHaat: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const isMyView = filterSeller && currentUser && filterSeller.id === currentUser.memberId;
 
   return (
-    <div className="flex flex-col h-[calc(100vh-64px)] animate-in fade-in duration-500">
+    <div className="flex flex-col h-[calc(100vh-80px)] animate-in fade-in duration-500">
        {/* Full Image Modal */}
        {showFullImage && (
          <div className="fixed inset-0 z-[200] bg-slate-950 flex flex-col items-center justify-center p-4 animate-in zoom-in duration-200" onClick={() => setShowFullImage(null)}>
@@ -321,7 +321,7 @@ const PublicHaat: React.FC<{ onBack: () => void }> = ({ onBack }) => {
           </div>
        )}
 
-       <header className="relative flex items-center justify-between min-h-[64px] shrink-0 px-1">
+       <header className="relative flex items-center justify-between min-h-[80px] shrink-0 px-1">
           <button 
             onClick={selectedProduct ? () => setSelectedProduct(null) : (filterSeller ? () => setFilterSeller(null) : onBack)} 
             className="p-3 bg-white border border-slate-100 rounded-xl shadow-sm shrink-0 active:scale-90 transition-all"

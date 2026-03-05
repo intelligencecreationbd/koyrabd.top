@@ -35,7 +35,7 @@ import {
 import { useNavigate, useLocation } from 'react-router-dom';
 import { ref, onValue, set, push, remove, update } from 'firebase/database';
 import { kppostDb } from '../Firebase-kppost';
-import { db } from '../firebase';
+import { userDb as db } from '../Firebase-user';
 
 const toBn = (num: string | number) => 
   (num || '').toString().replace(/\d/g, d => "০১২৩৪৫৬৭৮৯"[parseInt(d)]);
@@ -49,7 +49,7 @@ const EditField = ({ label, value, placeholder, onChange, icon, type = 'text', r
             type={type}
             readOnly={readOnly}
             placeholder={placeholder}
-            className={`w-full ${icon ? 'pl-11' : 'px-5'} py-3.5 ${readOnly ? 'bg-slate-100 opacity-80' : 'bg-slate-50'} border border-slate-100 rounded-2xl font-bold outline-none text-slate-800 transition-all focus:border-blue-400 shadow-sm`} 
+            className={`w-full ${icon ? 'pl-11' : 'px-5'} py-3.5 ${readOnly ? 'bg-slate-100 opacity-80' : 'bg-slate-50'} border border-slate-100 rounded-2xl font-semibold outline-none text-slate-800 transition-all focus:border-blue-400 shadow-sm`} 
             value={value} 
             onChange={e => onChange(e.target.value)} 
           />
@@ -207,6 +207,9 @@ export default function PublicNews({ onBack }: { onBack: () => void }) {
   }, [selectedNews]);
 
   const getReporterData = (news: any) => {
+    if (news.isAdminPost || news.reporter === 'এডমিন') {
+        return { name: news.reporter || 'এডমিন', isVerified: true, village: '', photoURL: '' };
+    }
     if (!news.userId) return { name: news.reporter || 'নিজস্ব প্রতিবেদক', isVerified: false, village: '', photoURL: '' };
     const user = allUsers.find(u => u.memberId === news.userId);
     if (!user) return { name: news.reporter || 'ইউজার', isVerified: false, village: '', photoURL: '' };
@@ -442,7 +445,7 @@ export default function PublicNews({ onBack }: { onBack: () => void }) {
                    </div>
                    <div className="overflow-hidden">
                       <div className="flex items-center gap-1.5 overflow-hidden">
-                        <p className="text-base font-black text-slate-800 leading-none truncate">{reporterData.name}</p>
+                        <p className="text-sm font-semibold text-slate-800 leading-none truncate tracking-wide">{reporterData.name}</p>
                         {reporterData.isVerified && <CheckCircle2 size={15} fill="#1877F2" className="text-white shrink-0" />}
                       </div>
                       <div className="flex items-center gap-1 mt-1 overflow-hidden">
@@ -603,7 +606,7 @@ export default function PublicNews({ onBack }: { onBack: () => void }) {
                   </button>
                </div>
 
-               <button onClick={() => setSelectedNews(featuredNews)} className="w-full text-left group transition-all">
+               <div onClick={() => setSelectedNews(featuredNews)} className="w-full text-left group transition-all cursor-pointer" role="button" tabIndex={0}>
                  <div className="w-full aspect-[16/9] rounded-[35px] overflow-hidden bg-slate-100 border border-slate-100 mb-5 relative shadow-md">
                     {featuredNews.photo ? (
                        <img src={featuredNews.photo} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-1000" alt="Featured" />
@@ -629,7 +632,7 @@ export default function PublicNews({ onBack }: { onBack: () => void }) {
                                 </div>
                                 <div className="flex flex-col overflow-hidden">
                                     <div className="flex items-center gap-1.5 overflow-hidden">
-                                        <span className="text-[11px] font-black text-slate-800 truncate">{rep.name}</span>
+                                        <span className="text-[10px] font-semibold text-slate-800 truncate tracking-wide">{rep.name}</span>
                                         {rep.isVerified && <CheckCircle2 size={12} fill="#1877F2" className="text-white shrink-0" />}
                                     </div>
                                     {rep.isVerified && rep.village && (
@@ -644,7 +647,7 @@ export default function PublicNews({ onBack }: { onBack: () => void }) {
                         <button onClick={(e) => { e.stopPropagation(); handleShare(featuredNews); }} className="p-2 bg-emerald-50 text-emerald-600 rounded-xl border border-emerald-100 active:scale-90 transition-all"><Share2 size={16} /></button>
                     </div>
                  </div>
-               </button>
+               </div>
             </div>
           )}
           <div className="space-y-8 pb-10">
@@ -653,7 +656,7 @@ export default function PublicNews({ onBack }: { onBack: () => void }) {
               {regularNews.map((news, idx) => {
                 const rep = getReporterData(news);
                 return (
-                    <button key={news.id} onClick={() => setSelectedNews(news)} className="w-full flex gap-4 text-left group animate-in slide-in-from-bottom-4 duration-500" style={{ animationDelay: `${idx * 100}ms` }}>
+                    <div key={news.id} onClick={() => setSelectedNews(news)} className="w-full flex gap-4 text-left group animate-in slide-in-from-bottom-4 duration-500 cursor-pointer" style={{ animationDelay: `${idx * 100}ms` }} role="button" tabIndex={0}>
                       <div className="flex-1 space-y-2 py-0.5 overflow-hidden">
                         <div className="flex items-center gap-2 text-[8px] font-black text-blue-500 uppercase tracking-widest overflow-hidden">
                             <span className="text-red-600 font-black truncate">{categories.find(c=>c.id===news.category)?.name || 'সাধারণ'}</span>
@@ -670,7 +673,7 @@ export default function PublicNews({ onBack }: { onBack: () => void }) {
                                 )}
                             </div>
                             <div className="flex items-center gap-1 overflow-hidden">
-                                <span className="text-[10px] font-black text-slate-600 truncate">{rep.name}</span>
+                                <span className="text-[9px] font-semibold text-slate-600 truncate tracking-wide">{rep.name}</span>
                                 {rep.isVerified && <CheckCircle2 size={11} fill="#1877F2" className="text-white shrink-0" />}
                                 {rep.isVerified && rep.village && (
                                     <span className="text-[9px] font-bold text-blue-500 opacity-80 truncate ml-1 overflow-hidden max-w-[60px]">• {rep.village}</span>
@@ -679,7 +682,7 @@ export default function PublicNews({ onBack }: { onBack: () => void }) {
                         </div>
                       </div>
                       <div className="w-24 h-24 rounded-2xl overflow-hidden bg-slate-50 border border-slate-100 shadow-sm shrink-0">{news.photo ? <img src={news.photo} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt="" /> : <div className="w-full h-full flex items-center justify-center text-slate-200"><Newspaper size={24}/></div>}</div>
-                    </button>
+                    </div>
                 );
               })}
             </div>

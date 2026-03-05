@@ -229,7 +229,7 @@ const PublicLedger: React.FC<PublicLedgerProps> = ({ user, onBack }) => {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-64px)] animate-in fade-in duration-500">
+    <div className="flex flex-col h-[calc(100vh-80px)] animate-in fade-in duration-500">
       <header className="flex items-center gap-4 mb-5 shrink-0 px-1">
         <button onClick={onBack} className="p-3 bg-white border border-slate-100 rounded-2xl shadow-sm active:scale-90 transition-all"><ChevronLeft size={22} /></button>
         <div className="flex-1 text-left">

@@ -17,10 +17,11 @@ interface HomeProps {
   notices: Notice[];
   isAdmin: boolean;
   user: User | null;
+  isDarkMode: boolean;
   checkAccess?: (id: string, name: string) => boolean;
 }
 
-export function Home({ notices, isAdmin, user, checkAccess }: HomeProps) {
+export function Home({ notices, isAdmin, user, isDarkMode, checkAccess }: HomeProps) {
   const navigate = useNavigate();
   const [currentPage, setCurrentPage] = useState(0);
   const [chatNotifications, setChatNotifications] = useState(0);
@@ -63,12 +64,12 @@ export function Home({ notices, isAdmin, user, checkAccess }: HomeProps) {
   };
 
   return (
-    <div className="fixed inset-x-0 bottom-0 top-16 overflow-hidden flex flex-col pt-4 px-4 pb-0 animate-in fade-in duration-700">
+    <div className="fixed inset-x-0 bottom-0 top-20 overflow-hidden flex flex-col pt-4 px-4 pb-0 animate-in fade-in duration-700">
       
       {/* Notice Board - Compact */}
-      <div className="shrink-0 relative overflow-hidden bg-notice rounded-full py-1.5 px-6 border border-blue-100 shadow-[inset_0_1px_2px_rgba(0,86,179,0.05)] mb-3">
+      <div className="shrink-0 relative overflow-hidden bg-notice dark:bg-slate-900/50 rounded-full py-1.5 px-6 border border-blue-100 dark:border-slate-800 shadow-[inset_0_1px_2px_rgba(0,86,179,0.05)] mb-3">
         <div className="relative h-5 flex items-center overflow-hidden">
-          <div className="scrolling-text absolute whitespace-nowrap text-[13px] font-bold text-[#001f3f]">
+          <div className="scrolling-text absolute whitespace-nowrap text-[13px] font-bold text-[#001f3f] dark:text-blue-300">
             {notices.length > 0 
               ? notices.map(n => n.content).join('  •  ') 
               : 'কয়রা-পাইকগাছা কমিউনিটি অ্যাপে আপনাকে স্বাগতম!'}
@@ -80,17 +81,17 @@ export function Home({ notices, isAdmin, user, checkAccess }: HomeProps) {
       {isAdmin && (
         <button 
           onClick={() => navigate('/admin')}
-          className="shrink-0 w-full flex items-center justify-between p-2.5 bg-white border border-blue-100 rounded-[20px] shadow-md transform active:scale-[0.98] transition-all group mb-3"
+          className="shrink-0 w-full flex items-center justify-between p-2.5 bg-white dark:bg-slate-900/50 border border-blue-100 dark:border-slate-800 rounded-[20px] shadow-md transform active:scale-[0.98] transition-all group mb-3"
         >
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-50 rounded-xl text-[#0056b3] group-hover:bg-[#0056b3] group-hover:text-white transition-all">
+            <div className="p-2 bg-blue-50 dark:bg-blue-900/30 rounded-xl text-[#0056b3] dark:text-blue-400 group-hover:bg-[#0056b3] group-hover:text-white transition-all">
               <LayoutDashboard size={18} />
             </div>
             <div className="text-left">
-              <p className="font-bold text-sm text-[#1A1A1A]">এডমিন প্যানেল</p>
+              <p className="font-bold text-sm text-[#1A1A1A] dark:text-slate-200">এডমিন প্যানেল</p>
             </div>
           </div>
-          <ChevronRight size={16} className="text-blue-200 group-hover:text-[#0056b3] transition-colors" />
+          <ChevronRight size={16} className="text-blue-200 dark:text-slate-600 group-hover:text-[#0056b3] transition-colors" />
         </button>
       )}
 
@@ -140,21 +141,21 @@ export function Home({ notices, isAdmin, user, checkAccess }: HomeProps) {
                       }
                       else navigate(`/category/${category.id}`);
                     }}
-                    className="flex flex-col items-center justify-center gap-2 p-2 premium-card rounded-[28px] group w-full aspect-square shadow-md border border-slate-50 relative overflow-hidden"
+                    className="flex flex-col items-center justify-center gap-2 p-2 premium-card rounded-[28px] group w-full aspect-square shadow-md border border-slate-50 dark:border-slate-800 relative overflow-hidden"
                   >
                     <div className="relative">
                       {hasProfilePic ? (
-                        <div className="w-14 h-14 rounded-[20px] overflow-hidden border-2 border-white shadow-md shrink-0">
+                        <div className="w-14 h-14 rounded-[20px] overflow-hidden border-2 border-white dark:border-slate-700 shadow-md shrink-0">
                            <img src={(user as any).photoURL} className="w-full h-full object-cover" alt="Profile" />
                         </div>
                       ) : (
                         <div 
                           className="w-14 h-14 rounded-[20px] flex items-center justify-center transition-all duration-300 group-hover:scale-110 shrink-0"
                           style={{ 
-                            backgroundColor: `${iconColor}12`,
+                            backgroundColor: isDarkMode ? `${iconColor}25` : `${iconColor}12`,
                             color: iconColor,
-                            boxShadow: `0 6px 14px -3px ${iconColor}24`,
-                            border: `1px solid ${iconColor}18`
+                            boxShadow: isDarkMode ? `0 6px 14px -3px rgba(0,0,0,0.4)` : `0 6px 14px -3px ${iconColor}24`,
+                            border: `1px solid ${isDarkMode ? `${iconColor}40` : `${iconColor}18`}`
                           }}
                         >
                           <IconComponent size={34} className="icon-floating" />
@@ -169,7 +170,7 @@ export function Home({ notices, isAdmin, user, checkAccess }: HomeProps) {
                       )}
                     </div>
 
-                    <span className="text-[11px] font-black text-center leading-tight text-slate-800 line-clamp-1 px-0.5 uppercase tracking-tighter">
+                    <span className="text-[11px] font-black text-center leading-tight text-slate-800 dark:text-slate-200 line-clamp-1 px-0.5 uppercase tracking-tighter">
                       {category.name}
                     </span>
                   </button>

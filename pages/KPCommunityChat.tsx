@@ -19,7 +19,7 @@ import {
   deleteField
 } from 'firebase/firestore';
 import { chatDb } from '../Firebase-kpchat';
-import { db } from '../firebase';
+import { userDb as db } from '../Firebase-user';
 import { 
   ChevronLeft, 
   Search, 

@@ -24,7 +24,7 @@ import {
   CheckCircle2
 } from 'lucide-react';
 
-import { db } from '../firebase';
+import { userDb as db } from '../Firebase-user';
 import { ref, get, set, update, child, onValue } from "firebase/database";
 
 const toBn = (num: string | number) => 

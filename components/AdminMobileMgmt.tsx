@@ -24,7 +24,7 @@ import {
   CheckCircle2
 } from 'lucide-react';
 import { ref, onValue, set, push, remove } from 'firebase/database';
-import { directoryDb } from '../Firebase-directory';
+import { mobileDb } from '../Firebase-mobile';
 import { uploadImageToServer } from '../src/services/uploadService';
 
 const Header: React.FC<{ title: string; onBack: () => void }> = ({ title, onBack }) => (
@@ -95,7 +95,7 @@ const AdminMobileMgmt: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const parentId = useMemo(() => currentPath.length > 0 ? currentPath[currentPath.length - 1].id : 'root', [currentPath]);
 
   useEffect(() => {
-    const catsRef = ref(directoryDb, `${rootNode}/categories`);
+    const catsRef = ref(mobileDb, `${rootNode}/categories`);
     const unsubscribe = onValue(catsRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
@@ -108,7 +108,7 @@ const AdminMobileMgmt: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   }, [rootNode]);
 
   useEffect(() => {
-    const dataRef = ref(directoryDb, `${rootNode}/data/${parentId}`);
+    const dataRef = ref(mobileDb, `${rootNode}/data/${parentId}`);
     const unsubscribe = onValue(dataRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
@@ -138,7 +138,7 @@ const AdminMobileMgmt: React.FC<{ onBack: () => void }> = ({ onBack }) => {
             : parentId;
 
         const newCat = { id, name: catName, parentId: currentParentId };
-        const catRef = ref(directoryDb, `${rootNode}/categories/${id}`);
+        const catRef = ref(mobileDb, `${rootNode}/categories/${id}`);
         await set(catRef, newCat);
         
         setCatName('');
@@ -171,10 +171,10 @@ const AdminMobileMgmt: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         const finalData = { ...contactForm, photo: photoUrl };
 
         if (editingContactId) {
-          const contactRef = ref(directoryDb, `${rootNode}/data/${parentId}/${editingContactId}`);
+          const contactRef = ref(mobileDb, `${rootNode}/data/${parentId}/${editingContactId}`);
           await set(contactRef, { ...finalData, id: editingContactId });
         } else {
-          const dataRef = ref(directoryDb, `${rootNode}/data/${parentId}`);
+          const dataRef = ref(mobileDb, `${rootNode}/data/${parentId}`);
           const newRef = push(dataRef);
           await set(newRef, { ...finalData, id: newRef.key });
         }
@@ -192,9 +192,9 @@ const AdminMobileMgmt: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     if (window.confirm('এই ক্যাটাগরি এবং এর ভেতরের সকল তথ্য স্থায়ীভাবে মুছে যাবে। আপনি কি নিশ্চিত?')) {
         try {
             setIsSubmitting(true);
-            const catRef = ref(directoryDb, `${rootNode}/categories/${id}`);
+            const catRef = ref(mobileDb, `${rootNode}/categories/${id}`);
             await remove(catRef);
-            const dataRef = ref(directoryDb, `${rootNode}/data/${id}`);
+            const dataRef = ref(mobileDb, `${rootNode}/data/${id}`);
             await remove(dataRef);
         } catch (error) {
             alert('মুছে ফেলা সম্ভব হয়নি। আবার চেষ্টা করুন।');
@@ -207,7 +207,7 @@ const AdminMobileMgmt: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const handleDeleteContact = async (contactId: string) => {
     if (window.confirm('এই কন্টাক্ট নম্বরটি মুছে ফেলতে চান?')) {
         try {
-            const contactRef = ref(directoryDb, `${rootNode}/data/${parentId}/${contactId}`);
+            const contactRef = ref(mobileDb, `${rootNode}/data/${parentId}/${contactId}`);
             await remove(contactRef);
         } catch (error) {
             alert('মুছে ফেলা সম্ভব হয়নি!');

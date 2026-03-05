@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import { ref, onValue } from 'firebase/database';
+import { mobileDb } from '../Firebase-mobile';
 import { directoryDb } from '../Firebase-directory';
 import UnionParishadView from './RepMgmt/UnionParishadView';
 
@@ -109,6 +110,7 @@ const PublicDirectory: React.FC<PublicDirectoryProps> = ({ id, categoryName, pat
   const profileIdFromUrl = searchParams.get('item');
 
   const rootNode = useMemo(() => id === '15' ? 'মোবাইল নাম্বার' : 'জনপ্রতিনিধি', [id]);
+  const db = useMemo(() => id === '15' ? mobileDb : directoryDb, [id]);
 
   const selections = useMemo(() => pathParts, [pathParts]);
 
@@ -125,7 +127,7 @@ const PublicDirectory: React.FC<PublicDirectoryProps> = ({ id, categoryName, pat
 
   useEffect(() => {
     setIsLoading(true);
-    const catsRef = ref(directoryDb, `${rootNode}/categories`);
+    const catsRef = ref(db, `${rootNode}/categories`);
     const unsubscribe = onValue(catsRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
@@ -139,7 +141,7 @@ const PublicDirectory: React.FC<PublicDirectoryProps> = ({ id, categoryName, pat
   }, [rootNode]);
 
   useEffect(() => {
-    const dataRef = ref(directoryDb, `${rootNode}/data`);
+    const dataRef = ref(db, `${rootNode}/data`);
     const unsubscribe = onValue(dataRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
@@ -195,7 +197,7 @@ const PublicDirectory: React.FC<PublicDirectoryProps> = ({ id, categoryName, pat
       return;
     }
     setIsLoading(true);
-    const dataRef = ref(directoryDb, `${rootNode}/data/${leafId}`);
+    const dataRef = ref(db, `${rootNode}/data/${leafId}`);
     const unsubscribe = onValue(dataRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
@@ -251,7 +253,7 @@ const PublicDirectory: React.FC<PublicDirectoryProps> = ({ id, categoryName, pat
   }, [searchTerm, isSearchMode, globalData, dataList]);
 
   return (
-    <div className="flex flex-col h-[calc(100vh-64px)] animate-in fade-in duration-500">
+    <div className="flex flex-col h-[calc(100vh-80px)] animate-in fade-in duration-500">
       <header className={`flex items-center shrink-0 px-1 ${selectedItem ? 'mb-1 justify-center' : 'mb-4 justify-between'}`}>
         {!selectedItem ? (
           <div className="flex items-center gap-4">

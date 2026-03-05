@@ -298,6 +298,14 @@ const App = () => {
     return true;
   };
 
+  useEffect(() => {
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [isDarkMode]);
+
   const [appLogo, setAppLogo] = useState('https://raw.githubusercontent.com/StackBlitz-User-Assets/logo/main/kp-logo.png');
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
     const saved = localStorage.getItem('kp_logged_in_user');
@@ -306,6 +314,9 @@ const App = () => {
 
   const [subtitleIndex, setSubtitleIndex] = useState(0);
   const subtitles = ["এক ক্লিকে সকল তথ্য", "বিপদে আপনার বন্ধু"];
+  
+  const [mainSubtitleIndex, setMainSubtitleIndex] = useState(0);
+  const mainSubtitles = ["কমিউনিটি অ্যাপস", "www.koyrabd.top"];
 
   const longPressTimer = useRef<any>(null);
   const navigate = useNavigate();
@@ -329,6 +340,13 @@ const App = () => {
     }, 3000);
     return () => clearInterval(interval);
   }, [subtitles.length]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setMainSubtitleIndex((prev) => (prev + 1) % mainSubtitles.length);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [mainSubtitles.length]);
 
   useEffect(() => {
     // Load admin password from AppSettings Firebase
@@ -359,11 +377,6 @@ const App = () => {
       unsubscribeLogo();
     };
   }, []);
-
-  useEffect(() => {
-    if (isDarkMode) document.documentElement.classList.add('dark');
-    else document.documentElement.classList.remove('dark');
-  }, [isDarkMode]);
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 20);
@@ -583,7 +596,7 @@ const App = () => {
           </div>
 
           <header className={`sticky top-0 z-50 transition-all duration-500 header-liquid header-curves glass-header border-b ${isScrolled ? 'opacity-100 shadow-lg' : 'opacity-95'}`}>
-            <div className="w-full px-5 h-16 flex items-center justify-between relative z-10">
+            <div className="w-full px-5 h-20 flex items-center justify-between relative z-10">
               <div className="flex items-center gap-0 shrink-0">
                 <button onClick={() => setIsDrawerOpen(true)} className="p-2.5 rounded-xl text-white/80 hover:text-white transition-all duration-300 active:scale-90">
                   <Menu size={22} strokeWidth={2.5} />
@@ -591,13 +604,15 @@ const App = () => {
               </div>
               <div className="flex flex-col items-center overflow-hidden">
                 <div className="flex items-baseline gap-1.5 overflow-hidden">
-                  <h1 className="font-black text-lg tracking-tight text-white leading-none drop-shadow-sm truncate">
+                  <h1 className="font-black text-xl tracking-tight text-white leading-none drop-shadow-sm truncate">
                     {isChatPage ? 'কেপি চ্যাট' : isNewsPage ? 'কেপি পোস্ট' : 'কয়রা-পাইকগাছা'}
                   </h1>
                 </div>
                 <div className="relative h-4 flex items-center justify-center mt-0.5 overflow-hidden w-full px-2">
                   {(!isChatPage && !isNewsPage) ? (
-                    <span className="text-[9px] font-black tracking-wider uppercase text-white/80 whitespace-nowrap">কমিউনিটি অ্যাপস</span>
+                    <span key={mainSubtitleIndex} className="text-[9px] font-black tracking-wider uppercase text-white/80 whitespace-nowrap animate-in fade-in duration-500">
+                      {mainSubtitles[mainSubtitleIndex]}
+                    </span>
                   ) : (
                     <span className="text-[9px] font-black tracking-wider uppercase whitespace-nowrap animate-rainbow-text">
                       {subtitles[subtitleIndex]}
@@ -652,7 +667,7 @@ const App = () => {
                   onLogoChange={handleLogoChange}
                 />
               } />
-              <Route path="/services" element={<Home notices={notices} isAdmin={isAdminLoggedIn} user={currentUser} checkAccess={checkMenuAccess} />} />
+              <Route path="/services" element={<Home notices={notices} isAdmin={isAdminLoggedIn} user={currentUser} isDarkMode={isDarkMode} checkAccess={checkMenuAccess} />} />
               <Route path="/category/:id/*" element={<CategoryView checkAccess={checkMenuAccess} />} />
               <Route path="/hotline" element={<HotlineDetail checkAccess={checkMenuAccess} />} />
               <Route path="/hotline/:serviceType" element={<HotlineDetail checkAccess={checkMenuAccess} />} />

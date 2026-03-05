@@ -21,6 +21,7 @@ import {
   Inbox,
   Edit2,
   Check,
+  CheckCircle2,
   Zap,
   Send,
   Link as LinkIcon,
@@ -44,19 +45,24 @@ const Header = ({ title, onBack }: { title: string; onBack: () => void }) => (
   </div>
 );
 
-const EditField = ({ label, value, placeholder, onChange, icon, type = 'text', readOnly = false }: any) => (
+const EditField = ({ label, value, placeholder, onChange, icon, type = 'text', readOnly = false, verified = false }: any) => (
   <div className="text-left w-full">
     <label className="text-[10px] font-bold text-slate-400 block mb-1.5 uppercase tracking-wider pl-1">{label}</label>
-    <div className="relative">
+    <div className="relative flex items-center">
         {icon && <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300">{icon}</div>}
         <input 
           type={type}
           readOnly={readOnly}
           placeholder={placeholder}
-          className={`w-full ${icon ? 'pl-11' : 'px-5'} py-3.5 ${readOnly ? 'bg-slate-100 opacity-70' : 'bg-slate-50'} border border-slate-100 rounded-2xl font-bold outline-none text-slate-800 transition-all focus:border-blue-400 shadow-sm`} 
+          className={`w-full ${icon ? 'pl-11' : 'px-5'} ${verified ? 'pr-12' : 'px-5'} py-3.5 ${readOnly ? 'bg-slate-100 opacity-70' : 'bg-slate-50'} border border-slate-100 rounded-2xl font-semibold outline-none text-slate-800 transition-all focus:border-blue-400 shadow-sm`} 
           value={value} 
           onChange={e => onChange(e.target.value)} 
         />
+        {verified && (
+          <div className="absolute right-4 top-1/2 -translate-y-1/2">
+            <CheckCircle2 size={18} fill="#1877F2" className="text-white" />
+          </div>
+        )}
     </div>
   </div>
 );
@@ -102,7 +108,7 @@ export default function AdminNewsMgmt({ onBack }: { onBack: () => void }) {
   };
 
   const [form, setForm] = useState({
-    title: '', description: '', date: getCurrentDateTime(), reporter: '', photo: '', category: '', source: ''
+    title: '', description: '', date: getCurrentDateTime(), reporter: 'এডমিন', photo: '', category: '', source: ''
   });
 
   useEffect(() => {
@@ -255,7 +261,7 @@ export default function AdminNewsMgmt({ onBack }: { onBack: () => void }) {
         
         setShowForm(false);
         setEditingId(null);
-        setForm({ title: '', description: '', date: getCurrentDateTime(), reporter: '', photo: '', category: categories[0]?.id || '', source: '' });
+        setForm({ title: '', description: '', date: getCurrentDateTime(), reporter: 'এডমিন', photo: '', category: categories[0]?.id || '', source: '' });
     } catch (e) { alert('সংরক্ষণ ব্যর্থ হয়েছে!'); }
     finally { setIsSubmitting(false); }
   };
@@ -465,6 +471,7 @@ export default function AdminNewsMgmt({ onBack }: { onBack: () => void }) {
                                 value={pendingEditForm.reporter} 
                                 onChange={(v:string) => setPendingEditForm({...pendingEditForm, reporter: v})} 
                                 icon={<UserIcon size={16}/>}
+                                verified={pendingEditForm.reporter === 'এডমিন'}
                             />
                             
                             <EditField 
@@ -557,7 +564,7 @@ export default function AdminNewsMgmt({ onBack }: { onBack: () => void }) {
               </div>
             )}
         </div>
-        <button onClick={() => { setEditingId(null); setForm({title: '', description: '', date: getCurrentDateTime(), reporter: '', photo: '', category: categories[0]?.id || '', source: ''}); setShowForm(true); }} className="w-full py-5 bg-[#4CAF50] text-white font-black rounded-[30px] shadow-xl flex items-center justify-center gap-3 active:scale-95 border-b-4 border-green-700">
+        <button onClick={() => { setEditingId(null); setForm({title: '', description: '', date: getCurrentDateTime(), reporter: 'এডমিন', photo: '', category: categories[0]?.id || '', source: ''}); setShowForm(true); }} className="w-full py-5 bg-[#4CAF50] text-white font-black rounded-[30px] shadow-xl flex items-center justify-center gap-3 active:scale-95 border-b-4 border-green-700">
             <Plus /> নতুন সংবাদ যোগ করুন
         </button>
 
@@ -606,7 +613,10 @@ export default function AdminNewsMgmt({ onBack }: { onBack: () => void }) {
                         <div className="flex-1 overflow-hidden text-left space-y-1">
                             <h4 className="font-black text-slate-800 line-clamp-2 text-sm leading-tight">{news.title}</h4>
                             <div className="flex flex-wrap items-center gap-2 text-[9px] font-bold text-slate-400">
-                                <span className="text-blue-600 font-black uppercase truncate max-w-[100px]">{news.reporter || 'ডেস্ক'}</span>
+                                <div className="flex items-center gap-1 overflow-hidden">
+                                    <span className="text-[8px] text-blue-600 font-semibold uppercase truncate max-w-[100px] tracking-wide">{news.reporter || 'ডেস্ক'}</span>
+                                    {(news.isAdminPost || news.reporter === 'এডমিন') && <CheckCircle2 size={10} fill="#1877F2" className="text-white shrink-0" />}
+                                </div>
                                 <span className="shrink-0">• {news.date}</span>
                             </div>
                         </div>
@@ -659,7 +669,7 @@ export default function AdminNewsMgmt({ onBack }: { onBack: () => void }) {
                             </div>
                         </div>
                         <EditField label="শিরোনাম *" value={form.title} onChange={(v:any)=>setForm({...form, title:v})} placeholder="টাইটেল লিখুন" icon={<Newspaper size={18}/>} />
-                        <EditField label="রিপোর্টার *" value={form.reporter} onChange={(v:any)=>setForm({...form, reporter:v})} placeholder="নাম লিখুন" icon={<UserIcon size={18}/>} />
+                        <EditField label="রিপোর্টার *" value={form.reporter} onChange={(v:any)=>setForm({...form, reporter:v})} placeholder="নাম লিখুন" icon={<UserIcon size={18}/>} verified={form.reporter === 'এডমিন'} />
                         <EditField label="তারিখ ও সময়" value={form.date} onChange={(v:any)=>setForm({...form, date:v})} placeholder="অটো ফিলাপ" icon={<Calendar size={18}/>} />
                         <div className="text-left">
                             <label className="text-[10px] font-bold text-slate-400 block mb-1.5 uppercase tracking-wider pl-1">বিস্তারিত</label>
