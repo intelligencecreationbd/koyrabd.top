@@ -24,7 +24,21 @@ import {
   UserCircle,
   Calculator,
   Headset,
-  Download
+  Download,
+  Navigation,
+  Map,
+  Layers,
+  Milestone,
+  Library,
+  Waves,
+  Landmark,
+  Users2,
+  Trophy,
+  Store,
+  Trees,
+  Home as HomeIcon,
+  School,
+  Fish
 } from 'lucide-react';
 import { MainMenu } from './types';
 
@@ -165,7 +179,10 @@ export const CATEGORIES: MainMenu[] = [
       },
       { 
         id: '9-2', 
-        name: 'পাইকগাছা উপজেলা তথ্য'
+        name: 'পাইকগাছা উপজেলা তথ্য',
+        nestedSubMenus: [
+          { id: '9-2-1', name: 'সাধারন পরিচিতি' }
+        ]
       }
     ]
   },
@@ -223,5 +240,19 @@ export const ICON_MAP: Record<string, any> = {
   UserCircle,
   Calculator,
   Headset,
-  Download
+  Download,
+  Navigation,
+  Map,
+  Layers,
+  Milestone,
+  Library,
+  Waves,
+  Landmark,
+  Users2,
+  Trophy,
+  Store,
+  Trees,
+  HomeIcon,
+  School,
+  Fish
 };
