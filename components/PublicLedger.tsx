@@ -27,7 +27,7 @@ import {
 } from 'lucide-react';
 import { User } from '../types';
 import { ledgerDb } from '../Firebase-digitalledger';
-import { ref, onValue, set, push, remove, update } from 'firebase/database';
+import { collection, onSnapshot, doc, addDoc, updateDoc, deleteDoc, query, orderBy } from 'firebase/firestore';
 
 const toBn = (num: string | number) => 
   (num || '০').toString().replace(/\d/g, d => "০১২৩৪৫৬৭৮৯"[parseInt(d)]);
@@ -67,21 +67,20 @@ const PublicLedger: React.FC<PublicLedgerProps> = ({ user, onBack }) => {
 
   useEffect(() => {
     if (!user) return;
-    const ledgerRef = ref(ledgerDb, `ledgers/${user.memberId}`);
+    const ledgerCollection = collection(ledgerDb, 'users', user.memberId, 'ledgers');
+    const q = query(ledgerCollection);
     
-    const unsubscribe = onValue(ledgerRef, (snapshot) => {
-      if (snapshot.exists()) {
-        const data = snapshot.val();
-        const list = Object.keys(data).map(key => ({ ...data[key], id: key }));
-        setLedgerEntries(list.sort((a, b) => (b.lastUpdate || b.createdAt).localeCompare(a.lastUpdate || a.createdAt)));
-        
-        if (selectedEntry) {
-          const updated = list.find(e => e.id === selectedEntry.id);
-          if (updated) setSelectedEntry(updated);
-        }
-      } else {
-        setLedgerEntries([]);
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const list = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+      setLedgerEntries(list.sort((a: any, b: any) => (b.lastUpdate || b.createdAt).localeCompare(a.lastUpdate || a.createdAt)));
+      
+      if (selectedEntry) {
+        const updated = list.find(e => e.id === selectedEntry.id);
+        if (updated) setSelectedEntry(updated);
       }
+    }, (error) => {
+      console.error("Firestore error:", error);
+      setLedgerEntries([]);
     });
 
     return () => unsubscribe();
@@ -179,9 +178,11 @@ const PublicLedger: React.FC<PublicLedgerProps> = ({ user, onBack }) => {
       };
 
       if (entryId) {
-        await update(ref(ledgerDb, `ledgers/${user.memberId}/${entryId}`), newEntry);
+        const entryRef = doc(ledgerDb, 'users', user.memberId, 'ledgers', entryId);
+        await updateDoc(entryRef, newEntry);
       } else {
-        await push(ref(ledgerDb, `ledgers/${user.memberId}`), newEntry);
+        const ledgerCollection = collection(ledgerDb, 'users', user.memberId, 'ledgers');
+        await addDoc(ledgerCollection, newEntry);
       }
       
       setShowLedgerForm(false);
@@ -199,7 +200,8 @@ const PublicLedger: React.FC<PublicLedgerProps> = ({ user, onBack }) => {
     if (!selectedEntry || !user || !personEditForm.personName) return;
     setIsSubmitting(true);
     try {
-      await update(ref(ledgerDb, `ledgers/${user.memberId}/${selectedEntry.id}`), {
+      const entryRef = doc(ledgerDb, 'users', user.memberId, 'ledgers', selectedEntry.id);
+      await updateDoc(entryRef, {
         personName: personEditForm.personName,
         mobile: personEditForm.mobile,
         address: personEditForm.address
@@ -217,7 +219,8 @@ const PublicLedger: React.FC<PublicLedgerProps> = ({ user, onBack }) => {
   const handleDeleteEntry = async () => {
     if (!entryToDelete || !user) return;
     try {
-      await remove(ref(ledgerDb, `ledgers/${user.memberId}/${entryToDelete.id}`));
+      const entryRef = doc(ledgerDb, 'users', user.memberId, 'ledgers', entryToDelete.id);
+      await deleteDoc(entryRef);
       
       setEntryToDelete(null);
       setShowPersonProfile(false);

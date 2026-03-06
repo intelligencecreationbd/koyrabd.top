@@ -19,8 +19,13 @@ import {
 } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import { LegalServiceContact } from '../types';
-import { ref, onValue } from 'firebase/database';
-import { directoryDb } from '../Firebase-directory';
+import { 
+  collection, 
+  onSnapshot, 
+  query, 
+  orderBy 
+} from 'firebase/firestore';
+import { lawDb } from '../Firebase-law';
 
 const convertBnToEn = (str: string) => {
   const bn = ['০','১','২','৩','৪','৫','৬','৭','৮','৯'], en = ['0','1','2','3','4','5','6','7','8','9'];
@@ -70,28 +75,22 @@ const PublicLegal: React.FC<{
 
   useEffect(() => {
     setIsLoading(true);
-    const legalRef = ref(directoryDb, 'আইনি সেবা');
-    const unsubscribe = onValue(legalRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data) {
-        const list = Object.entries(data).map(([id, value]: [string, any]) => ({
-          ...value,
-          id
-        }));
-        
-        const subMenus: any[] = [];
-        list.forEach(item => {
-          if (!subMenus.find(s => s.id === item.categoryId)) {
-            subMenus.push({ id: item.categoryId, name: item.categoryName });
-          }
-        });
-        
-        setLegalData(list);
-        setDynamicSubMenus(subMenus);
-      } else {
-        setLegalData([]);
-        setDynamicSubMenus([]);
-      }
+    const legalRef = collection(lawDb, 'আইনি সেবা');
+    const unsubscribe = onSnapshot(legalRef, (snapshot) => {
+      const list = snapshot.docs.map(doc => ({
+        ...doc.data(),
+        id: doc.id
+      }));
+      
+      const subMenus: any[] = [];
+      list.forEach((item: any) => {
+        if (!subMenus.find(s => s.id === item.categoryId)) {
+          subMenus.push({ id: item.categoryId, name: item.categoryName });
+        }
+      });
+      
+      setLegalData(list as LegalServiceContact[]);
+      setDynamicSubMenus(subMenus);
       setIsLoading(false);
     });
     return () => unsubscribe();

@@ -28,9 +28,10 @@ import {
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 
-import { ref, onValue, push, set } from "firebase/database";
+import { collection, onSnapshot, addDoc, doc, setDoc, query, where, getDocs } from "firebase/firestore";
 import { onlineHaatDb } from "../Firebase-onlinehaat";
-import { settingsDb } from "../Firebase-appsettings";
+import { userDb } from "../Firebase-user";
+import { uploadImageToServer } from "../src/services/uploadService";
 
 const toBn = (num: string | number) => 
   (num || '').toString().replace(/\d/g, d => "০১২৩৪৫৬৭৮৯"[parseInt(d)]);
@@ -112,6 +113,7 @@ const PublicHaat: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [allUsers, setAllUsers] = useState<any[]>([]);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   const [form, setForm] = useState({
     name: '', category: '', price: '', offerPrice: '', condition: 'new', unit: 'কেজি', sellerName: '', mobile: '', location: '', description: '', photo: ''
@@ -152,43 +154,41 @@ const PublicHaat: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   useEffect(() => {
     setLoading(true);
     
-    // Fetch products from Firebase
-    const productsRef = ref(onlineHaatDb, 'পণ্য');
-    const unsubscribeProducts = onValue(productsRef, (snapshot) => {
-      const val = snapshot.val();
-      if (val) {
-        setProducts(Object.keys(val).map(k => ({ ...val[k], id: k })).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
-      } else {
-        setProducts([]);
-      }
+    // Fetch products from Firestore
+    const productsCollection = collection(onlineHaatDb, 'পণ্য');
+    const unsubscribeProducts = onSnapshot(productsCollection, (snapshot) => {
+      const list = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Product))
+        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+      setProducts(list);
+      setLoading(false);
+    }, (error) => {
+      console.error("Firestore error:", error);
       setLoading(false);
     });
 
-    // Fetch categories from Firebase
-    const categoriesRef = ref(onlineHaatDb, 'ক্যাটাগরি');
-    const unsubscribeCategories = onValue(categoriesRef, (snapshot) => {
-      const val = snapshot.val();
-      if (val) {
-        const list = Object.keys(val).map(k => ({ id: k, name: val[k].name }));
-        setCategories(list);
-        if (list.length > 0 && !form.category) setForm(prev => ({ ...prev, category: list[0].id }));
+    // Fetch categories from Firestore
+    const categoriesCollection = collection(onlineHaatDb, 'ক্যাটাগরি');
+    const unsubscribeCategories = onSnapshot(categoriesCollection, (snapshot) => {
+      const list = snapshot.docs.map(doc => ({ id: doc.id, name: (doc.data() as any).name }));
+      setCategories(list);
+      if (list.length > 0 && !form.category) setForm(prev => ({ ...prev, category: list[0].id }));
+    });
+
+    // Fetch terms from Firestore
+    const settingsDoc = doc(onlineHaatDb, 'সেটিংস', 'global');
+    const unsubscribeSettings = onSnapshot(settingsDoc, (snapshot) => {
+      if (snapshot.exists()) {
+        const val = snapshot.data();
+        if (val && val.terms) setTerms(val.terms);
       }
     });
 
-    // Fetch terms from Firebase
-    const settingsRef = ref(onlineHaatDb, 'সেটিংস');
-    const unsubscribeSettings = onValue(settingsRef, (snapshot) => {
-      const val = snapshot.val();
-      if (val && val.terms) setTerms(val.terms);
-    });
-
-    // Sync all users for verified badges (from settingsDb)
-    const usersRef = ref(settingsDb, 'ইউজার');
-    const unsubscribeUsers = onValue(usersRef, (snapshot) => {
-      const val = snapshot.val();
-      if (val) {
-        setAllUsers(Object.values(val));
-      }
+    // Sync all users for verified badges (from userDb - now Firestore)
+    const usersCollection = collection(userDb, 'users');
+    const unsubscribeUsers = onSnapshot(usersCollection, (snapshot) => {
+      const userList: any[] = [];
+      snapshot.forEach(doc => userList.push(doc.data()));
+      setAllUsers(userList);
     });
 
     return () => {
@@ -240,6 +240,7 @@ const PublicHaat: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      setSelectedFile(file);
       const reader = new FileReader();
       reader.onloadend = () => setForm(prev => ({ ...prev, photo: reader.result as string }));
       reader.readAsDataURL(file);
@@ -254,20 +255,29 @@ const PublicHaat: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     }
     setIsSubmitting(true);
     try {
-        const productsRef = ref(onlineHaatDb, 'পণ্য');
-        const newProductRef = push(productsRef);
+        let photoUrl = form.photo || '';
+        if (selectedFile) {
+          try {
+            photoUrl = await uploadImageToServer(selectedFile);
+          } catch (uploadError: any) {
+            console.error("Upload error:", uploadError);
+          }
+        }
+
+        const productsCollection = collection(onlineHaatDb, 'পণ্য');
         const finalData = { 
           ...form, 
-          id: newProductRef.key, 
+          photo: photoUrl,
           timestamp: new Date().toISOString(),
           userId: currentUser.memberId,
           status: 'published'
         };
         
-        await set(newProductRef, finalData);
+        await addDoc(productsCollection, finalData);
         
         setShowSubmitForm(false);
         setShowSuccessMessage(true);
+        setSelectedFile(null);
         setForm({ name: '', category: categories[0]?.id || '', price: '', offerPrice: '', condition: 'new', unit: 'কেজি', sellerName: currentUser.fullName, mobile: currentUser.mobile, location: currentUser.village, description: '', photo: '' });
     } catch (e) { 
         console.error(e);

@@ -33,9 +33,20 @@ import {
   UserCircle
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ref, onValue, set, push, remove, update } from 'firebase/database';
+import { 
+  collection, 
+  onSnapshot, 
+  doc, 
+  setDoc, 
+  updateDoc,
+  query,
+  orderBy,
+  addDoc,
+  serverTimestamp
+} from 'firebase/firestore';
 import { kppostDb } from '../Firebase-kppost';
 import { userDb as db } from '../Firebase-user';
+import { uploadImageToServer } from '../src/services/uploadService';
 
 const toBn = (num: string | number) => 
   (num || '').toString().replace(/\d/g, d => "০১২৩৪৫৬৭৮৯"[parseInt(d)]);
@@ -129,54 +140,34 @@ export default function PublicNews({ onBack }: { onBack: () => void }) {
         setForm(prev => ({ ...prev, reporter: `${u.fullName} - ${u.village}` }));
     }
 
-    // Fetch users from main Firebase
-    const usersRef = ref(db, 'users');
-    const unsubscribeUsers = onValue(usersRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data) {
-        setAllUsers(Object.values(data));
-      } else {
-        setAllUsers([]);
-      }
+    // Fetch users from main Firebase (Firestore)
+    const usersCollection = collection(db, 'users');
+    const unsubscribeUsers = onSnapshot(usersCollection, (snapshot) => {
+      const userList: any[] = [];
+      snapshot.forEach(doc => userList.push(doc.data()));
+      setAllUsers(userList);
     });
 
     // Fetch categories from Firebase
-    const catsRef = ref(kppostDb, 'categories');
-    const unsubscribeCats = onValue(catsRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data) {
-        const dynamic = Object.values(data);
-        setCategories(dynamic as any[]);
-        if (dynamic.length > 0) setForm(prev => ({...prev, category: (dynamic[0] as any).id}));
-      } else {
-        setCategories([]);
-      }
+    const catsRef = collection(kppostDb, 'categories');
+    const unsubscribeCats = onSnapshot(catsRef, (snapshot) => {
+      const dynamic = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+      setCategories(dynamic as any[]);
+      if (dynamic.length > 0) setForm(prev => ({...prev, category: (dynamic[0] as any).id}));
     });
 
     setLoading(true);
     // Fetch news from Firebase
-    const newsRef = ref(kppostDb, 'news_main');
-    const unsubscribeNews = onValue(newsRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data) {
-        const list = Object.values(data);
-        setNewsList(list.sort((a: any, b: any) => (b.timestamp || 0) - (a.timestamp || 0)));
-      } else {
-        setNewsList([]);
-      }
+    const newsRef = query(collection(kppostDb, 'news_main'), orderBy('timestamp', 'desc'));
+    const unsubscribeNews = onSnapshot(newsRef, (snapshot) => {
+      setNewsList(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })));
       setLoading(false);
     });
 
     // Fetch breaking news from Firebase
-    const breakingRef = ref(kppostDb, 'breaking_news');
-    const unsubscribeBreaking = onValue(breakingRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data) {
-        const list = Object.values(data).sort((a: any, b: any) => (b.timestamp || 0) - (a.timestamp || 0));
-        setBreakingNews(list);
-      } else {
-        setBreakingNews([]);
-      }
+    const breakingRef = query(collection(kppostDb, 'breaking_news'), orderBy('timestamp', 'desc'));
+    const unsubscribeBreaking = onSnapshot(breakingRef, (snapshot) => {
+      setBreakingNews(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })));
     });
 
     const saved = localStorage.getItem('kp_saved_news');
@@ -234,7 +225,7 @@ export default function PublicNews({ onBack }: { onBack: () => void }) {
     }
     updates[type] = (selectedNews[type] || 0) + 1;
     
-    await update(ref(kppostDb, `news_main/${selectedNews.id}`), updates);
+    await updateDoc(doc(kppostDb, 'news_main', selectedNews.id), updates);
     
     myVotes[selectedNews.id] = type.replace('s', '');
     localStorage.setItem('kp_news_votes', JSON.stringify(myVotes));
@@ -253,7 +244,7 @@ export default function PublicNews({ onBack }: { onBack: () => void }) {
     };
     
     const updatedComments = [newComment, ...(selectedNews.comments || [])];
-    await update(ref(kppostDb, `news_main/${selectedNews.id}`), { comments: updatedComments });
+    await updateDoc(doc(kppostDb, 'news_main', selectedNews.id), { comments: updatedComments });
     
     setComments(updatedComments);
     setCommentInput('');
@@ -270,12 +261,15 @@ export default function PublicNews({ onBack }: { onBack: () => void }) {
     }
   };
 
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => setForm(prev => ({ ...prev, photo: reader.result as string }));
-      reader.readAsDataURL(file);
+      try {
+        const compressedBase64 = await uploadImageToServer(file);
+        setForm(prev => ({ ...prev, photo: compressedBase64 }));
+      } catch (error: any) {
+        alert(error.message || 'ইমেজ প্রসেস করতে সমস্যা হয়েছে');
+      }
     }
   };
 
@@ -313,7 +307,7 @@ export default function PublicNews({ onBack }: { onBack: () => void }) {
             timestamp: Date.now()
         };
         
-        await set(ref(kppostDb, `news_pending/${id}`), finalData);
+        await setDoc(doc(kppostDb, 'news_pending', id), finalData);
         
         setShowSubmitForm(false);
         setShowSuccessMessage(true);

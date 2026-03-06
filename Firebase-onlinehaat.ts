@@ -1,20 +1,21 @@
 import { initializeApp } from "firebase/app";
-import { getDatabase } from "firebase/database";
+import { initializeFirestore } from "firebase/firestore";
 
 // Firebase configuration for Online Haat
 const firebaseConfig = {
-  apiKey: "AIzaSyCHuA1I4krz9VqBSvZfx45MPiGL9u-JF3c",
-  authDomain: "appsettings-60fa1.firebaseapp.com",
-  databaseURL: "https://appsettings-60fa1-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "appsettings-60fa1",
-  storageBucket: "appsettings-60fa1.firebasestorage.app",
-  messagingSenderId: "596039947664",
-  appId: "1:596039947664:web:681c687e3c99b5036fcf15",
-  measurementId: "G-9HYLN088W7"
+  apiKey: "AIzaSyBoeVKBpVaVcfiEoreiZaPyj_9HLBVE62SK6",
+  authDomain: "online-hat-kp-community.firebaseapp.com",
+  projectId: "online-hat-kp-community",
+  storageBucket: "online-hat-kp-community.firebasestorage.app",
+  messagingSenderId: "776997026417",
+  appId: "1:776997026417:web:fc8ea201ae8d7cbd6db9d0",
+  measurementId: "G-HLBVE62SK6"
 };
 
 // Initialize Firebase with a unique name to avoid conflicts
 const onlineHaatApp = initializeApp(firebaseConfig, "onlineHaatApp");
 
-// Initialize Realtime Database and export
-export const onlineHaatDb = getDatabase(onlineHaatApp);
+// Initialize Firestore and export
+export const onlineHaatDb = initializeFirestore(onlineHaatApp, {
+  experimentalForceLongPolling: true,
+});

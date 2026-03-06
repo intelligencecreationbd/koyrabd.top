@@ -12,8 +12,8 @@ import {
   Tag
 } from 'lucide-react';
 import { BusCounter } from '../types';
-import { ref, onValue, set, push, remove } from 'firebase/database';
-import { directoryDb } from '../Firebase-directory';
+import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
+import { busDb } from '../Firebase-bus';
 import { uploadImageToServer } from '../src/services/uploadService';
 
 // INTERNAL COMPONENTS
@@ -58,18 +58,16 @@ const AdminBusMgmt: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   });
 
   useEffect(() => {
-    const busRef = ref(directoryDb, 'বাস');
-    const unsubscribe = onValue(busRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data) {
-        const list = Object.entries(data).map(([id, value]: [string, any]) => ({
-          ...value,
-          id
-        }));
-        setBusCounters(list);
-      } else {
-        setBusCounters([]);
-      }
+    const busCollection = collection(busDb, 'বাস');
+    const unsubscribe = onSnapshot(busCollection, (snapshot) => {
+      const list = snapshot.docs.map(doc => ({
+        ...doc.data(),
+        id: doc.id
+      })) as BusCounter[];
+      setBusCounters(list);
+    }, (error) => {
+      console.error("Firestore error:", error);
+      setBusCounters([]);
     });
     return () => unsubscribe();
   }, []);
@@ -94,28 +92,31 @@ const AdminBusMgmt: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         const finalData = { ...busForm, photo: photoUrl };
 
         if (editingBusId) {
-          const busRef = ref(directoryDb, `বাস/${editingBusId}`);
-          await set(busRef, { ...finalData, id: editingBusId });
+          const busDocRef = doc(busDb, 'বাস', editingBusId);
+          await updateDoc(busDocRef, finalData);
         } else {
-          const busRef = ref(directoryDb, 'বাস');
-          const newRef = push(busRef);
-          await set(newRef, { ...finalData, id: newRef.key });
+          const busCollection = collection(busDb, 'বাস');
+          await addDoc(busCollection, finalData);
         }
         
         alert('সফলভাবে সংরক্ষিত হয়েছে!');
         setShowBusForm(false);
         setEditingBusId(null);
         setSelectedFile(null);
-    } catch (e) { alert('ত্রুটি!'); }
+    } catch (e) { 
+      console.error(e);
+      alert('ত্রুটি!'); 
+    }
     finally { setIsSubmitting(false); }
   };
 
   const handleDeleteBus = async (id: string) => {
     if (confirm('আপনি কি এই বাস সার্ভিসের তথ্য মুছে ফেলতে চান?')) {
       try {
-        const busRef = ref(directoryDb, `বাস/${id}`);
-        await remove(busRef);
+        const busDocRef = doc(busDb, 'বাস', id);
+        await deleteDoc(busDocRef);
       } catch (e) {
+        console.error(e);
         alert('মুছে ফেলা সম্ভব হয়নি।');
       }
     }

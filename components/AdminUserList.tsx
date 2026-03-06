@@ -25,7 +25,14 @@ import {
 } from 'lucide-react';
 
 import { userDb as db } from '../Firebase-user';
-import { ref, get, set, update, child, onValue } from "firebase/database";
+import { 
+  collection, 
+  onSnapshot, 
+  doc, 
+  updateDoc, 
+  query, 
+  orderBy 
+} from "firebase/firestore";
 
 const toBn = (num: string | number) => 
     (num || '').toString().replace(/\d/g, d => "০১২৩৪৫৬৭৮৯"[parseInt(d)]);
@@ -64,14 +71,14 @@ const AdminUserList: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const [showPass, setShowPass] = useState(false);
 
   useEffect(() => {
-    const usersRef = ref(db, 'users');
-    const unsubscribe = onValue(usersRef, (snapshot) => {
-      if (snapshot.exists()) {
-        const data = snapshot.val();
-        setUsers(Object.values(data));
-      } else {
-        setUsers([]);
-      }
+    const usersRef = collection(db, 'users');
+    const q = query(usersRef, orderBy('fullName', 'asc'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const userList: StoredUser[] = [];
+      snapshot.forEach((doc) => {
+        userList.push({ ...doc.data() } as StoredUser);
+      });
+      setUsers(userList);
       setIsLoading(false);
     });
     return () => unsubscribe();
@@ -93,7 +100,8 @@ const AdminUserList: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const handleUpdateStatus = async (uid: string, currentStatus: string) => {
     const newStatus = currentStatus === 'suspended' ? 'active' : 'suspended';
     try {
-        await update(ref(db, `users/${uid}`), { status: newStatus });
+        const userRef = doc(db, 'users', uid);
+        await updateDoc(userRef, { status: newStatus });
         alert(`ইউজার সফলভাবে ${newStatus === 'suspended' ? 'সাসপেন্ড' : 'সক্রিয়'} করা হয়েছে।`);
     } catch (e) {
         alert('স্ট্যাটাস আপডেট করা সম্ভব হয়নি!');
@@ -102,7 +110,8 @@ const AdminUserList: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 
   const handleToggleVerification = async (uid: string, currentVerified: boolean) => {
     try {
-      await update(ref(db, `users/${uid}`), { isVerified: !currentVerified });
+      const userRef = doc(db, 'users', uid);
+      await updateDoc(userRef, { isVerified: !currentVerified });
       alert(`ইউজার ভেরিফিকেশন স্ট্যাটাস আপডেট হয়েছে।`);
     } catch (e) {
       alert('ভেরিফিকেশন আপডেট করতে সমস্যা হয়েছে!');
@@ -113,7 +122,8 @@ const AdminUserList: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     if (!selectedUser?.uid) return;
     setIsSaving(true);
     try {
-        await update(ref(db, `users/${selectedUser.uid}`), editForm);
+        const userRef = doc(db, 'users', selectedUser.uid);
+        await updateDoc(userRef, editForm);
         setIsEditing(false);
         alert('ইউজারের তথ্য সফলভাবে আপডেট করা হয়েছে।');
     } catch (e) {

@@ -45,7 +45,8 @@ import AdminUserList from '../components/AdminUserList';
 import AdminMedicalMgmt from '../components/AdminMedicalMgmt';
 import AdminMenuAccess from '../components/AdminMenuAccess';
 
-// Firebase removed for paid hosting migration
+import { settingsDb } from '../Firebase-appsettings';
+import { doc, setDoc } from 'firebase/firestore';
 
 interface AdminDashboardProps {
   submissions: Submission[];
@@ -292,15 +293,27 @@ export default function AdminDashboard({ submissions, notices, onUpdateNotices, 
     if (!newNoticeText.trim()) return;
     const id = `notice_${Date.now()}`;
     const updated = [...notices, { id, content: newNoticeText, date: new Date().toLocaleDateString('bn-BD') }];
-    onUpdateNotices(updated);
-    localStorage.setItem('kp_notices', JSON.stringify(updated));
-    setNewNoticeText('');
+    try {
+      const noticesRef = doc(settingsDb, 'settings', 'notices');
+      await setDoc(noticesRef, { list: updated });
+      onUpdateNotices(updated);
+      localStorage.setItem('kp_notices', JSON.stringify(updated));
+      setNewNoticeText('');
+    } catch (e) {
+      alert('নোটিশ যোগ করতে সমস্যা হয়েছে!');
+    }
   };
 
   const deleteNotice = async (id: string) => {
     const updated = notices.filter(n => n.id !== id);
-    onUpdateNotices(updated);
-    localStorage.setItem('kp_notices', JSON.stringify(updated));
+    try {
+      const noticesRef = doc(settingsDb, 'settings', 'notices');
+      await setDoc(noticesRef, { list: updated });
+      onUpdateNotices(updated);
+      localStorage.setItem('kp_notices', JSON.stringify(updated));
+    } catch (e) {
+      alert('নোটিশ ডিলিট করতে সমস্যা হয়েছে!');
+    }
   };
 
   const handlePassUpdate = () => {

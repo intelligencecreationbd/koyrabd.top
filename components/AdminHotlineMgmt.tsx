@@ -16,8 +16,8 @@ import {
   Loader2 
 } from 'lucide-react';
 import { HotlineContact } from '../types';
-import { ref, onValue, set, push, remove } from 'firebase/database';
-import { directoryDb } from '../Firebase-directory';
+import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, setDoc } from 'firebase/firestore';
+import { hotlineDb } from '../Firebase-hotline';
 import { uploadImageToServer } from '../src/services/uploadService';
 
 // INTERNAL COMPONENTS
@@ -63,18 +63,16 @@ const AdminHotlineMgmt: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   });
 
   useEffect(() => {
-    const hotlineRef = ref(directoryDb, 'হটলাইন');
-    const unsubscribe = onValue(hotlineRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data) {
-        const list = Object.entries(data).map(([id, value]: [string, any]) => ({
-          ...value,
-          id
-        }));
-        setHotlineContacts(list);
-      } else {
-        setHotlineContacts([]);
-      }
+    const hotlineCollection = collection(hotlineDb, 'হটলাইন');
+    const unsubscribe = onSnapshot(hotlineCollection, (snapshot) => {
+      const list = snapshot.docs.map(doc => ({
+        ...doc.data(),
+        id: doc.id
+      })) as HotlineContact[];
+      setHotlineContacts(list);
+    }, (error) => {
+      console.error("Firestore error:", error);
+      setHotlineContacts([]);
     });
     return () => unsubscribe();
   }, []);
@@ -112,28 +110,31 @@ const AdminHotlineMgmt: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         const finalData = { ...hotlineForm, photo: photoUrl };
 
         if (editingHotlineId) {
-          const hotlineRef = ref(directoryDb, `হটলাইন/${editingHotlineId}`);
-          await set(hotlineRef, { ...finalData, id: editingHotlineId });
+          const hotlineDocRef = doc(hotlineDb, 'হটলাইন', editingHotlineId);
+          await updateDoc(hotlineDocRef, finalData);
         } else {
-          const hotlineRef = ref(directoryDb, 'হটলাইন');
-          const newRef = push(hotlineRef);
-          await set(newRef, { ...finalData, id: newRef.key });
+          const hotlineCollection = collection(hotlineDb, 'হটলাইন');
+          await addDoc(hotlineCollection, finalData);
         }
         
         alert('সফলভাবে সংরক্ষিত হয়েছে!');
         setShowHotlineForm(false);
         setEditingHotlineId(null);
         setSelectedFile(null);
-    } catch (e) { alert('ত্রুটি!'); }
+    } catch (e) { 
+      console.error(e);
+      alert('ত্রুটি!'); 
+    }
     finally { setIsSubmitting(false); }
   };
 
   const handleDeleteHotline = async (id: string) => {
     if (confirm('আপনি কি এই তথ্যটি মুছে ফেলতে চান?')) {
       try {
-        const hotlineRef = ref(directoryDb, `হটলাইন/${id}`);
-        await remove(hotlineRef);
+        const hotlineDocRef = doc(hotlineDb, 'হটলাইন', id);
+        await deleteDoc(hotlineDocRef);
       } catch (e) {
+        console.error(e);
         alert('মুছে ফেলা সম্ভব হয়নি।');
       }
     }

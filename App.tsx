@@ -20,7 +20,13 @@ import PublicDownload from './components/PublicDownload';
 import MenuAccessNotice from './components/MenuAccessNotice';
 import { Submission, Notice, User } from './types';
 import { settingsDb } from './Firebase-appsettings';
-import { ref, onValue, set, get } from 'firebase/database';
+import { 
+  doc, 
+  onSnapshot, 
+  getDoc, 
+  setDoc, 
+  collection 
+} from 'firebase/firestore';
 
 // Firebase removed for paid hosting migration
 
@@ -284,9 +290,11 @@ const App = () => {
   const [accessNotice, setAccessNotice] = useState<{ isOpen: boolean; menuName: string }>({ isOpen: false, menuName: '' });
 
   useEffect(() => {
-    const accessRef = ref(settingsDb, 'menu_access');
-    const unsubscribe = onValue(accessRef, (snapshot) => {
-      setMenuAccess(snapshot.val() || {});
+    const accessRef = doc(settingsDb, 'settings', 'menu_access');
+    const unsubscribe = onSnapshot(accessRef, (snapshot) => {
+      if (snapshot.exists()) {
+        setMenuAccess(snapshot.data() || {});
+      }
     });
     return () => unsubscribe();
   }, []);
@@ -351,22 +359,32 @@ const App = () => {
 
   useEffect(() => {
     // Load admin password from AppSettings Firebase
-    const adminPassRef = ref(settingsDb, 'admin_password');
-    const unsubscribePass = onValue(adminPassRef, (snapshot) => {
+    const adminPassRef = doc(settingsDb, 'settings', 'admin_password');
+    const unsubscribePass = onSnapshot(adminPassRef, (snapshot) => {
       if (snapshot.exists()) {
-        setAdminPassword(snapshot.val());
+        setAdminPassword(snapshot.data().value);
       } else {
         // Set default if not exists
-        set(adminPassRef, 't');
+        setDoc(adminPassRef, { value: 't' });
         setAdminPassword('t');
       }
     });
 
     // Load app logo from AppSettings Firebase
-    const appLogoRef = ref(settingsDb, 'app_logo');
-    const unsubscribeLogo = onValue(appLogoRef, (snapshot) => {
+    const appLogoRef = doc(settingsDb, 'settings', 'app_logo');
+    const unsubscribeLogo = onSnapshot(appLogoRef, (snapshot) => {
       if (snapshot.exists()) {
-        setAppLogo(snapshot.val());
+        setAppLogo(snapshot.data().value);
+      }
+    });
+
+    // Load notices from AppSettings Firebase
+    const noticesRef = doc(settingsDb, 'settings', 'notices');
+    const unsubscribeNotices = onSnapshot(noticesRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.data().list || [];
+        setNotices(data);
+        localStorage.setItem('kp_notices', JSON.stringify(data));
       }
     });
 
@@ -376,6 +394,7 @@ const App = () => {
     return () => {
       unsubscribePass();
       unsubscribeLogo();
+      unsubscribeNotices();
     };
   }, []);
 
@@ -418,8 +437,8 @@ const App = () => {
   const handleUpdatePassword = async (newPass: string) => {
     if (!newPass.trim()) return;
     try {
-      const adminPassRef = ref(settingsDb, 'admin_password');
-      await set(adminPassRef, newPass);
+      const adminPassRef = doc(settingsDb, 'settings', 'admin_password');
+      await setDoc(adminPassRef, { value: newPass });
       setAdminPassword(newPass);
       alert('পাসওয়ার্ড সফলভাবে আপডেট করা হয়েছে।');
     } catch (e) {
@@ -434,8 +453,8 @@ const App = () => {
       reader.onloadend = async () => {
         const base64 = reader.result as string;
         try {
-          const appLogoRef = ref(settingsDb, 'app_logo');
-          await set(appLogoRef, base64);
+          const appLogoRef = doc(settingsDb, 'settings', 'app_logo');
+          await setDoc(appLogoRef, { value: base64 });
           setAppLogo(base64);
           alert('এপসের প্রোফাইল পিকচার আপডেট হয়েছে!');
         } catch (err) {

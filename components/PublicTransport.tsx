@@ -9,8 +9,8 @@ import {
   Navigation
 } from 'lucide-react';
 import { BusCounter } from '../types';
-import { ref, onValue } from 'firebase/database';
-import { directoryDb } from '../Firebase-directory';
+import { collection, onSnapshot } from 'firebase/firestore';
+import { busDb } from '../Firebase-bus';
 
 const convertBnToEn = (str: string) => {
   const bn = ['০','১','২','৩','৪','৫','৬','৭','৮','৯'], en = ['0','1','2','3','4','5','6','7','8','9'];
@@ -50,18 +50,16 @@ const PublicTransport: React.FC<{
 
   useEffect(() => {
     setIsLoading(true);
-    const busRef = ref(directoryDb, 'বাস');
-    const unsubscribe = onValue(busRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data) {
-        const list = Object.entries(data).map(([id, value]: [string, any]) => ({
-          ...value,
-          id
-        }));
-        setBusData(list);
-      } else {
-        setBusData([]);
-      }
+    const busCollection = collection(busDb, 'বাস');
+    const unsubscribe = onSnapshot(busCollection, (snapshot) => {
+      const list = snapshot.docs.map(doc => ({
+        ...doc.data(),
+        id: doc.id
+      })) as BusCounter[];
+      setBusData(list);
+      setIsLoading(false);
+    }, (error) => {
+      console.error("Firestore error:", error);
       setIsLoading(false);
     });
     return () => unsubscribe();

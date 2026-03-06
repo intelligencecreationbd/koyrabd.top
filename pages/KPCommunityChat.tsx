@@ -1,7 +1,6 @@
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ref, onValue } from 'firebase/database';
 import { 
   collection, 
   doc, 
@@ -163,14 +162,14 @@ const KPCommunityChat: React.FC = () => {
     }
   }, [navigate, location]);
 
-  // Global user listener from main DB
+  // Global user listener from main DB (Firestore)
   useEffect(() => {
     if (!currentUser || isGuest) return;
-    const usersRef = ref(db, 'users');
-    const unsubscribe = onValue(usersRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data) setUsers(Object.values(data));
-      else setUsers([]);
+    const usersCollection = collection(db, 'users');
+    const unsubscribe = onSnapshot(usersCollection, (snapshot) => {
+      const userList: any[] = [];
+      snapshot.forEach(doc => userList.push(doc.data()));
+      setUsers(userList);
     });
     return () => unsubscribe();
   }, [currentUser, isGuest]);

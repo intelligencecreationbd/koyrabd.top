@@ -11,8 +11,8 @@ import {
   Search 
 } from 'lucide-react';
 import { HotlineContact } from '../types';
-import { ref, onValue } from 'firebase/database';
-import { directoryDb } from '../Firebase-directory';
+import { collection, onSnapshot } from 'firebase/firestore';
+import { hotlineDb } from '../Firebase-hotline';
 
 const convertBnToEn = (str: string) => {
   const bn = ['০','১','২','৩','৪','৫','৬','৭','৮','৯'], en = ['0','1','2','3','4','5','6','7','8','9'];
@@ -51,20 +51,17 @@ const PublicHotline: React.FC<{
 
   useEffect(() => {
     setIsLoading(true);
-    const hotlineRef = ref(directoryDb, 'হটলাইন');
-    const unsubscribe = onValue(hotlineRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data) {
-        const list = Object.entries(data).map(([id, value]: [string, any]) => ({
-          ...value,
-          id
-        }));
-        setContacts(list);
-        localStorage.setItem('kp_cache_hotline', JSON.stringify(list));
-      } else {
-        setContacts([]);
-        localStorage.removeItem('kp_cache_hotline');
-      }
+    const hotlineCollection = collection(hotlineDb, 'হটলাইন');
+    const unsubscribe = onSnapshot(hotlineCollection, (snapshot) => {
+      const list = snapshot.docs.map(doc => ({
+        ...doc.data(),
+        id: doc.id
+      })) as HotlineContact[];
+      setContacts(list);
+      localStorage.setItem('kp_cache_hotline', JSON.stringify(list));
+      setIsLoading(false);
+    }, (error) => {
+      console.error("Firestore error:", error);
       setIsLoading(false);
     });
     return () => unsubscribe();

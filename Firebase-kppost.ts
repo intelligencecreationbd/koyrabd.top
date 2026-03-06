@@ -1,18 +1,19 @@
 import { initializeApp } from "firebase/app";
-import { getDatabase } from "firebase/database";
+import { initializeFirestore } from "firebase/firestore";
 
 // Firebase configuration for KP Post
 const firebaseConfig = {
-  apiKey: "AIzaSyBopuqneuSyLAHAmFpPozXZV1PMUa55mbo",
-  authDomain: "kp-post.firebaseapp.com",
-  databaseURL: "https://kp-post-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "kp-post",
-  storageBucket: "kp-post.firebasestorage.app",
-  messagingSenderId: "842811034824",
-  appId: "1:842811034824:web:08fd9be58202f1725069fd",
-  measurementId: "G-7X56LDY5ZT"
+  apiKey: "AIzaSyDs3_ilxVNBqMheWp_3_8Xf_e-bnB0XB7k",
+  authDomain: "kp-post-kp-community.firebaseapp.com",
+  projectId: "kp-post-kp-community",
+  storageBucket: "kp-post-kp-community.firebasestorage.app",
+  messagingSenderId: "425504353426",
+  appId: "1:425504353426:web:51c0847134324adc264a4b",
+  measurementId: "G-Z47JLHBKP5"
 };
 
 // Initialize Firebase with a unique name
 const app = initializeApp(firebaseConfig, "kppost");
-export const kppostDb = getDatabase(app);
+export const kppostDb = initializeFirestore(app, {
+  experimentalForceLongPolling: true,
+});

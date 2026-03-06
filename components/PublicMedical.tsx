@@ -19,8 +19,13 @@ import {
   User,
   Clock
 } from 'lucide-react';
-import { ref, onValue } from 'firebase/database';
-import { directoryDb } from '../Firebase-directory';
+import { 
+  collection, 
+  onSnapshot, 
+  query, 
+  orderBy 
+} from 'firebase/firestore';
+import { medicalDb } from '../Firebase-medical';
 
 const toBn = (num: string | number) => 
   (num || '').toString().replace(/\d/g, d => "০১২৩৪৫৬৭৮৯"[parseInt(d)]);
@@ -53,18 +58,13 @@ export default function PublicMedical({ onBack, checkAccess }: { onBack: () => v
     }
 
     setIsLoading(true);
-    const medRef = ref(directoryDb, `চিকিৎসা সেবা/${selectedCategory}`);
-    const unsubscribe = onValue(medRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data) {
-        const list = Object.entries(data).map(([id, value]: [string, any]) => ({
-          ...value,
-          id
-        }));
-        setItems(list);
-      } else {
-        setItems([]);
-      }
+    const medRef = collection(medicalDb, `চিকিৎসা সেবা/${selectedCategory}/items`);
+    const unsubscribe = onSnapshot(medRef, (snapshot) => {
+      const list = snapshot.docs.map(doc => ({
+        ...doc.data(),
+        id: doc.id
+      }));
+      setItems(list);
       setIsLoading(false);
     });
     return () => unsubscribe();

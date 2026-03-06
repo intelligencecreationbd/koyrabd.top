@@ -41,7 +41,16 @@ import {
 import { User as AppUser } from '../types';
 
 import { userDb as db, userAuth as auth } from '../Firebase-user';
-import { ref, get, set, update, child } from "firebase/database";
+import { 
+  doc, 
+  getDoc, 
+  setDoc, 
+  updateDoc, 
+  collection, 
+  query, 
+  where, 
+  getDocs 
+} from "firebase/firestore";
 import { 
     signInWithEmailAndPassword, 
     createUserWithEmailAndPassword, 
@@ -113,10 +122,10 @@ const UserAuth: React.FC<UserAuthProps> = ({ onLogin }) => {
     if (loggedInUser) {
       const syncUserStatus = async () => {
         try {
-          const userRef = ref(db, `users/${loggedInUser.uid}`);
-          const snapshot = await get(userRef);
+          const userRef = doc(db, 'users', loggedInUser.uid);
+          const snapshot = await getDoc(userRef);
           if (snapshot.exists()) {
-            const freshData = snapshot.val();
+            const freshData = snapshot.data();
             const syncedUser = { ...loggedInUser, ...freshData };
             setLoggedInUser(syncedUser);
             localStorage.setItem('kp_logged_in_user', JSON.stringify(syncedUser));
@@ -150,13 +159,13 @@ const UserAuth: React.FC<UserAuthProps> = ({ onLogin }) => {
 
     setIsSubmitting(true);
     try {
-      const usersRef = ref(db, 'users');
-      const snapshot = await get(usersRef);
+      const usersRef = collection(db, 'users');
+      const q = query(usersRef, where('mobile', '==', cleanMobile), where('password', '==', loginData.password));
+      const snapshot = await getDocs(q);
       
       let userData = null;
-      if (snapshot.exists()) {
-        const users = snapshot.val();
-        userData = Object.values(users).find((u: any) => u.mobile === cleanMobile && u.password === loginData.password);
+      if (!snapshot.empty) {
+        userData = snapshot.docs[0].data();
       }
 
       if (!userData) {
@@ -208,22 +217,24 @@ const UserAuth: React.FC<UserAuthProps> = ({ onLogin }) => {
 
     setIsSubmitting(true);
     try {
-      const usersRef = ref(db, 'users');
-      const snapshot = await get(usersRef);
+      const usersRef = collection(db, 'users');
       
-      if (snapshot.exists()) {
-        const users = snapshot.val();
-        const userList = Object.values(users);
-        if (userList.some((u: any) => u.mobile === cleanMobile)) {
-            setErrorMsg('এই মোবাইল নম্বরটি দিয়ে ইতিমধ্যে একাউন্ট খোলা হয়েছে।');
-            setIsSubmitting(false);
-            return;
-        }
-        if (userList.some((u: any) => u.email === email)) {
-            setErrorMsg('এই ইমেইলটি দিয়ে ইতিমধ্যে একাউন্ট খোলা হয়েছে।');
-            setIsSubmitting(false);
-            return;
-        }
+      // Check mobile
+      const qMobile = query(usersRef, where('mobile', '==', cleanMobile));
+      const snapMobile = await getDocs(qMobile);
+      if (!snapMobile.empty) {
+        setErrorMsg('এই মোবাইল নম্বরটি দিয়ে ইতিমধ্যে একাউন্ট খোলা হয়েছে।');
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Check email
+      const qEmail = query(usersRef, where('email', '==', email));
+      const snapEmail = await getDocs(qEmail);
+      if (!snapEmail.empty) {
+        setErrorMsg('এই ইমেইলটি দিয়ে ইতিমধ্যে একাউন্ট খোলা হয়েছে।');
+        setIsSubmitting(false);
+        return;
       }
 
       // Send OTP via custom PHP endpoint
@@ -314,7 +325,8 @@ const UserAuth: React.FC<UserAuthProps> = ({ onLogin }) => {
       };
       
       // Firebase save with timeout protection
-      const savePromise = set(ref(db, `users/${uid}`), userData);
+      const userRef = doc(db, 'users', uid);
+      const savePromise = setDoc(userRef, userData);
       const timeoutPromise = new Promise((_, reject) => 
         setTimeout(() => reject(new Error('Firebase Timeout')), 10000)
       );
@@ -341,16 +353,11 @@ const UserAuth: React.FC<UserAuthProps> = ({ onLogin }) => {
     }
     setIsSubmitting(true);
     try {
-      const usersRef = ref(db, 'users');
-      const snapshot = await get(usersRef);
+      const usersRef = collection(db, 'users');
+      const q = query(usersRef, where('email', '==', resetEmail));
+      const snapshot = await getDocs(q);
       
-      let userExists = false;
-      if (snapshot.exists()) {
-        const users = snapshot.val();
-        userExists = Object.values(users).some((u: any) => u.email === resetEmail);
-      }
-
-      if (!userExists) {
+      if (snapshot.empty) {
         setErrorMsg('এই ইমেইলটি দিয়ে কোনো একাউন্ট পাওয়া যায়নি।');
         setIsSubmitting(false);
         return;
@@ -385,18 +392,16 @@ const UserAuth: React.FC<UserAuthProps> = ({ onLogin }) => {
 
     setIsSubmitting(true);
     try {
-      const usersRef = ref(db, 'users');
-      const snapshot = await get(usersRef);
+      const usersRef = collection(db, 'users');
+      const q = query(usersRef, where('email', '==', resetEmail));
+      const snapshot = await getDocs(q);
       
-      if (snapshot.exists()) {
-        const users = snapshot.val();
-        const user: any = Object.values(users).find((u: any) => u.email === resetEmail);
-        if (user) {
-          await update(ref(db, `users/${user.uid}`), { password: newPassword.pass });
-          setShowNewPassModal(false);
-          setSuccessMsg('পাসওয়ার্ড সফলভাবে আপডেট হয়েছে! এখন লগইন করুন।');
-          setMode('login');
-        }
+      if (!snapshot.empty) {
+        const userDoc = snapshot.docs[0];
+        await updateDoc(doc(db, 'users', userDoc.id), { password: newPassword.pass });
+        setShowNewPassModal(false);
+        setSuccessMsg('পাসওয়ার্ড সফলভাবে আপডেট হয়েছে! এখন লগইন করুন।');
+        setMode('login');
       }
     } catch (err) {
       setErrorMsg('পাসওয়ার্ড আপডেট করতে সমস্যা হয়েছে।');
@@ -420,7 +425,8 @@ const UserAuth: React.FC<UserAuthProps> = ({ onLogin }) => {
             photoURL: profileEditForm.photoURL || loggedInUser.photoURL || ''
         };
         
-        await update(ref(db, `users/${loggedInUser.uid}`), updates);
+        const userRef = doc(db, 'users', loggedInUser.uid);
+        await updateDoc(userRef, updates);
 
         const updatedUser = { ...loggedInUser, ...updates };
         setLoggedInUser(updatedUser);

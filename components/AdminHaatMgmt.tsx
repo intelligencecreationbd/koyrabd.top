@@ -26,7 +26,9 @@ import {
   FileText
 } from 'lucide-react';
 
-// Firebase removed for paid hosting migration
+import { onlineHaatDb } from '../Firebase-onlinehaat';
+import { collection, onSnapshot, doc, addDoc, updateDoc, deleteDoc, setDoc, getDoc } from 'firebase/firestore';
+import { uploadImageToServer } from '../src/services/uploadService';
 
 const toBn = (num: string | number) => 
   (num || '০').toString().replace(/\d/g, d => "০১২৩৪৫৬৭৮৯"[parseInt(d)]);
@@ -76,6 +78,7 @@ const AdminHaatMgmt: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
   const [editCategoryName, setEditCategoryName] = useState('');
   const [termsText, setTermsText] = useState('');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   const [form, setForm] = useState({
     name: '', category: '', price: '', offerPrice: '', condition: 'new', unit: 'কেজি', sellerName: '', mobile: '', location: '', description: '', photo: ''
@@ -83,31 +86,43 @@ const AdminHaatMgmt: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 
   useEffect(() => {
     // Products
-    const savedProducts = localStorage.getItem('kp_online_haat');
-    if (savedProducts) setProducts(JSON.parse(savedProducts));
+    const productsCollection = collection(onlineHaatDb, 'পণ্য');
+    const unsubscribeProducts = onSnapshot(productsCollection, (snapshot) => {
+      const list = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+      setProducts(list);
+    });
 
     // Categories
-    const savedCats = localStorage.getItem('kp_online_haat_categories');
-    if (savedCats) {
-      const list = JSON.parse(savedCats);
+    const categoriesCollection = collection(onlineHaatDb, 'ক্যাটাগরি');
+    const unsubscribeCategories = onSnapshot(categoriesCollection, (snapshot) => {
+      const list = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
       setCategories(list);
       if (list.length > 0 && !form.category) {
         setForm(prev => ({ ...prev, category: list[0].id }));
       }
-    }
+    });
 
     // Settings
-    const savedSettings = localStorage.getItem('kp_online_haat_settings');
-    if (savedSettings) {
-      const val = JSON.parse(savedSettings);
-      if (val && val.terms) setTermsText(val.terms);
-    }
+    const settingsDoc = doc(onlineHaatDb, 'সেটিংস', 'global');
+    const unsubscribeSettings = onSnapshot(settingsDoc, (snapshot) => {
+      if (snapshot.exists()) {
+        const val = snapshot.data();
+        if (val && val.terms) setTermsText(val.terms);
+      }
+    });
+
+    return () => {
+      unsubscribeProducts();
+      unsubscribeCategories();
+      unsubscribeSettings();
+    };
   }, []);
 
   const handleSaveSettings = async () => {
     setIsSubmitting(true);
     try {
-      localStorage.setItem('kp_online_haat_settings', JSON.stringify({ terms: termsText }));
+      const settingsDoc = doc(onlineHaatDb, 'সেটিংস', 'global');
+      await setDoc(settingsDoc, { terms: termsText }, { merge: true });
       alert('শর্তাবলী সফলভাবে আপডেট হয়েছে।');
       setIsSettingsOpen(false);
     } catch (e) { alert('সেভ করা যায়নি'); }
@@ -118,10 +133,8 @@ const AdminHaatMgmt: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     if (!newCategoryName.trim()) return;
     setIsSubmitting(true);
     try {
-      const id = `cat_${Date.now()}`;
-      const updated = [...categories, { id, name: newCategoryName }];
-      setCategories(updated);
-      localStorage.setItem('kp_online_haat_categories', JSON.stringify(updated));
+      const categoriesCollection = collection(onlineHaatDb, 'ক্যাটাগরি');
+      await addDoc(categoriesCollection, { name: newCategoryName });
       setNewCategoryName('');
     } catch (e) { alert('ক্যাটাগরি যোগ করা যায়নি'); }
     finally { setIsSubmitting(false); }
@@ -131,9 +144,8 @@ const AdminHaatMgmt: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     if (!editCategoryName.trim()) return;
     setIsSubmitting(true);
     try {
-      const updated = categories.map(c => c.id === id ? { ...c, name: editCategoryName } : c);
-      setCategories(updated);
-      localStorage.setItem('kp_online_haat_categories', JSON.stringify(updated));
+      const categoryDoc = doc(onlineHaatDb, 'ক্যাটাগরি', id);
+      await updateDoc(categoryDoc, { name: editCategoryName });
       setEditingCategoryId(null);
       setEditCategoryName('');
     } catch (e) { alert('আপডেট করা যায়নি'); }
@@ -142,15 +154,17 @@ const AdminHaatMgmt: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 
   const handleDeleteCategory = async (id: string) => {
     if (confirm('এই ক্যাটাগরি কি ডিলিট করতে চান?')) {
-      const updated = categories.filter(c => c.id !== id);
-      setCategories(updated);
-      localStorage.setItem('kp_online_haat_categories', JSON.stringify(updated));
+      try {
+        const categoryDoc = doc(onlineHaatDb, 'ক্যাটাগরি', id);
+        await deleteDoc(categoryDoc);
+      } catch (e) { alert('ডিলিট করা যায়নি'); }
     }
   };
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      setSelectedFile(file);
       const reader = new FileReader();
       reader.onloadend = () => setForm(prev => ({ ...prev, photo: reader.result as string }));
       reader.readAsDataURL(file);
@@ -165,39 +179,49 @@ const AdminHaatMgmt: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     }
     setIsSubmitting(true);
     try {
-        const id = editingId || `haat_${Date.now()}`;
-        const existingProduct = products.find(p => p.id === id);
+        let photoUrl = form.photo || '';
+        if (selectedFile) {
+          try {
+            photoUrl = await uploadImageToServer(selectedFile);
+          } catch (uploadError: any) {
+            console.error("Upload error:", uploadError);
+          }
+        }
+
+        const existingProduct = editingId ? products.find(p => p.id === editingId) : null;
         
         const finalData = { 
           ...form, 
-          id, 
+          photo: photoUrl,
           timestamp: new Date().toISOString(),
           userId: existingProduct?.userId || 'admin' 
         };
 
-        let updated;
         if (editingId) {
-          updated = products.map(p => p.id === editingId ? finalData : p);
+          const productDoc = doc(onlineHaatDb, 'পণ্য', editingId);
+          await updateDoc(productDoc, finalData);
         } else {
-          updated = [...products, finalData];
+          const productsCollection = collection(onlineHaatDb, 'পণ্য');
+          await addDoc(productsCollection, finalData);
         }
-        
-        setProducts(updated);
-        localStorage.setItem('kp_online_haat', JSON.stringify(updated));
         
         setShowForm(false);
         setEditingId(null);
-        setForm({ name: '', category: categories[0]?.id || '', price: '', offerPrice: '', condition: 'new', unit: 'কেজি', sellerName: '', mobile: '', location: '', description: '', photo: '' });
-    } catch (e) { alert('সংরক্ষণ ব্যর্থ হয়েছে!'); }
+        setSelectedFile(null);
+        setForm({ name: '', category: categories[0]?.id || '', price: '', offerPrice: '', condition: 'new', unit: 'কেজি', sellerName: 'এডমিন', mobile: '', location: 'কয়রা-পাইকগাছা', description: '', photo: '' });
+        alert('সফলভাবে সংরক্ষিত হয়েছে!');
+    } catch (e) { 
+      console.error(e);
+      alert('সংরক্ষণ ব্যর্থ হয়েছে!'); 
+    }
     finally { setIsSubmitting(false); }
   };
 
   const handleDelete = async (id: string) => {
     if (confirm('আপনি কি এই পণ্যটি স্থায়ীভাবে মুছে ফেলতে চান?')) {
       try {
-        const updated = products.filter(p => p.id !== id);
-        setProducts(updated);
-        localStorage.setItem('kp_online_haat', JSON.stringify(updated));
+        const productDoc = doc(onlineHaatDb, 'পণ্য', id);
+        await deleteDoc(productDoc);
       } catch (err) {
         alert('মুছে ফেলা সম্ভব হয়নি!');
       }

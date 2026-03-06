@@ -18,8 +18,17 @@ import {
   FolderPlus 
 } from 'lucide-react';
 import { LegalServiceContact } from '../types';
-import { ref, onValue, set, push, remove } from 'firebase/database';
-import { directoryDb } from '../Firebase-directory';
+import { 
+  collection, 
+  onSnapshot, 
+  doc, 
+  setDoc, 
+  deleteDoc, 
+  updateDoc,
+  query,
+  orderBy 
+} from 'firebase/firestore';
+import { lawDb } from '../Firebase-law';
 import { uploadImageToServer } from '../src/services/uploadService';
 
 // INTERNAL COMPONENTS
@@ -71,18 +80,13 @@ const AdminLegalMgmt: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   });
 
   useEffect(() => {
-    const legalRef = ref(directoryDb, 'আইনি সেবা');
-    const unsubscribe = onValue(legalRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data) {
-        const list = Object.entries(data).map(([id, value]: [string, any]) => ({
-          ...value,
-          id
-        }));
-        setLegalServices(list);
-      } else {
-        setLegalServices([]);
-      }
+    const legalRef = collection(lawDb, 'আইনি সেবা');
+    const unsubscribe = onSnapshot(legalRef, (snapshot) => {
+      const list = snapshot.docs.map(doc => ({
+        ...doc.data(),
+        id: doc.id
+      }));
+      setLegalServices(list as LegalServiceContact[]);
     });
     return () => unsubscribe();
   }, []);
@@ -143,12 +147,10 @@ const AdminLegalMgmt: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         };
         
         if (editingLegalId) {
-          const legalRef = ref(directoryDb, `আইনি সেবা/${editingLegalId}`);
-          await set(legalRef, { ...finalData, id: editingLegalId });
+          await setDoc(doc(lawDb, 'আইনি সেবা', editingLegalId), { ...finalData, id: editingLegalId });
         } else {
-          const legalRef = ref(directoryDb, 'আইনি সেবা');
-          const newRef = push(legalRef);
-          await set(newRef, { ...finalData, id: newRef.key });
+          const id = `legal_${Date.now()}`;
+          await setDoc(doc(lawDb, 'আইনি সেবা', id), { ...finalData, id });
         }
         
         alert('সফলভাবে সংরক্ষিত হয়েছে!');
@@ -164,8 +166,7 @@ const AdminLegalMgmt: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const handleDeleteLegal = async (categoryId: string, id: string) => {
     if (confirm('আপনি কি এই তথ্যটি মুছে ফেলতে চান?')) {
         try {
-            const legalRef = ref(directoryDb, `আইনি সেবা/${id}`);
-            await remove(legalRef);
+            await deleteDoc(doc(lawDb, 'আইনি সেবা', id));
         } catch (e) { alert('মুছে ফেলা সম্ভব হয়নি।'); }
     }
   };

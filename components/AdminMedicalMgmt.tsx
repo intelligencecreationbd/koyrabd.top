@@ -22,8 +22,17 @@ import {
   ArrowRight,
   Edit2
 } from 'lucide-react';
-import { ref, onValue, set, push, remove } from 'firebase/database';
-import { directoryDb } from '../Firebase-directory';
+import { 
+  collection, 
+  onSnapshot, 
+  doc, 
+  setDoc, 
+  deleteDoc, 
+  updateDoc,
+  query,
+  orderBy 
+} from 'firebase/firestore';
+import { medicalDb } from '../Firebase-medical';
 import { uploadImageToServer } from '../src/services/uploadService';
 
 const toBn = (num: string | number) => 
@@ -79,29 +88,26 @@ export default function AdminMedicalMgmt({ onBack }: { onBack: () => void }) {
 
   useEffect(() => {
     if (!selectedCat) return;
-    const medRef = ref(directoryDb, `চিকিৎসা সেবা/${selectedCat}`);
-    const unsubscribe = onValue(medRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data) {
-        const list = Object.entries(data).map(([id, value]: [string, any]) => ({
-          ...value,
-          id
-        }));
-        setItems(list);
-      } else {
-        setItems([]);
-      }
+    const medRef = collection(medicalDb, `চিকিৎসা সেবা/${selectedCat}/items`);
+    const unsubscribe = onSnapshot(medRef, (snapshot) => {
+      const list = snapshot.docs.map(doc => ({
+        ...doc.data(),
+        id: doc.id
+      }));
+      setItems(list);
     });
     return () => unsubscribe();
   }, [selectedCat]);
 
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      setSelectedFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => setForm(prev => ({ ...prev, photo: reader.result as string }));
-      reader.readAsDataURL(file);
+      try {
+        const compressedBase64 = await uploadImageToServer(file);
+        setForm(prev => ({ ...prev, photo: compressedBase64 }));
+      } catch (error: any) {
+        alert(error.message || 'ইমেজ প্রসেস করতে সমস্যা হয়েছে');
+      }
     }
   };
 
@@ -110,28 +116,10 @@ export default function AdminMedicalMgmt({ onBack }: { onBack: () => void }) {
     if (!form.name || !form.mobile) return;
     setIsSubmitting(true);
     try {
-        let photoUrl = form.photo;
-        
-        if (selectedFile) {
-          try {
-            photoUrl = await uploadImageToServer(selectedFile);
-          } catch (uploadError: any) {
-            alert(uploadError.message || 'ইমেজ আপলোড ব্যর্থ হয়েছে!');
-            setIsSubmitting(false);
-            return;
-          }
-        }
+        const id = editingId || `med_${Date.now()}`;
+        const finalData = { ...form, id };
 
-        const finalData = { ...form, photo: photoUrl };
-
-        if (editingId) {
-          const medRef = ref(directoryDb, `চিকিৎসা সেবা/${selectedCat}/${editingId}`);
-          await set(medRef, { ...finalData, id: editingId });
-        } else {
-          const medRef = ref(directoryDb, `চিকিৎসা সেবা/${selectedCat}`);
-          const newRef = push(medRef);
-          await set(newRef, { ...finalData, id: newRef.key });
-        }
+        await setDoc(doc(medicalDb, `চিকিৎসা সেবা/${selectedCat}/items`, id), finalData);
         
         alert('সফলভাবে সংরক্ষিত হয়েছে!');
         setShowForm(false);
@@ -145,8 +133,7 @@ export default function AdminMedicalMgmt({ onBack }: { onBack: () => void }) {
   const handleDelete = async (id: string) => {
     if (confirm('আপনি কি এই তথ্যটি ডিলিট করতে চান?')) {
       try {
-        const medRef = ref(directoryDb, `চিকিৎসা সেবা/${selectedCat}/${id}`);
-        await remove(medRef);
+        await deleteDoc(doc(medicalDb, `চিকিৎসা সেবা/${selectedCat}/items`, id));
       } catch (e) {
         alert('মুছে ফেলা সম্ভব হয়নি!');
       }

@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, ShieldCheck, ShieldAlert, Check, X, LayoutGrid } from 'lucide-react';
-import { ref, onValue, set } from 'firebase/database';
+import { ChevronLeft, ShieldCheck, ShieldAlert, LayoutGrid } from 'lucide-react';
+import { doc, onSnapshot, updateDoc, setDoc } from 'firebase/firestore';
 import { settingsDb } from '../Firebase-appsettings';
 import { CATEGORIES } from '../constants';
 
@@ -23,9 +23,9 @@ const AdminMenuAccess: React.FC<AdminMenuAccessProps> = ({ onBack }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const accessRef = ref(settingsDb, 'menu_access');
-    const unsubscribe = onValue(accessRef, (snapshot) => {
-      const data = snapshot.val() || {};
+    const accessRef = doc(settingsDb, 'settings', 'menu_access');
+    const unsubscribe = onSnapshot(accessRef, (snapshot) => {
+      const data = snapshot.data() || {};
       setAccessStates(data);
       setLoading(false);
     });
@@ -37,7 +37,8 @@ const AdminMenuAccess: React.FC<AdminMenuAccessProps> = ({ onBack }) => {
     const newState = !currentState;
     
     try {
-      await set(ref(settingsDb, `menu_access/${menuId}`), newState);
+      const accessRef = doc(settingsDb, 'settings', 'menu_access');
+      await setDoc(accessRef, { [menuId]: newState }, { merge: true });
     } catch (error) {
       alert('একসেস আপডেট করতে সমস্যা হয়েছে!');
     }

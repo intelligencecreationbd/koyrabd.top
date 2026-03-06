@@ -30,8 +30,18 @@ import {
   UserCheck,
   XCircle
 } from 'lucide-react';
-import { ref, onValue, set, push, remove, update } from 'firebase/database';
+import { 
+  collection, 
+  onSnapshot, 
+  doc, 
+  setDoc, 
+  deleteDoc, 
+  updateDoc,
+  query,
+  orderBy 
+} from 'firebase/firestore';
 import { kppostDb } from '../Firebase-kppost';
+import { uploadImageToServer } from '../src/services/uploadService';
 
 const toBn = (num: string | number) => 
   (num || '').toString().replace(/\d/g, d => "০১২৩৪৫৬৭৮৯"[parseInt(d)]);
@@ -113,63 +123,37 @@ export default function AdminNewsMgmt({ onBack }: { onBack: () => void }) {
 
   useEffect(() => {
     // Categories
-    const catsRef = ref(kppostDb, 'categories');
-    const unsubscribeCats = onValue(catsRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data) {
-        const list = Object.values(data);
-        setCategories(list as any[]);
-        if (list.length > 0 && !form.category) {
-          setForm(prev => ({ ...prev, category: (list[0] as any).id }));
-        }
-      } else {
-        setCategories([]);
+    const catsRef = collection(kppostDb, 'categories');
+    const unsubscribeCats = onSnapshot(catsRef, (snapshot) => {
+      const list = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+      setCategories(list as any[]);
+      if (list.length > 0 && !form.category) {
+        setForm(prev => ({ ...prev, category: (list[0] as any).id }));
       }
     });
 
     // Main News
-    const newsRef = ref(kppostDb, 'news_main');
-    const unsubscribeNews = onValue(newsRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data) {
-        setNewsList(Object.values(data));
-      } else {
-        setNewsList([]);
-      }
+    const newsRef = collection(kppostDb, 'news_main');
+    const unsubscribeNews = onSnapshot(newsRef, (snapshot) => {
+      setNewsList(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })));
     });
 
     // Pending News
-    const pendingRef = ref(kppostDb, 'news_pending');
-    const unsubscribePending = onValue(pendingRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data) {
-        setPendingNewsList(Object.values(data));
-      } else {
-        setPendingNewsList([]);
-      }
+    const pendingRef = collection(kppostDb, 'news_pending');
+    const unsubscribePending = onSnapshot(pendingRef, (snapshot) => {
+      setPendingNewsList(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })));
     });
 
     // Rejected News
-    const rejectedRef = ref(kppostDb, 'news_rejected');
-    const unsubscribeRejected = onValue(rejectedRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data) {
-        setRejectedNewsList(Object.values(data));
-      } else {
-        setRejectedNewsList([]);
-      }
+    const rejectedRef = collection(kppostDb, 'news_rejected');
+    const unsubscribeRejected = onSnapshot(rejectedRef, (snapshot) => {
+      setRejectedNewsList(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })));
     });
 
     // Breaking News
-    const breakingRef = ref(kppostDb, 'breaking_news');
-    const unsubscribeBreaking = onValue(breakingRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data) {
-        const list = Object.values(data);
-        setBreakingNewsList(list.sort((a: any, b: any) => (b.timestamp || 0) - (a.timestamp || 0)));
-      } else {
-        setBreakingNewsList([]);
-      }
+    const breakingRef = query(collection(kppostDb, 'breaking_news'), orderBy('timestamp', 'desc'));
+    const unsubscribeBreaking = onSnapshot(breakingRef, (snapshot) => {
+      setBreakingNewsList(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })));
     });
 
     return () => {
@@ -195,12 +179,15 @@ export default function AdminNewsMgmt({ onBack }: { onBack: () => void }) {
     }
   }, [selectedPendingNews, categories]);
 
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => setForm(prev => ({ ...prev, photo: reader.result as string }));
-      reader.readAsDataURL(file);
+      try {
+        const compressedBase64 = await uploadImageToServer(file);
+        setForm(prev => ({ ...prev, photo: compressedBase64 }));
+      } catch (error: any) {
+        alert(error.message || 'ইমেজ প্রসেস করতে সমস্যা হয়েছে');
+      }
     }
   };
 
@@ -215,7 +202,7 @@ export default function AdminNewsMgmt({ onBack }: { onBack: () => void }) {
             timestamp: Date.now()
         };
         
-        await set(ref(kppostDb, `breaking_news/${id}`), newBreaking);
+        await setDoc(doc(kppostDb, 'breaking_news', id), newBreaking);
         
         setBreakingText('');
         setEditingBreakingId(null);
@@ -229,20 +216,20 @@ export default function AdminNewsMgmt({ onBack }: { onBack: () => void }) {
     if (!newCategoryName.trim()) return;
     const id = `cat_${Date.now()}`;
     const newCat = { id, name: newCategoryName };
-    await set(ref(kppostDb, `categories/${id}`), newCat);
+    await setDoc(doc(kppostDb, 'categories', id), newCat);
     setNewCategoryName('');
   };
 
   const handleUpdateCategoryName = async (id: string) => {
     if (!editCategoryName.trim()) return;
-    await update(ref(kppostDb, `categories/${id}`), { name: editCategoryName });
+    await updateDoc(doc(kppostDb, 'categories', id), { name: editCategoryName });
     setEditingCategoryId(null);
     setEditCategoryName('');
   };
 
   const handleDeleteCategory = async (id: string) => {
     if (confirm('এই ক্যাটাগরি কি ডিলিট করতে চান?')) {
-      await remove(ref(kppostDb, `categories/${id}`));
+      await deleteDoc(doc(kppostDb, 'categories', id));
     }
   };
 
@@ -257,7 +244,7 @@ export default function AdminNewsMgmt({ onBack }: { onBack: () => void }) {
         const id = editingId || `news_${Date.now()}`;
         const finalData = { ...form, id, status: 'published', timestamp: Date.now(), isAdminPost: true };
         
-        await set(ref(kppostDb, `news_main/${id}`), finalData);
+        await setDoc(doc(kppostDb, 'news_main', id), finalData);
         
         setShowForm(false);
         setEditingId(null);
@@ -279,10 +266,10 @@ export default function AdminNewsMgmt({ onBack }: { onBack: () => void }) {
         };
         
         // Add to main
-        await set(ref(kppostDb, `news_main/${id}`), finalData);
+        await setDoc(doc(kppostDb, 'news_main', id), finalData);
         
         // Remove from pending
-        await remove(ref(kppostDb, `news_pending/${id}`));
+        await deleteDoc(doc(kppostDb, 'news_pending', id));
         
         setSelectedPendingNews(null);
         alert('সংবাদটি সফলভাবে প্রকাশিত হয়েছে!');
@@ -307,10 +294,10 @@ export default function AdminNewsMgmt({ onBack }: { onBack: () => void }) {
         };
         
         // Add to rejected
-        await set(ref(kppostDb, `news_rejected/${id}`), finalData);
+        await setDoc(doc(kppostDb, 'news_rejected', id), finalData);
         
         // Remove from pending
-        await remove(ref(kppostDb, `news_pending/${id}`));
+        await deleteDoc(doc(kppostDb, 'news_pending', id));
         
         setSelectedPendingNews(null);
         alert('সংবাদটি রিজেক্ট করা হয়েছে।');
@@ -329,9 +316,9 @@ export default function AdminNewsMgmt({ onBack }: { onBack: () => void }) {
     setIsSubmitting(true);
     try {
         if (tab === 'rejected') {
-          await remove(ref(kppostDb, `news_rejected/${id}`));
+          await deleteDoc(doc(kppostDb, 'news_rejected', id));
         } else {
-          await remove(ref(kppostDb, `news_main/${id}`));
+          await deleteDoc(doc(kppostDb, 'news_main', id));
         }
     } catch (err) {
         alert('ত্রুটির কারণে ডিলিট করা যায়নি।');
@@ -387,7 +374,7 @@ export default function AdminNewsMgmt({ onBack }: { onBack: () => void }) {
                             <button onClick={() => { setEditingBreakingId(bn.id); setBreakingText(bn.text); }} className="p-3 text-blue-500 bg-blue-50 rounded-xl active:scale-90 transition-all"><Edit2 size={18}/></button>
                             <button onClick={() => { 
                                     if(confirm('ডিলিট করতে চান?')) {
-                                        remove(ref(kppostDb, `breaking_news/${bn.id}`));
+                                        deleteDoc(doc(kppostDb, 'breaking_news', bn.id));
                                     }
                             }} className="p-3 text-red-600 bg-red-50 rounded-xl active:scale-90 transition-all"><Trash2 size={20}/></button>
                         </div>
