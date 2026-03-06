@@ -30,8 +30,7 @@ jobs:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          # পরিবর্তন: এখানে './dist/' এর বদলে শুধু './' দিন 
-          # যদি আপনার ইন্ডেক্স ফাইলটি বিল্ড হওয়ার পর রুটে থাকে
-          local-dir: ./
+          # এটি পরিবর্তন করা হয়েছে যেন শুধু বিল্ড ফাইলগুলো যায়
+          local-dir: ./dist/ 
           server-dir: /public_html/
           dangerous-clean-slate: false
