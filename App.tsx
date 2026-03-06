@@ -12,7 +12,6 @@ import DigitalLedger from './pages/DigitalLedger';
 import OnlineHaat from './pages/OnlineHaat';
 import WeatherPage from './pages/WeatherPage';
 import KPCommunityChat from './pages/KPCommunityChat';
-import SundarbanHeaderBackground from './components/SundarbanHeaderBackground';
 import PublicMedical from './components/PublicMedical';
 import AgeCalculator from './components/AgeCalculator';
 import DateTimeBox from './components/DateTimeBox';
@@ -596,9 +595,8 @@ const App = () => {
             </div>
           </div>
 
-          <header className={`sticky top-0 z-50 transition-all duration-500 glass-header border-b ${isScrolled ? 'opacity-100 shadow-lg' : 'opacity-95'}`}>
-            <SundarbanHeaderBackground />
-            <div className="w-full px-5 h-28 flex items-center justify-between relative z-10">
+          <header className={`sticky top-0 z-50 transition-all duration-500 header-liquid header-curves glass-header border-b ${isScrolled ? 'opacity-100 shadow-lg' : 'opacity-95'}`}>
+            <div className="w-full px-5 h-20 flex items-center justify-between relative z-10">
               <div className="flex items-center gap-0 shrink-0">
                 <button onClick={() => setIsDrawerOpen(true)} className="p-2.5 rounded-xl text-white/80 hover:text-white transition-all duration-300 active:scale-90">
                   <Menu size={22} strokeWidth={2.5} />

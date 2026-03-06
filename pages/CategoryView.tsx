@@ -5,10 +5,9 @@ import {
   ChevronLeft, 
   ArrowRight,
   Loader2,
-  FolderOpen,
-  ChevronRight
+  FolderOpen
 } from 'lucide-react';
-import { CATEGORIES, ICON_MAP } from '../constants';
+import { CATEGORIES } from '../constants';
 import TraditionalHistory from '../components/TraditionalHistory';
 import PublicTransport from '../components/PublicTransport';
 import PublicLegal from '../components/PublicLegal';
@@ -75,18 +74,6 @@ const CategoryView: React.FC<CategoryViewProps> = ({ checkAccess }) => {
   }
 
   // Default Standard Sub-menu navigation (for other modules)
-  const subMenuList = subId ? (category?.subMenus.find(s=>s.id===subId)?.nestedSubMenus || []) : (category?.subMenus || []);
-  
-  const SUB_MENU_COLORS = [
-    { bg: 'bg-blue-50', text: 'text-blue-600', border: 'border-blue-100' },
-    { bg: 'bg-emerald-50', text: 'text-emerald-600', border: 'border-emerald-100' },
-    { bg: 'bg-violet-50', text: 'text-violet-600', border: 'border-violet-100' },
-    { bg: 'bg-amber-50', text: 'text-amber-600', border: 'border-amber-100' },
-    { bg: 'bg-rose-50', text: 'text-rose-600', border: 'border-rose-100' },
-    { bg: 'bg-indigo-50', text: 'text-indigo-600', border: 'border-indigo-100' },
-    { bg: 'bg-cyan-50', text: 'text-cyan-600', border: 'border-cyan-100' },
-  ];
-
   return (
     <div className="p-5 pb-20 space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
       <div className="flex items-center gap-4 mb-2">
@@ -98,29 +85,18 @@ const CategoryView: React.FC<CategoryViewProps> = ({ checkAccess }) => {
       </div>
 
       <div className="grid gap-4">
-        {subMenuList.length > 0 ? (
-            subMenuList.map((sub: any, idx: number) => {
-              const color = SUB_MENU_COLORS[idx % SUB_MENU_COLORS.length];
-              const Icon = ICON_MAP[sub.icon] || FolderOpen;
-              
-              return (
-                <button 
-                  key={sub.id} 
-                  onClick={() => subId ? navigate(`/category/${id}/${subId}/${sub.id}`) : navigate(`/category/${id}/${sub.id}`)} 
-                  className="flex items-center justify-between p-5 bg-white rounded-[28px] shadow-sm active:scale-[0.98] transition-all group text-left border border-slate-50"
-                >
-                  <div className="flex items-center gap-4">
-                     <div className={`p-3.5 ${color.bg} border ${color.border} rounded-2xl ${color.text} transition-all shadow-sm`}>
-                        <Icon size={22} strokeWidth={2.5} />
-                     </div>
-                     <span className="font-black text-lg text-slate-800">{sub.name}</span>
-                  </div>
-                  <div className="p-2 bg-slate-50 rounded-xl text-slate-300 group-hover:text-blue-600 group-hover:bg-blue-50 transition-all">
-                    <ChevronRight size={18} strokeWidth={3} />
-                  </div>
-                </button>
-              );
-            })
+        {category?.subMenus && category.subMenus.length > 0 ? (
+            (subId ? (category?.subMenus.find(s=>s.id===subId)?.nestedSubMenus || []) : (category?.subMenus || [])).map((sub: any) => (
+              <button key={sub.id} onClick={() => subId ? navigate(`/category/${id}/${subId}/${sub.id}`) : navigate(`/category/${id}/${sub.id}`)} className="flex items-center justify-between p-5 bg-white rounded-[24px] premium-card active:scale-[0.98] transition-all group text-left border border-slate-50">
+                <div className="flex items-center gap-4">
+                   <div className="p-3 bg-slate-50 rounded-2xl text-slate-400 group-hover:text-blue-600 group-hover:bg-blue-50 transition-all shadow-inner">
+                      <ArrowRight size={20} />
+                   </div>
+                   <span className="font-black text-lg text-[#1A1A1A]">{sub.name}</span>
+                </div>
+                <ArrowRight size={20} className="text-slate-200 group-hover:text-blue-600 transition-colors" />
+              </button>
+            ))
           ) : <div className="py-20 text-center opacity-30">তথ্য সংরক্ষিত নেই।</div>
         }
       </div>
