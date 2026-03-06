@@ -3,7 +3,7 @@ name: Build and Deploy to CPANEL
 on:
   push:
     branches:
-      - main  # আপনার ব্রাঞ্চের নাম সঠিক আছে
+      - main
 
 jobs:
   build-and-deploy:
@@ -24,17 +24,14 @@ jobs:
       - name: Build project
         run: npm run build
 
-      - name: List build files (Check if build exists)
-        run: ls -R dist || ls -R build
-
       - name: Sync files to Server
         uses: SamKirkland/FTP-Deploy-Action@v4.3.4
         with:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          # আপনার প্রজেক্ট বিল্ড হয়ে যে ফোল্ডারে যায় সেটি এখানে দিন
-          local-dir: ./dist/ 
+          # পরিবর্তন: এখানে './dist/' এর বদলে শুধু './' দিন 
+          # যদি আপনার ইন্ডেক্স ফাইলটি বিল্ড হওয়ার পর রুটে থাকে
+          local-dir: ./
           server-dir: /public_html/
-          # নিচের লাইনটি আপনার সমস্যা সমাধান করবে (পুরানো রেকর্ড মুছে নতুন করে পাঠাবে)
           dangerous-clean-slate: false
