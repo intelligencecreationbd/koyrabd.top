@@ -36,8 +36,10 @@ import {
   LayoutGrid,
   LogOut,
   Key,
-  Info
+  Info,
+  CreditCard
 } from 'lucide-react';
+import UserEmergencyInfo from '../components/UserEmergencyInfo';
 import { User as AppUser } from '../types';
 
 import { userDb as db, userAuth as auth } from '../Firebase-user';
@@ -104,6 +106,8 @@ const UserAuth: React.FC<UserAuthProps> = ({ onLogin }) => {
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [profileEditForm, setProfileEditForm] = useState({ fullName: '', village: '', photoURL: '' });
   
+  const [showVerifyPage, setShowVerifyPage] = useState(false);
+  const [showEmergencyPage, setShowEmergencyPage] = useState(false);
   const [loginData, setLoginData] = useState({ mobile: '', password: '' });
   const [regData, setRegData] = useState({
     fullName: '', email: '', mobile: '', dob: '', village: '', password: '', confirmPassword: ''
@@ -321,7 +325,7 @@ const UserAuth: React.FC<UserAuthProps> = ({ onLogin }) => {
         password,
         status: 'active',
         createdAt: new Date().toISOString(),
-        isVerified: true
+        isVerified: false
       };
       
       // Firebase save with timeout protection
@@ -446,69 +450,111 @@ const UserAuth: React.FC<UserAuthProps> = ({ onLogin }) => {
     }
   };
 
+  if (showVerifyPage) {
+    return (
+      <div className="fixed inset-0 z-[500] bg-white animate-in slide-in-from-right-4 duration-500 flex flex-col">
+        <div className="p-5 flex items-center gap-4 border-b border-slate-50">
+          <button onClick={() => setShowVerifyPage(false)} className="p-3 bg-slate-50 rounded-xl active:scale-90 transition-all">
+            <ChevronLeft size={20} className="text-slate-800" />
+          </button>
+          <h2 className="text-lg font-black text-slate-800">আইডি ভেরিফিকেশন</h2>
+        </div>
+        <div className="flex-1 flex flex-col items-center justify-center p-10 text-center space-y-4">
+          <div className="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center text-blue-500">
+            <ShieldCheck size={40} />
+          </div>
+          <p className="text-slate-400 font-bold text-sm">আপনার আইডি ভেরিফিকেশন করার জন্য প্রয়োজনীয় তথ্য এখানে প্রদান করুন।</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (showEmergencyPage && loggedInUser) {
+    return <UserEmergencyInfo uid={loggedInUser.uid} onBack={() => setShowEmergencyPage(false)} />;
+  }
+
   return (
     <div className="p-5 pb-32 animate-in fade-in duration-500 min-h-screen bg-white">
       {mode === 'profile' && loggedInUser ? (
         <div className="w-full max-w-sm mx-auto animate-in slide-in-from-bottom-4 duration-700">
-            <div className="flex items-center justify-between mb-8 px-1 pt-2">
+            <div className="flex items-center justify-between mb-5 px-1 pt-2">
                 <button 
-                    onClick={() => {
-                        setProfileEditForm({ fullName: loggedInUser.fullName, village: loggedInUser.village, photoURL: loggedInUser.photoURL || '' });
-                        setIsEditingProfile(true);
-                    }}
-                    className="flex items-center gap-1.5 px-4 py-2 bg-blue-50 text-blue-600 rounded-xl text-[11px] font-black uppercase tracking-widest active:scale-95 transition-all"
+                    onClick={() => setShowVerifyPage(true)}
+                    className="flex items-center gap-1.5 px-4 py-2 bg-blue-50 text-blue-600 rounded-xl text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all"
                 >
-                    <Edit2 size={13} /> এডিট
+                    <ShieldCheck size={13} /> ভেরিফাই আইডি
                 </button>
-                <h2 className="text-[12px] font-black text-slate-400 uppercase tracking-[0.2em] flex-1 text-center">আমার ড্যাশবোর্ড</h2>
+                <h2 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] flex-1 text-center">আমার ড্যাশবোর্ড</h2>
                 <button 
                   onClick={handleLogout} 
-                  className="flex items-center gap-1.5 px-4 py-2 bg-red-50 text-red-600 rounded-xl text-[11px] font-black uppercase tracking-widest active:scale-95 transition-all"
+                  className="flex items-center gap-1.5 px-4 py-2 bg-red-50 text-red-600 rounded-xl text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all"
                 >
                     লগআউট
                 </button>
             </div>
 
-            <div className="flex items-center gap-5 bg-[#F8FAFC]/60 p-6 rounded-[35px] border border-slate-50 shadow-sm mb-10 text-left">
+            <div className="flex items-center gap-5 bg-gradient-to-r from-blue-50/50 to-white p-5 rounded-[35px] border border-slate-100 shadow-sm mb-6 text-left relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-blue-400 via-indigo-500 to-blue-400"></div>
+                
                 <div className="relative shrink-0">
-                    <div className="w-16 h-16 rounded-[22px] border-[3px] border-white shadow-md overflow-hidden bg-slate-100 flex items-center justify-center text-slate-200">
+                    <div className="w-20 h-20 rounded-[24px] border-[3px] border-white shadow-lg overflow-hidden bg-white flex items-center justify-center text-slate-200 ring-1 ring-slate-100">
                         {loggedInUser.photoURL ? <img src={loggedInUser.photoURL} className="w-full h-full object-cover" /> : <UserCircle size={45} />}
                     </div>
-                    <div className="absolute -bottom-1 -right-1 p-1 bg-blue-600 text-white rounded-full shadow-lg border-[3px] border-white">
-                       <ShieldCheck size={12} fill="currentColor" className="text-white" />
-                    </div>
+                    <button 
+                      onClick={() => {
+                        setProfileEditForm({ fullName: loggedInUser.fullName, village: loggedInUser.village, photoURL: loggedInUser.photoURL || '' });
+                        setIsEditingProfile(true);
+                      }}
+                      className="absolute -bottom-1 -right-1 p-1.5 bg-blue-600 text-white rounded-lg shadow-lg border-[2px] border-white active:scale-90 transition-all hover:bg-blue-700"
+                    >
+                       <Camera size={12} strokeWidth={2.5} />
+                    </button>
                 </div>
-                <div className="overflow-hidden">
-                    <div className="flex items-center gap-1.5 overflow-hidden">
-                        <h1 className="text-xl font-black text-slate-800 leading-tight truncate">{loggedInUser.fullName}</h1>
+
+                <div className="space-y-1 overflow-hidden">
+                    <div className="flex items-center gap-2 overflow-hidden">
+                        <h1 className="text-lg font-black text-slate-800 leading-tight truncate">{loggedInUser.fullName}</h1>
                         {loggedInUser.isVerified && (
-                          <div className="bg-white rounded-full flex items-center justify-center shrink-0">
-                             <CheckCircle2 size={16} fill="#1877F2" className="text-white shrink-0" />
-                          </div>
+                          <CheckCircle2 size={16} fill="#1877F2" className="text-white shrink-0" />
                         )}
                     </div>
-                    <p className="text-[11px] font-black text-blue-500 uppercase tracking-widest mt-1">ID: {loggedInUser.memberId}</p>
+                    <div className="inline-flex items-center px-3 py-1 bg-blue-100/50 text-blue-600 rounded-full text-[9px] font-black uppercase tracking-widest">
+                        ID: {loggedInUser.memberId}
+                    </div>
                 </div>
             </div>
 
-            <div className="space-y-4">
-                <button onClick={() => navigate('/ledger')} className="w-full p-6 bg-[#0056b3] text-white rounded-[35px] flex items-center gap-5 shadow-xl active:scale-95 transition-all text-left overflow-hidden relative group">
-                    <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center shrink-0 shadow-inner group-hover:bg-white/30 transition-colors"><Wallet size={28}/></div>
-                    <div className="flex-1"><p className="font-black text-base uppercase tracking-[0.1em]">ডিজিটাল খাতা</p><p className="text-[11px] font-bold opacity-70 mt-1">লেনদেনের হিসাব রাখুন</p></div>
-                    <ChevronRight className="opacity-30 group-hover:opacity-100 group-hover:translate-x-1 transition-all" size={24} />
+            <div className="grid grid-cols-2 gap-3">
+                <button onClick={() => navigate('/ledger')} className="p-4 bg-[#0056b3] text-white rounded-[30px] flex flex-col items-center gap-3 shadow-lg active:scale-95 transition-all text-center group relative overflow-hidden">
+                    <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center shrink-0 shadow-inner group-hover:bg-white/30 transition-colors"><Wallet size={24}/></div>
+                    <div className="space-y-0.5">
+                        <p className="font-black text-[12px] uppercase tracking-[0.1em]">ডিজিটাল খাতা</p>
+                        <p className="text-[8px] font-bold opacity-70 leading-tight">লেনদেনের হিসাব</p>
+                    </div>
                 </button>
-                <button onClick={() => navigate('/online-haat?view=mine')} className="w-full p-6 bg-[#10B981] text-white rounded-[35px] flex items-center gap-5 shadow-xl active:scale-95 transition-all text-left overflow-hidden relative group">
-                    <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center shrink-0 shadow-inner group-hover:bg-white/30 transition-colors"><ShoppingBasket size={28}/></div>
-                    <div className="flex-1"><p className="font-black text-base uppercase tracking-[0.1em]">আমার পন্য</p><p className="text-[11px] font-bold opacity-70 mt-1">নিজের বিজ্ঞাপিত পণ্যের তালিকা</p></div>
-                    <ChevronRight className="opacity-30 group-hover:opacity-100 group-hover:translate-x-1 transition-all" size={24} />
+                <button onClick={() => navigate('/online-haat?view=mine')} className="p-4 bg-[#10B981] text-white rounded-[30px] flex flex-col items-center gap-3 shadow-lg active:scale-95 transition-all text-center group relative overflow-hidden">
+                    <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center shrink-0 shadow-inner group-hover:bg-white/30 transition-colors"><ShoppingBasket size={24}/></div>
+                    <div className="space-y-0.5">
+                        <p className="font-black text-[12px] uppercase tracking-[0.1em]">আমার পন্য</p>
+                        <p className="text-[8px] font-bold opacity-70 leading-tight">পণ্যের তালিকা</p>
+                    </div>
                 </button>
-                <button onClick={() => navigate('/category/14')} className="w-full p-6 bg-[#3B82F6] text-white rounded-[35px] flex items-center gap-5 shadow-xl active:scale-95 transition-all text-left overflow-hidden relative group">
-                    <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center shrink-0 shadow-inner group-hover:bg-white/30 transition-colors"><Newspaper size={28}/></div>
-                    <div className="flex-1"><p className="font-black text-base uppercase tracking-[0.1em]">আমার পোস্ট</p><p className="text-[11px] font-bold opacity-70 mt-1">নিজের করা সকল পোস্টের তালিকা</p></div>
-                    <ChevronRight className="opacity-30 group-hover:opacity-100 group-hover:translate-x-1 transition-all" size={24} />
+                <button onClick={() => setShowEmergencyPage(true)} className="p-4 bg-[#6366F1] text-white rounded-[30px] flex flex-col items-center gap-3 shadow-lg active:scale-95 transition-all text-center group relative overflow-hidden">
+                    <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center shrink-0 shadow-inner group-hover:bg-white/30 transition-colors"><CreditCard size={24}/></div>
+                    <div className="space-y-0.5">
+                        <p className="font-black text-[12px] uppercase tracking-[0.1em]">আইডি কার্ড</p>
+                        <p className="text-[8px] font-bold opacity-70 leading-tight">আমার আইডি কার্ড</p>
+                    </div>
+                </button>
+                <button onClick={() => navigate('/category/14')} className="p-4 bg-[#3B82F6] text-white rounded-[30px] flex flex-col items-center gap-3 shadow-lg active:scale-95 transition-all text-center group relative overflow-hidden">
+                    <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center shrink-0 shadow-inner group-hover:bg-white/30 transition-colors"><Newspaper size={24}/></div>
+                    <div className="space-y-0.5">
+                        <p className="font-black text-[12px] uppercase tracking-[0.1em]">আমার পোস্ট</p>
+                        <p className="text-[8px] font-bold opacity-70 leading-tight">পোস্টের তালিকা</p>
+                    </div>
                 </button>
             </div>
-            <div className="mt-20 flex justify-center items-center gap-6 opacity-80 pointer-events-none">
+            <div className="mt-12 flex justify-center items-center gap-6 opacity-60 pointer-events-none">
                 <div className="w-12 h-12 rounded-full border-2 border-slate-100 flex items-center justify-center text-slate-300"><Plus size={20}/></div>
                 <div className="px-6 py-2 rounded-full border-2 border-slate-100 font-black text-[10px] text-slate-300 uppercase">BACK</div>
                 <div className="w-12 h-12 rounded-full border-2 border-slate-100 flex items-center justify-center text-slate-300"><UserIcon size={20}/></div>
