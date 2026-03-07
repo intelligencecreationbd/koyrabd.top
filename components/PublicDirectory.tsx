@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import { ref, onValue } from 'firebase/database';
+import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { mobileDb } from '../Firebase-mobile';
 import { directoryDb } from '../Firebase-directory';
 import UnionParishadView from './RepMgmt/UnionParishadView';
@@ -127,38 +128,57 @@ const PublicDirectory: React.FC<PublicDirectoryProps> = ({ id, categoryName, pat
 
   useEffect(() => {
     setIsLoading(true);
-    const catsRef = ref(db, `${rootNode}/categories`);
-    const unsubscribe = onValue(catsRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data) {
-        setAllCategories(Object.values(data));
-      } else {
-        setAllCategories([]);
-      }
-      setIsLoading(false);
-    });
-    return () => unsubscribe();
-  }, [rootNode]);
+    if (id === '15') {
+      const catsRef = collection(mobileDb, 'categories');
+      const unsubscribe = onSnapshot(catsRef, (snapshot) => {
+        const list = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+        setAllCategories(list);
+        setIsLoading(false);
+      });
+      return () => unsubscribe();
+    } else {
+      const catsRef = ref(directoryDb, `${rootNode}/categories`);
+      const unsubscribe = onValue(catsRef, (snapshot) => {
+        const data = snapshot.val();
+        if (data) {
+          setAllCategories(Object.values(data));
+        } else {
+          setAllCategories([]);
+        }
+        setIsLoading(false);
+      });
+      return () => unsubscribe();
+    }
+  }, [rootNode, id]);
 
   useEffect(() => {
-    const dataRef = ref(db, `${rootNode}/data`);
-    const unsubscribe = onValue(dataRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data) {
-        let all: any[] = [];
-        Object.keys(data).forEach(catId => {
-          const items = data[catId];
-          Object.keys(items).forEach(itemId => {
-            all.push({ ...items[itemId], id: itemId, categoryId: catId });
+    if (id === '15') {
+      const contactsRef = collection(mobileDb, 'contacts');
+      const unsubscribe = onSnapshot(contactsRef, (snapshot) => {
+        const list = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+        setGlobalData(list);
+      });
+      return () => unsubscribe();
+    } else {
+      const dataRef = ref(directoryDb, `${rootNode}/data`);
+      const unsubscribe = onValue(dataRef, (snapshot) => {
+        const data = snapshot.val();
+        if (data) {
+          let all: any[] = [];
+          Object.keys(data).forEach(catId => {
+            const items = data[catId];
+            Object.keys(items).forEach(itemId => {
+              all.push({ ...items[itemId], id: itemId, categoryId: catId });
+            });
           });
-        });
-        setGlobalData(all);
-      } else {
-        setGlobalData([]);
-      }
-    });
-    return () => unsubscribe();
-  }, [rootNode]);
+          setGlobalData(all);
+        } else {
+          setGlobalData([]);
+        }
+      });
+      return () => unsubscribe();
+    }
+  }, [rootNode, id]);
 
   const levels = useMemo(() => {
     const result = [];
@@ -197,25 +217,43 @@ const PublicDirectory: React.FC<PublicDirectoryProps> = ({ id, categoryName, pat
       return;
     }
     setIsLoading(true);
-    const dataRef = ref(db, `${rootNode}/data/${leafId}`);
-    const unsubscribe = onValue(dataRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data) {
-        const list = Object.keys(data).map(key => ({ ...data[key], id: key }));
-        setDataList(list.sort((a, b) => {
+    
+    if (id === '15') {
+      const contactsRef = collection(mobileDb, 'contacts');
+      const q = query(contactsRef, where('parentId', '==', leafId));
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+        const list = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+        setDataList(list.sort((a: any, b: any) => {
           const isA = (a.designation || '').includes('চেয়ারম্যান');
           const isB = (b.designation || '').includes('চেয়ারম্যান');
           if (isA && !isB) return -1;
           if (!isA && isB) return 1;
           return (a.name || '').localeCompare(b.name || '');
         }));
-      } else {
-        setDataList([]);
-      }
-      setIsLoading(false);
-    });
-    return () => unsubscribe();
-  }, [leafId, rootNode]);
+        setIsLoading(false);
+      });
+      return () => unsubscribe();
+    } else {
+      const dataRef = ref(directoryDb, `${rootNode}/data/${leafId}`);
+      const unsubscribe = onValue(dataRef, (snapshot) => {
+        const data = snapshot.val();
+        if (data) {
+          const list = Object.keys(data).map(key => ({ ...data[key], id: key }));
+          setDataList(list.sort((a: any, b: any) => {
+            const isA = (a.designation || '').includes('চেয়ারম্যান');
+            const isB = (b.designation || '').includes('চেয়ারম্যান');
+            if (isA && !isB) return -1;
+            if (!isA && isB) return 1;
+            return (a.name || '').localeCompare(b.name || '');
+          }));
+        } else {
+          setDataList([]);
+        }
+        setIsLoading(false);
+      });
+      return () => unsubscribe();
+    }
+  }, [leafId, rootNode, id]);
 
   const handleSelection = (levelIdx: number, value: string) => {
     if (!value) {
