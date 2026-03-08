@@ -200,6 +200,9 @@ const PublicHaat: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   }, []);
 
   const getProductWithVerified = (p: Product) => {
+    if (p.sellerName === 'Koyra-Paikgacha Community App' || p.sellerName === 'এডমিন') {
+      return { ...p, isVerified: true };
+    }
     const user = allUsers.find(u => u.memberId === p.userId);
     return { ...p, isVerified: user?.isVerified || false };
   };

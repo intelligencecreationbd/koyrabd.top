@@ -18,6 +18,7 @@ import AgeCalculator from './components/AgeCalculator';
 import DateTimeBox from './components/DateTimeBox';
 import PublicDownload from './components/PublicDownload';
 import MenuAccessNotice from './components/MenuAccessNotice';
+import UserEmergencyInfo from './components/UserEmergencyInfo';
 import { Submission, Notice, User } from './types';
 import { settingsDb } from './Firebase-appsettings';
 import { 
@@ -701,6 +702,7 @@ const App = () => {
               <Route path="/chat" element={<KPCommunityChat checkAccess={checkMenuAccess} />} />
               <Route path="/medical" element={<PublicMedical onBack={() => navigate('/services')} checkAccess={checkMenuAccess} />} />
               <Route path="/age-calculator" element={<AgeCalculator onBack={() => navigate('/services')} checkAccess={checkMenuAccess} />} />
+              <Route path="/id-card" element={<UserEmergencyInfo uid="" onBack={() => navigate('/services')} />} />
               <Route path="/download" element={
                 <PublicDownload 
                   appLogo={appLogo} 

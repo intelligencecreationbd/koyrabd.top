@@ -198,7 +198,7 @@ export default function PublicNews({ onBack }: { onBack: () => void }) {
   }, [selectedNews]);
 
   const getReporterData = (news: any) => {
-    if (news.isAdminPost || news.reporter === 'এডমিন') {
+    if (news.isAdminPost || news.reporter === 'Koyra-Paikgacha Community App' || news.reporter === 'এডমিন') {
         return { name: news.reporter || 'এডমিন', isVerified: true, village: '', photoURL: '' };
     }
     if (!news.userId) return { name: news.reporter || 'নিজস্ব প্রতিবেদক', isVerified: false, village: '', photoURL: '' };

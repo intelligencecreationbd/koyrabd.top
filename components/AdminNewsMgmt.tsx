@@ -118,7 +118,7 @@ export default function AdminNewsMgmt({ onBack }: { onBack: () => void }) {
   };
 
   const [form, setForm] = useState({
-    title: '', description: '', date: getCurrentDateTime(), reporter: 'এডমিন', photo: '', category: '', source: ''
+    title: '', description: '', date: getCurrentDateTime(), reporter: 'Koyra-Paikgacha Community App', photo: '', category: '', source: ''
   });
 
   useEffect(() => {
@@ -248,7 +248,7 @@ export default function AdminNewsMgmt({ onBack }: { onBack: () => void }) {
         
         setShowForm(false);
         setEditingId(null);
-        setForm({ title: '', description: '', date: getCurrentDateTime(), reporter: 'এডমিন', photo: '', category: categories[0]?.id || '', source: '' });
+        setForm({ title: '', description: '', date: getCurrentDateTime(), reporter: 'Koyra-Paikgacha Community App', photo: '', category: categories[0]?.id || '', source: '' });
     } catch (e) { alert('সংরক্ষণ ব্যর্থ হয়েছে!'); }
     finally { setIsSubmitting(false); }
   };
@@ -458,7 +458,7 @@ export default function AdminNewsMgmt({ onBack }: { onBack: () => void }) {
                                 value={pendingEditForm.reporter} 
                                 onChange={(v:string) => setPendingEditForm({...pendingEditForm, reporter: v})} 
                                 icon={<UserIcon size={16}/>}
-                                verified={pendingEditForm.reporter === 'এডমিন'}
+                                verified={pendingEditForm.reporter === 'Koyra-Paikgacha Community App' || pendingEditForm.reporter === 'এডমিন'}
                             />
                             
                             <EditField 
@@ -551,7 +551,7 @@ export default function AdminNewsMgmt({ onBack }: { onBack: () => void }) {
               </div>
             )}
         </div>
-        <button onClick={() => { setEditingId(null); setForm({title: '', description: '', date: getCurrentDateTime(), reporter: 'এডমিন', photo: '', category: categories[0]?.id || '', source: ''}); setShowForm(true); }} className="w-full py-5 bg-[#4CAF50] text-white font-black rounded-[30px] shadow-xl flex items-center justify-center gap-3 active:scale-95 border-b-4 border-green-700">
+        <button onClick={() => { setEditingId(null); setForm({title: '', description: '', date: getCurrentDateTime(), reporter: 'Koyra-Paikgacha Community App', photo: '', category: categories[0]?.id || '', source: ''}); setShowForm(true); }} className="w-full py-5 bg-[#4CAF50] text-white font-black rounded-[30px] shadow-xl flex items-center justify-center gap-3 active:scale-95 border-b-4 border-green-700">
             <Plus /> নতুন সংবাদ যোগ করুন
         </button>
 
@@ -602,7 +602,7 @@ export default function AdminNewsMgmt({ onBack }: { onBack: () => void }) {
                             <div className="flex flex-wrap items-center gap-2 text-[9px] font-bold text-slate-400">
                                 <div className="flex items-center gap-1 overflow-hidden">
                                     <span className="text-[8px] text-blue-600 font-semibold uppercase truncate max-w-[100px] tracking-wide">{news.reporter || 'ডেস্ক'}</span>
-                                    {(news.isAdminPost || news.reporter === 'এডমিন') && <CheckCircle2 size={10} fill="#1877F2" className="text-white shrink-0" />}
+                                    {(news.isAdminPost || news.reporter === 'Koyra-Paikgacha Community App' || news.reporter === 'এডমিন') && <CheckCircle2 size={10} fill="#1877F2" className="text-white shrink-0" />}
                                 </div>
                                 <span className="shrink-0">• {news.date}</span>
                             </div>
@@ -656,7 +656,7 @@ export default function AdminNewsMgmt({ onBack }: { onBack: () => void }) {
                             </div>
                         </div>
                         <EditField label="শিরোনাম *" value={form.title} onChange={(v:any)=>setForm({...form, title:v})} placeholder="টাইটেল লিখুন" icon={<Newspaper size={18}/>} />
-                        <EditField label="রিপোর্টার *" value={form.reporter} onChange={(v:any)=>setForm({...form, reporter:v})} placeholder="নাম লিখুন" icon={<UserIcon size={18}/>} verified={form.reporter === 'এডমিন'} />
+                        <EditField label="রিপোর্টার *" value={form.reporter} onChange={(v:any)=>setForm({...form, reporter:v})} placeholder="নাম লিখুন" icon={<UserIcon size={18}/>} verified={form.reporter === 'Koyra-Paikgacha Community App' || form.reporter === 'এডমিন'} />
                         <EditField label="তারিখ ও সময়" value={form.date} onChange={(v:any)=>setForm({...form, date:v})} placeholder="অটো ফিলাপ" icon={<Calendar size={18}/>} />
                         <div className="text-left">
                             <label className="text-[10px] font-bold text-slate-400 block mb-1.5 uppercase tracking-wider pl-1">বিস্তারিত</label>

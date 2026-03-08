@@ -38,7 +38,8 @@ import {
   Trees,
   Home as HomeIcon,
   School,
-  Fish
+  Fish,
+  CreditCard
 } from 'lucide-react';
 import { MainMenu } from './types';
 
@@ -208,6 +209,13 @@ export const CATEGORIES: MainMenu[] = [
     subMenus: []
   },
   {
+    id: '23',
+    name: 'আইডি কার্ড',
+    icon: 'CreditCard',
+    color: '#6366F1',
+    subMenus: []
+  },
+  {
     id: '12',
     name: 'ইউজার লগইন',
     icon: 'LogIn',
@@ -254,5 +262,6 @@ export const ICON_MAP: Record<string, any> = {
   Trees,
   HomeIcon,
   School,
-  Fish
+  Fish,
+  CreditCard
 };

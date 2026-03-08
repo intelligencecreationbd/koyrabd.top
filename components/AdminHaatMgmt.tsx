@@ -23,7 +23,8 @@ import {
   AlertCircle,
   Settings,
   Save,
-  FileText
+  FileText,
+  CheckCircle2
 } from 'lucide-react';
 
 import { onlineHaatDb } from '../Firebase-onlinehaat';
@@ -42,18 +43,25 @@ const Header: React.FC<{ title: string; onBack: () => void }> = ({ title, onBack
   </div>
 );
 
-const EditField: React.FC<{ label: string; value: string; placeholder?: string; onChange: (v: string) => void; icon?: React.ReactNode; type?: string }> = ({ label, value, placeholder, onChange, icon, type = 'text' }) => (
+const EditField: React.FC<{ label: string; value: string; placeholder?: string; onChange: (v: string) => void; icon?: React.ReactNode; type?: string; verified?: boolean }> = ({ label, value, placeholder, onChange, icon, type = 'text', verified = false }) => (
   <div className="text-left">
     <label className="text-[10px] font-bold text-slate-400 block mb-1.5 uppercase tracking-wider pl-1">{label}</label>
     <div className="relative">
         {icon && <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300">{icon}</div>}
-        <input 
-          type={type}
-          placeholder={placeholder}
-          className={`w-full ${icon ? 'pl-11' : 'px-5'} py-3.5 bg-slate-50 border border-slate-100 rounded-2xl font-bold outline-none text-slate-800 transition-all focus:border-blue-400 shadow-sm`} 
-          value={value} 
-          onChange={e => onChange(e.target.value)} 
-        />
+        <div className="relative">
+          <input 
+            type={type}
+            placeholder={placeholder}
+            className={`w-full ${icon ? 'pl-11' : 'px-5'} ${verified ? 'pr-12' : 'px-5'} py-3.5 bg-slate-50 border border-slate-100 rounded-2xl font-bold outline-none text-slate-800 transition-all focus:border-blue-400 shadow-sm`} 
+            value={value} 
+            onChange={e => onChange(e.target.value)} 
+          />
+          {verified && (value === 'Koyra-Paikgacha Community App' || value === 'এডমিন') && (
+            <div className="absolute right-4 top-1/2 -translate-y-1/2">
+              <CheckCircle2 size={18} fill="#1877F2" className="text-white" />
+            </div>
+          )}
+        </div>
     </div>
   </div>
 );
@@ -81,7 +89,7 @@ const AdminHaatMgmt: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   const [form, setForm] = useState({
-    name: '', category: '', price: '', offerPrice: '', condition: 'new', unit: 'কেজি', sellerName: '', mobile: '', location: '', description: '', photo: ''
+    name: '', category: '', price: '', offerPrice: '', condition: 'new', unit: 'কেজি', sellerName: 'Koyra-Paikgacha Community App', mobile: '', location: 'www.koyrabd.top', description: '', photo: ''
   });
 
   useEffect(() => {
@@ -208,7 +216,7 @@ const AdminHaatMgmt: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         setShowForm(false);
         setEditingId(null);
         setSelectedFile(null);
-        setForm({ name: '', category: categories[0]?.id || '', price: '', offerPrice: '', condition: 'new', unit: 'কেজি', sellerName: 'এডমিন', mobile: '', location: 'কয়রা-পাইকগাছা', description: '', photo: '' });
+        setForm({ name: '', category: categories[0]?.id || '', price: '', offerPrice: '', condition: 'new', unit: 'কেজি', sellerName: 'Koyra-Paikgacha Community App', mobile: '', location: 'www.koyrabd.top', description: '', photo: '' });
         alert('সফলভাবে সংরক্ষিত হয়েছে!');
     } catch (e) { 
       console.error(e);
@@ -337,7 +345,7 @@ const AdminHaatMgmt: React.FC<{ onBack: () => void }> = ({ onBack }) => {
           <button 
               onClick={() => { 
                 setEditingId(null); 
-                setForm({name:'', category: categories[0]?.id || '', price:'', offerPrice: '', condition: 'new', unit:'কেজি', sellerName:'এডমিন', mobile:'', location:'কয়রা-পাইকগাছা', description:'', photo:''}); 
+                setForm({name:'', category: categories[0]?.id || '', price:'', offerPrice: '', condition: 'new', unit:'কেজি', sellerName:'Koyra-Paikgacha Community App', mobile:'', location:'www.koyrabd.top', description:'', photo:''}); 
                 setShowForm(true); 
               }}
               className="w-full py-5 bg-[#F1C40F] text-slate-900 font-black rounded-[28px] shadow-xl flex items-center justify-center gap-3 active:scale-95 transition-all"
@@ -385,6 +393,7 @@ const AdminHaatMgmt: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                             <div className="flex items-center gap-1">
                                <Store size={10} className="text-slate-300" />
                                <p className="text-[10px] font-black text-slate-600 truncate">{p.sellerName || 'অজানা বিক্রেতা'}</p>
+                               {(p.sellerName === 'Koyra-Paikgacha Community App' || p.sellerName === 'এডমিন') && <CheckCircle2 size={10} fill="#1877F2" className="text-white shrink-0 ml-1" />}
                             </div>
                             <div className="flex flex-col">
                               {p.offerPrice ? (
@@ -497,7 +506,7 @@ const AdminHaatMgmt: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 
                         <div className="p-4 bg-blue-50/50 rounded-[30px] border border-blue-100 space-y-4">
                            <p className="text-[10px] font-black text-blue-500 uppercase tracking-[0.2em] pl-1">বিক্রেতার তথ্য</p>
-                           <EditField label="নাম" value={form.sellerName} onChange={v=>setForm({...form, sellerName:v})} placeholder="নাম লিখুন" icon={<Store size={18}/>} />
+                           <EditField label="নাম" value={form.sellerName} onChange={v=>setForm({...form, sellerName:v})} placeholder="নাম লিখুন" icon={<Store size={18}/>} verified={form.sellerName === 'Koyra-Paikgacha Community App' || form.sellerName === 'এডমিন'} />
                            <EditField label="মোবাইল নম্বর *" value={form.mobile} onChange={v=>setForm({...form, mobile:v})} placeholder="০১xxxxxxxxx" icon={<Smartphone size={18}/>} />
                            <EditField label="ঠিকানা" value={form.location} onChange={v=>setForm({...form, location:v})} placeholder="যেমন: কয়রা বাজার" icon={<MapPin size={18}/>} />
                         </div>

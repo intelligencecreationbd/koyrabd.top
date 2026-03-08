@@ -36,8 +36,7 @@ import {
   LayoutGrid,
   LogOut,
   Key,
-  Info,
-  CreditCard
+  Info
 } from 'lucide-react';
 import UserEmergencyInfo from '../components/UserEmergencyInfo';
 import { User as AppUser } from '../types';
@@ -107,7 +106,6 @@ const UserAuth: React.FC<UserAuthProps> = ({ onLogin }) => {
   const [profileEditForm, setProfileEditForm] = useState({ fullName: '', village: '', photoURL: '' });
   
   const [showVerifyPage, setShowVerifyPage] = useState(false);
-  const [showEmergencyPage, setShowEmergencyPage] = useState(false);
   const [loginData, setLoginData] = useState({ mobile: '', password: '' });
   const [regData, setRegData] = useState({
     fullName: '', email: '', mobile: '', dob: '', village: '', password: '', confirmPassword: ''
@@ -469,10 +467,6 @@ const UserAuth: React.FC<UserAuthProps> = ({ onLogin }) => {
     );
   }
 
-  if (showEmergencyPage && loggedInUser) {
-    return <UserEmergencyInfo uid={loggedInUser.uid} onBack={() => setShowEmergencyPage(false)} />;
-  }
-
   return (
     <div className="p-5 pb-32 animate-in fade-in duration-500 min-h-screen bg-white">
       {mode === 'profile' && loggedInUser ? (
@@ -537,13 +531,6 @@ const UserAuth: React.FC<UserAuthProps> = ({ onLogin }) => {
                     <div className="space-y-0.5">
                         <p className="font-black text-[12px] uppercase tracking-[0.1em]">আমার পন্য</p>
                         <p className="text-[8px] font-bold opacity-70 leading-tight">পণ্যের তালিকা</p>
-                    </div>
-                </button>
-                <button onClick={() => setShowEmergencyPage(true)} className="p-4 bg-[#6366F1] text-white rounded-[30px] flex flex-col items-center gap-3 shadow-lg active:scale-95 transition-all text-center group relative overflow-hidden">
-                    <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center shrink-0 shadow-inner group-hover:bg-white/30 transition-colors"><CreditCard size={24}/></div>
-                    <div className="space-y-0.5">
-                        <p className="font-black text-[12px] uppercase tracking-[0.1em]">আইডি কার্ড</p>
-                        <p className="text-[8px] font-bold opacity-70 leading-tight">আমার আইডি কার্ড</p>
                     </div>
                 </button>
                 <button onClick={() => navigate('/category/14')} className="p-4 bg-[#3B82F6] text-white rounded-[30px] flex flex-col items-center gap-3 shadow-lg active:scale-95 transition-all text-center group relative overflow-hidden">

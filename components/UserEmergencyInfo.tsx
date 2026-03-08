@@ -1,15 +1,15 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { ChevronLeft, Download, User, Phone, Globe, MapPin, Building2, Briefcase, Mail, Edit2, Camera } from 'lucide-react';
-import html2canvas from 'html2canvas';
-import { QRCodeCanvas } from 'qrcode.react';
+import * as htmlToImage from 'html-to-image';
+import { QRCodeSVG } from 'qrcode.react';
 
 interface UserEmergencyInfoProps {
-  uid: string;
+  uid?: string;
   onBack: () => void;
 }
 
-const UserEmergencyInfo: React.FC<UserEmergencyInfoProps> = ({ uid, onBack }) => {
+const UserEmergencyInfo: React.FC<UserEmergencyInfoProps> = ({ uid = '', onBack }) => {
   const [formData, setFormData] = useState({
     name: '',
     designation: '',
@@ -60,7 +60,7 @@ const UserEmergencyInfo: React.FC<UserEmergencyInfoProps> = ({ uid, onBack }) =>
     
     setIsDownloading(true);
     
-    // Safety timeout to reset loading state if it hangs
+    // Safety timeout
     const safetyTimeout = setTimeout(() => {
       if (isDownloading) {
         setIsDownloading(false);
@@ -71,34 +71,35 @@ const UserEmergencyInfo: React.FC<UserEmergencyInfoProps> = ({ uid, onBack }) =>
     try {
       const element = cardRef.current;
       
-      // Ensure all images are loaded
-      const images = element.getElementsByTagName('img');
-      await Promise.all(Array.from(images).map(img => {
-        const image = img as HTMLImageElement;
-        if (image.complete) return Promise.resolve();
-        return new Promise(resolve => {
-          image.onload = resolve;
-          image.onerror = resolve;
-        });
-      }));
-
-      const canvas = await html2canvas(element, {
-        scale: 1.5, // Reduced scale for better mobile performance
-        useCORS: true,
-        allowTaint: false,
-        backgroundColor: '#ffffff',
-        logging: false,
+      // html-to-image is much more reliable for complex CSS
+      const dataUrl = await htmlToImage.toJpeg(element, {
+        quality: 0.95,
         width: 800,
         height: 450,
-        imageTimeout: 5000, // 5 second timeout for images
-        onclone: (clonedDoc) => {
-          // Ensure fonts are loaded in the clone
-          const style = clonedDoc.createElement('style');
-          style.innerHTML = `
-            @import url('https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&display=swap');
-            * { font-family: 'Hind Siliguri', sans-serif !important; }
-          `;
-          clonedDoc.head.appendChild(style);
+        backgroundColor: '#ffffff',
+        pixelRatio: 2, // High resolution
+        style: {
+          transform: 'none',
+          boxShadow: 'none', // Remove shadow for capture
+          margin: '0',
+          padding: '0'
+        },
+        // Filter out problematic stylesheets to avoid "Cannot access rules" error
+        filter: (node) => {
+          if (node.tagName === 'LINK' && (node as HTMLLinkElement).rel === 'stylesheet') {
+            try {
+              // Check if we can access the rules
+              const sheet = (node as HTMLLinkElement).sheet;
+              if (sheet) {
+                const rules = sheet.cssRules;
+                return true;
+              }
+            } catch (e) {
+              console.warn('Skipping stylesheet due to CORS:', (node as HTMLLinkElement).href);
+              return false;
+            }
+          }
+          return true;
         }
       });
 
@@ -106,29 +107,16 @@ const UserEmergencyInfo: React.FC<UserEmergencyInfoProps> = ({ uid, onBack }) =>
       const safeName = (formData.name || 'User').trim().replace(/\s+/g, '_') || 'ID_Card';
       const fileName = `ID_Card_${safeName}.jpg`;
       
-      try {
-        // Try toDataURL first as it's often more reliable in mobile iframes
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
-        
-        const link = document.createElement('a');
-        link.href = dataUrl;
-        link.download = fileName;
-        document.body.appendChild(link);
-        link.click();
-        
-        // Cleanup
-        setTimeout(() => {
-          document.body.removeChild(link);
-          clearTimeout(safetyTimeout);
-          setIsDownloading(false);
-        }, 500);
-      } catch (blobError) {
-        // Fallback if canvas is tainted
-        console.error('Canvas tainted, trying alternative...', blobError);
-        alert('আপনার ব্রাউজারের নিরাপত্তার কারণে সরাসরি ডাউনলোড করা যাচ্ছে না। দয়া করে আইডি কার্ডের একটি স্ক্রিনশট নিন।');
-        clearTimeout(safetyTimeout);
-        setIsDownloading(false);
-      }
+      const link = document.createElement('a');
+      link.href = dataUrl;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      
+      // Cleanup
+      document.body.removeChild(link);
+      clearTimeout(safetyTimeout);
+      setIsDownloading(false);
 
     } catch (error) {
       console.error('Download failed:', error);
@@ -262,17 +250,43 @@ const UserEmergencyInfo: React.FC<UserEmergencyInfoProps> = ({ uid, onBack }) =>
                     if (!cardRef.current || isDownloading) return;
                     setIsDownloading(true);
                     try {
-                      const canvas = await html2canvas(cardRef.current, { scale: 1.5, useCORS: true });
-                      canvas.toBlob(async (blob) => {
-                        if (blob) {
-                          const file = new File([blob], 'ID_Card.jpg', { type: 'image/jpeg' });
-                          await navigator.share({
-                            files: [file],
-                            title: 'My ID Card',
-                          });
+                      const dataUrl = await htmlToImage.toJpeg(cardRef.current, {
+                        quality: 0.95,
+                        width: 800,
+                        height: 450,
+                        backgroundColor: '#ffffff',
+                        pixelRatio: 2,
+                        style: {
+                          transform: 'none',
+                          boxShadow: 'none'
+                        },
+                        filter: (node) => {
+                          if (node.tagName === 'LINK' && (node as HTMLLinkElement).rel === 'stylesheet') {
+                            try {
+                              const sheet = (node as HTMLLinkElement).sheet;
+                              if (sheet) {
+                                const rules = sheet.cssRules;
+                                return true;
+                              }
+                            } catch (e) {
+                              return false;
+                            }
+                          }
+                          return true;
                         }
-                        setIsDownloading(false);
-                      }, 'image/jpeg');
+                      });
+                      
+                      const response = await fetch(dataUrl);
+                      const blob = await response.blob();
+                      
+                      if (blob) {
+                        const file = new File([blob], 'ID_Card.jpg', { type: 'image/jpeg' });
+                        await navigator.share({
+                          files: [file],
+                          title: 'My ID Card',
+                        });
+                      }
+                      setIsDownloading(false);
                     } catch (e) {
                       console.error(e);
                       setIsDownloading(false);
@@ -313,7 +327,7 @@ const UserEmergencyInfo: React.FC<UserEmergencyInfoProps> = ({ uid, onBack }) =>
             style={{ height: `${450 * scale + 40}px` }}
           >
             <div 
-              className="w-[800px] h-[450px] relative shrink-0 origin-center absolute"
+              className="w-[800px] h-[450px] relative shrink-0 origin-center absolute shadow-2xl"
               style={{ 
                 transform: `scale(${scale})`,
                 transition: 'transform 0.2s ease-out'
@@ -322,7 +336,7 @@ const UserEmergencyInfo: React.FC<UserEmergencyInfoProps> = ({ uid, onBack }) =>
               {/* This is the actual element to be captured - NO TRANSFORMS HERE */}
               <div 
                 ref={cardRef}
-                className="w-[800px] h-[450px] bg-white shadow-2xl flex overflow-hidden"
+                className="w-[800px] h-[450px] bg-white flex overflow-hidden"
                 style={{ 
                   fontFamily: "'Hind Siliguri', 'Inter', sans-serif",
                 }}
@@ -340,7 +354,13 @@ const UserEmergencyInfo: React.FC<UserEmergencyInfoProps> = ({ uid, onBack }) =>
 
                   {/* Vertical Website Text - Centered Vertically and moved further left */}
                   <div className="absolute top-1/2 left-8 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center">
-                    <div className="text-[14px] font-black text-white/20 uppercase tracking-[0.2em] [writing-mode:vertical-rl] rotate-180">
+                    <div 
+                      className="text-[14px] font-black text-white/20 uppercase tracking-[0.2em]"
+                      style={{ 
+                        transform: 'rotate(-90deg)',
+                        whiteSpace: 'nowrap'
+                      }}
+                    >
                       www.koyrabd.top
                     </div>
                   </div>
@@ -379,7 +399,7 @@ const UserEmergencyInfo: React.FC<UserEmergencyInfoProps> = ({ uid, onBack }) =>
 
                   {/* QR Code in bottom right - Enlarged and Repositioned */}
                   <div className="absolute bottom-4 right-4 bg-white p-1.5 rounded-sm shadow-sm border border-slate-100">
-                    <QRCodeCanvas 
+                    <QRCodeSVG 
                       value={qrData}
                       size={125}
                       level="H"
