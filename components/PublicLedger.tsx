@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   ChevronLeft, 
   Plus, 
@@ -23,8 +23,11 @@ import {
   Save,
   User as UserIcon,
   Smartphone,
-  Download
+  Download,
+  FileText
 } from 'lucide-react';
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
 import { User } from '../types';
 import { ledgerDb } from '../Firebase-digitalledger';
 import { collection, onSnapshot, doc, addDoc, updateDoc, deleteDoc, query, orderBy } from 'firebase/firestore';
@@ -49,6 +52,7 @@ const PublicLedger: React.FC<PublicLedgerProps> = ({ user, onBack }) => {
   const [showLedgerForm, setShowLedgerForm] = useState(false);
   const [showDetailView, setShowDetailView] = useState(false);
   const [showPersonProfile, setShowPersonProfile] = useState(false);
+  const [showStatement, setShowStatement] = useState(false);
   const [isEditingPerson, setIsEditingPerson] = useState(false);
   const [isAddingQuickTransaction, setIsAddingQuickTransaction] = useState(false);
   
@@ -56,6 +60,8 @@ const PublicLedger: React.FC<PublicLedgerProps> = ({ user, onBack }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeFilter, setActiveFilter] = useState<'pabo' | 'debo' | null>(null);
   const [entryToDelete, setEntryToDelete] = useState<any | null>(null);
+  const statementRef = useRef<HTMLDivElement>(null);
+  const hiddenStatementRef = useRef<HTMLDivElement>(null);
 
   const [ledgerFormData, setLedgerFormData] = useState({
     personName: '', mobile: '', address: '', type: 'pabo' as 'pabo' | 'debo', amount: ''
@@ -231,13 +237,42 @@ const PublicLedger: React.FC<PublicLedgerProps> = ({ user, onBack }) => {
     }
   };
 
+  const handleDownloadPDF = async () => {
+    const targetRef = showStatement ? statementRef.current : hiddenStatementRef.current;
+    if (!targetRef) return;
+    
+    setIsSubmitting(true);
+    try {
+      const canvas = await html2canvas(targetRef, {
+        scale: 3,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff',
+        windowWidth: 800
+      });
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'px',
+        format: [canvas.width / 3, canvas.height / 3]
+      });
+      pdf.addImage(imgData, 'PNG', 0, 0, canvas.width / 3, canvas.height / 3);
+      pdf.save(`Ledger_Statement_${user.memberId}.pdf`);
+    } catch (error) {
+      console.error('PDF Generation Error:', error);
+      alert('পিডিএফ ডাউনলোড করতে সমস্যা হচ্ছে। আবার চেষ্টা করুন।');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <div className="flex flex-col h-[calc(100vh-80px)] animate-in fade-in duration-500">
-      <header className="flex items-center gap-4 mb-5 shrink-0 px-1">
-        <button onClick={onBack} className="p-3 bg-white border border-slate-100 rounded-2xl shadow-sm active:scale-90 transition-all"><ChevronLeft size={22} /></button>
-        <div className="flex-1 text-left">
-          <h2 className="text-2xl font-black text-slate-800 leading-tight">আমার লেনদেন</h2>
-          <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">ব্যক্তিগত ডিজিটাল খাতা</p>
+      <header className="flex items-center justify-between mb-4 shrink-0 px-2 py-2 bg-slate-50/50 border border-slate-100 rounded-2xl shadow-sm mx-1">
+        <button onClick={onBack} className="p-2 bg-white border border-slate-100 rounded-xl shadow-sm active:scale-90 transition-all"><ChevronLeft size={18} /></button>
+        <div className="text-center">
+          <h2 className="text-lg font-black text-slate-800 leading-tight">আমার লেনদেন</h2>
+          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">ব্যক্তিগত ডিজিটাল খাতা</p>
         </div>
         <button 
           onClick={() => {
@@ -245,21 +280,50 @@ const PublicLedger: React.FC<PublicLedgerProps> = ({ user, onBack }) => {
             setLedgerFormData({ personName: '', mobile: '', address: '', type: 'pabo', amount: '' });
             setShowLedgerForm(true);
           }} 
-          className="w-12 h-12 bg-[#0056b3] text-white rounded-2xl flex items-center justify-center shadow-lg active:scale-90 transition-all"
+          className="w-10 h-10 bg-[#0056b3] text-white rounded-xl flex items-center justify-center shadow-lg active:scale-90 transition-all"
         >
-          <Plus size={26} strokeWidth={2.5} />
+          <Plus size={22} strokeWidth={2.5} />
         </button>
       </header>
 
-      <div className="flex-1 overflow-y-auto no-scrollbar pb-40 space-y-5">
-        <div className="grid grid-cols-2 gap-4 px-1">
-          <button onClick={() => setActiveFilter(activeFilter === 'pabo' ? null : 'pabo')} className={`p-5 rounded-[32px] flex flex-col gap-1 text-left border transition-all duration-300 ${activeFilter === 'pabo' ? 'bg-emerald-500 text-white border-emerald-500 shadow-lg scale-[1.02]' : 'bg-emerald-50/60 border-emerald-100 text-emerald-800'}`}>
-            <span className="text-[9px] font-black uppercase tracking-widest">দেনাদার (পাবো)</span>
-            <span className="text-2xl font-black">৳ {toBn(ledgerSummary.totalPabo)}</span>
+      <div className="flex-1 overflow-y-auto no-scrollbar pb-40 space-y-4">
+        <div className="grid grid-cols-3 gap-2 px-1">
+          <button onClick={() => setActiveFilter(activeFilter === 'pabo' ? null : 'pabo')} className={`p-3 rounded-2xl flex flex-col gap-0.5 text-center border transition-all duration-300 ${activeFilter === 'pabo' ? 'bg-emerald-500 text-white border-emerald-500 shadow-md scale-[1.02]' : 'bg-emerald-50/60 border-emerald-100 text-emerald-800'}`}>
+            <span className="text-[8px] font-black uppercase tracking-tighter">দেনাদার (পাবো)</span>
+            <span className="text-sm font-black">৳ {toBn(ledgerSummary.totalPabo)}</span>
           </button>
-          <button onClick={() => setActiveFilter(activeFilter === 'debo' ? null : 'debo')} className={`p-5 rounded-[32px] flex flex-col gap-1 text-left border transition-all duration-300 ${activeFilter === 'debo' ? 'bg-rose-500 text-white border-rose-500 shadow-lg scale-[1.02]' : 'bg-rose-50/60 border-rose-100 text-rose-800'}`}>
-            <span className="text-[9px] font-black uppercase tracking-widest">পাওনাদার (দেবো)</span>
-            <span className="text-2xl font-black">৳ {toBn(ledgerSummary.totalDebo)}</span>
+          <button onClick={() => setActiveFilter(activeFilter === 'debo' ? null : 'debo')} className={`p-3 rounded-2xl flex flex-col gap-0.5 text-center border transition-all duration-300 ${activeFilter === 'debo' ? 'bg-rose-500 text-white border-rose-500 shadow-md scale-[1.02]' : 'bg-rose-50/60 border-rose-100 text-rose-800'}`}>
+            <span className="text-[8px] font-black uppercase tracking-tighter">পাওনাদার (দেবো)</span>
+            <span className="text-sm font-black">৳ {toBn(ledgerSummary.totalDebo)}</span>
+          </button>
+          {(() => {
+            const balance = ledgerSummary.totalPabo - ledgerSummary.totalDebo;
+            const isAsset = balance >= 0;
+            return (
+              <div className={`p-3 rounded-2xl flex flex-col gap-0.5 text-center border transition-all duration-300 ${isAsset ? 'bg-blue-500 text-white border-blue-500 shadow-md' : 'bg-red-500 text-white border-red-500 shadow-md'}`}>
+                <div className="flex items-center justify-center gap-1">
+                  <span className="text-[8px] font-black uppercase tracking-tighter">ব্যালেন্স</span>
+                  <span className="text-[7px] font-bold bg-white/20 px-1 rounded uppercase">{isAsset ? 'সম্পদ' : 'ঋণ'}</span>
+                </div>
+                <span className="text-sm font-black">৳ {toBn(Math.abs(balance))}</span>
+              </div>
+            );
+          })()}
+        </div>
+
+        <div className="grid grid-cols-3 gap-2 px-1">
+          <button 
+            onClick={() => setShowStatement(true)}
+            className="col-span-2 flex items-center justify-center gap-2 py-3.5 bg-slate-800 text-white rounded-2xl font-black text-xs shadow-md active:scale-95 transition-all"
+          >
+            <FileText size={16} /> হিসাব সামারী
+          </button>
+          <button 
+            onClick={handleDownloadPDF}
+            disabled={isSubmitting}
+            className="col-span-1 flex items-center justify-center gap-2 py-3.5 bg-blue-600 text-white rounded-2xl font-black text-xs shadow-md active:scale-95 transition-all disabled:opacity-50"
+          >
+            {isSubmitting ? <Loader2 className="animate-spin" size={16} /> : <><Download size={16} /> ডাউনলোড</>}
           </button>
         </div>
 
@@ -273,22 +337,47 @@ const PublicLedger: React.FC<PublicLedgerProps> = ({ user, onBack }) => {
             </div>
           ) : (
             filteredEntries.map((entry) => (
-              <div key={entry.id} onClick={() => { setSelectedEntry(entry); setShowDetailView(true); setIsAddingQuickTransaction(false); }} className="w-full bg-white p-6 rounded-[35px] border border-slate-100 shadow-sm flex items-center justify-between active:scale-[0.98] transition-all group">
-                <div className="flex gap-4 items-center overflow-hidden">
-                  <div className={`w-14 h-14 rounded-[22px] flex items-center justify-center shrink-0 shadow-sm border ${entry.dueAmount > 0 ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-rose-50 text-rose-600 border-rose-100'}`}>
-                    {entry.dueAmount > 0 ? <ArrowDownToLine size={24} /> : <ArrowUpFromLine size={24} />}
+              <div 
+                key={entry.id} 
+                onClick={() => { 
+                  setSelectedEntry(entry); 
+                  setShowDetailView(true); 
+                  setIsAddingQuickTransaction(false); 
+                }} 
+                className="w-full bg-white py-3 px-5 rounded-[25px] border border-slate-100 shadow-sm flex items-center justify-between active:scale-[0.98] transition-all group cursor-pointer"
+              >
+                <div className="flex gap-3 items-center overflow-hidden">
+                  <div className={`w-11 h-11 rounded-[18px] flex items-center justify-center shrink-0 shadow-sm border ${entry.dueAmount > 0 ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-rose-50 text-rose-600 border-rose-100'}`}>
+                    {entry.dueAmount > 0 ? <ArrowDownToLine size={20} /> : <ArrowUpFromLine size={20} />}
                   </div>
                   <div className="flex-1 overflow-hidden text-left">
-                    <p className="font-black text-slate-800 text-lg truncate">{entry.personName}</p>
+                    <p className="font-black text-slate-800 text-base truncate">{entry.personName}</p>
                     <div className="flex items-center gap-2">
-                       <p className={`text-[10px] font-black uppercase ${entry.dueAmount > 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                       <p className={`text-[9px] font-black uppercase ${entry.dueAmount > 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
                          {entry.dueAmount > 0 ? 'পাবো' : 'দেবো'} • ৳ {toBn(Math.abs(entry.dueAmount))}
                        </p>
                        <span className="text-[8px] font-bold text-slate-300 uppercase tracking-tighter">• {toBn(entry.history?.length || 0)} এন্ট্রি</span>
                     </div>
                   </div>
                 </div>
-                <ChevronRight size={20} className="text-slate-200 group-hover:text-blue-500 transition-colors" />
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedEntry(entry);
+                    setLedgerFormData({
+                      personName: entry.personName,
+                      mobile: entry.mobile,
+                      address: entry.address,
+                      type: 'pabo',
+                      amount: ''
+                    });
+                    setShowDetailView(true);
+                    setIsAddingQuickTransaction(true);
+                  }}
+                  className="p-2 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-600 hover:text-white transition-all active:scale-90"
+                >
+                  <Plus size={18} strokeWidth={3} />
+                </button>
               </div>
             ))
           )}
@@ -634,6 +723,208 @@ const PublicLedger: React.FC<PublicLedgerProps> = ({ user, onBack }) => {
                     <button onClick={handleDeleteEntry} className="py-4 bg-red-600 text-white rounded-2xl font-black text-xs shadow-lg active:scale-95 transition-all">হ্যাঁ, মুছুন</button>
                 </div>
             </div>
+        </div>
+      )}
+
+      {/* Hidden Statement for PDF Generation */}
+      <div className="absolute top-0 left-0 -z-50 opacity-0 pointer-events-none overflow-hidden h-0">
+        <div ref={hiddenStatementRef} className="p-10 w-[800px] bg-white space-y-8">
+          {/* Statement Header */}
+          <div className="text-center pb-6 border-b-4 border-black">
+            <p className="text-2xl font-black text-red-600 uppercase tracking-widest mb-1">ডিজিটাল খাতা</p>
+            <h1 className="text-4xl font-black text-blue-600 leading-none mb-3">কয়রা-পাইকগাছা কমিউনিটি এপস</h1>
+            <div className="space-y-1">
+              <p className="text-xl font-bold text-black tracking-widest">www.koyrabd.top</p>
+              <p className="text-lg font-bold text-black tracking-widest">info@koyrabd.top</p>
+            </div>
+          </div>
+
+          {/* User Info Section */}
+          <div className="flex items-center gap-6 pb-4 border-b-2 border-red-500 w-fit pr-16">
+            <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-slate-200 shrink-0 shadow-md">
+              {user.photoURL ? (
+                <img src={user.photoURL} className="w-full h-full object-cover" alt="Profile" />
+              ) : (
+                <div className="w-full h-full bg-slate-50 flex items-center justify-center text-slate-300">
+                  <UserIcon size={48} />
+                </div>
+              )}
+            </div>
+            <div className="text-left space-y-1">
+              <h3 className="text-2xl font-black text-slate-800">{user.fullName}</h3>
+              <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">ID: {user.memberId}</p>
+              <p className="text-lg font-black text-slate-600">{user.mobile}</p>
+            </div>
+          </div>
+
+          {/* Transaction Table */}
+          <div className="overflow-hidden border-2 border-slate-200 rounded-2xl">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-50 border-b-2 border-slate-200">
+                  <th className="py-4 px-6 text-sm font-black text-slate-500 uppercase tracking-widest">ব্যক্তির তথ্য</th>
+                  <th className="py-4 px-6 text-sm font-black text-slate-500 uppercase tracking-widest text-right">দেনাদার / পাওনাদার</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y-2 divide-slate-100">
+                {ledgerEntries.map((entry) => (
+                  <tr key={entry.id}>
+                    <td className="py-4 px-6">
+                      <p className="font-black text-slate-800 text-lg">{entry.personName}</p>
+                      <p className="text-sm font-bold text-slate-400">{entry.address || 'ঠিকানা নেই'}</p>
+                      <p className="text-sm font-bold text-slate-400">{entry.mobile || 'মোবাইল নেই'}</p>
+                    </td>
+                    <td className="py-4 px-6 text-right">
+                      <p className={`font-black text-lg ${entry.dueAmount >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                        {entry.dueAmount >= 0 ? 'পাবো' : 'দেবো'}
+                      </p>
+                      <p className={`font-black text-2xl ${entry.dueAmount >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                        ৳ {toBn(Math.abs(entry.dueAmount))}
+                      </p>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+              {ledgerEntries.length > 0 && (
+                <tfoot>
+                  <tr className="bg-slate-50 font-black border-t-2 border-slate-200">
+                    <td className="py-4 px-6 text-lg text-slate-800">মোট হিসাব</td>
+                    <td className="py-4 px-6 text-right">
+                      <div className="space-y-1">
+                        <p className="text-base text-emerald-600">পাবো: ৳ {toBn(ledgerSummary.totalPabo)}</p>
+                        <p className="text-base text-rose-600">দেবো: ৳ {toBn(ledgerSummary.totalDebo)}</p>
+                      </div>
+                    </td>
+                  </tr>
+                </tfoot>
+              )}
+            </table>
+          </div>
+
+          {/* Footer */}
+          <div className="pt-4 flex justify-between items-end opacity-60">
+            <div className="text-xs font-bold uppercase tracking-widest">
+              তৈরি করা হয়েছেঃ {new Date().toLocaleString('bn-BD')}
+            </div>
+            <div className="text-xs font-bold uppercase tracking-widest">
+              ধন্যবাদ, এপসটি বন্ধুদের সাথে শেয়ার করুন
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Account Statement View */}
+      {showStatement && (
+        <div className="fixed inset-0 z-[250] bg-white overflow-y-auto no-scrollbar animate-in slide-in-from-bottom duration-500">
+          <div ref={statementRef} className="p-4 pt-2 max-w-2xl mx-auto space-y-4 bg-white">
+            {/* Close Button */}
+            <div className="flex justify-end print:hidden" data-html2canvas-ignore>
+              <button 
+                onClick={() => setShowStatement(false)} 
+                className="p-2 bg-slate-100 rounded-xl text-slate-500 active:scale-90 transition-all"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Statement Header */}
+            <div className="text-center pb-2 border-b-2 border-black">
+              <p className="text-sm font-black text-red-600 uppercase tracking-widest mb-0.5">ডিজিটাল খাতা</p>
+              <h1 className="text-xl font-black text-blue-600 leading-none mb-1">কয়রা-পাইকগাছা কমিউনিটি এপস</h1>
+              <div className="space-y-0">
+                <p className="text-xs font-bold text-black tracking-widest leading-tight">www.koyrabd.top</p>
+                <p className="text-[10px] font-bold text-black tracking-widest leading-tight">info@koyrabd.top</p>
+              </div>
+            </div>
+
+            {/* User Info Section */}
+            <div className="flex items-center gap-4 pb-2 border-b border-red-500 w-fit pr-10">
+              <div className="w-16 h-16 rounded-full overflow-hidden border border-slate-200 shrink-0 shadow-sm">
+                {user.photoURL ? (
+                  <img src={user.photoURL} className="w-full h-full object-cover" alt="Profile" />
+                ) : (
+                  <div className="w-full h-full bg-slate-50 flex items-center justify-center text-slate-300">
+                    <UserIcon size={32} />
+                  </div>
+                )}
+              </div>
+              <div className="text-left space-y-0">
+                <h3 className="text-lg font-black text-slate-800 leading-tight">{user.fullName}</h3>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-tight">ID: {user.memberId}</p>
+                <p className="text-xs font-black text-slate-600 leading-tight">{user.mobile}</p>
+              </div>
+            </div>
+
+            {/* Transaction Table */}
+            <div className="overflow-hidden border border-slate-200 rounded-xl">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-200">
+                    <th className="py-2 px-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">ব্যক্তির তথ্য</th>
+                    <th className="py-2 px-4 text-[10px] font-black text-slate-500 uppercase tracking-widest text-right">দেনাদার / পাওনাদার</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {ledgerEntries.map((entry) => (
+                    <tr key={entry.id} className="hover:bg-slate-50/50 transition-colors">
+                      <td className="py-2 px-4">
+                        <p className="font-black text-slate-800 text-sm">{entry.personName}</p>
+                        <p className="text-[10px] font-bold text-slate-400 leading-tight">{entry.address || 'ঠিকানা নেই'}</p>
+                        <p className="text-[10px] font-bold text-slate-400 leading-tight">{entry.mobile || 'মোবাইল নেই'}</p>
+                      </td>
+                      <td className="py-2 px-4 text-right">
+                        <p className={`font-black text-sm leading-tight ${entry.dueAmount >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                          {entry.dueAmount >= 0 ? 'পাবো' : 'দেবো'}
+                        </p>
+                        <p className={`font-black text-base leading-tight ${entry.dueAmount >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                          ৳ {toBn(Math.abs(entry.dueAmount))}
+                        </p>
+                      </td>
+                    </tr>
+                  ))}
+                  {ledgerEntries.length === 0 && (
+                    <tr>
+                      <td colSpan={2} className="p-10 text-center text-slate-300 font-bold italic">কোনো লেনদেন পাওয়া যায়নি</td>
+                    </tr>
+                  )}
+                </tbody>
+                {ledgerEntries.length > 0 && (
+                  <tfoot>
+                    <tr className="bg-slate-50 font-black">
+                      <td className="py-2 px-4 text-sm text-slate-800">মোট হিসাব</td>
+                      <td className="py-2 px-4 text-right">
+                        <div className="space-y-0">
+                          <p className="text-xs text-emerald-600 leading-tight">পাবো: ৳ {toBn(ledgerSummary.totalPabo)}</p>
+                          <p className="text-xs text-rose-600 leading-tight">দেবো: ৳ {toBn(ledgerSummary.totalDebo)}</p>
+                        </div>
+                      </td>
+                    </tr>
+                  </tfoot>
+                )}
+              </table>
+            </div>
+
+            {/* Footer / Print Info */}
+            <div className="pt-1 flex justify-between items-end opacity-50">
+              <div className="text-[8px] font-bold uppercase tracking-widest">
+                তৈরি করা হয়েছেঃ {new Date().toLocaleString('bn-BD')}
+              </div>
+              <div className="text-[8px] font-bold uppercase tracking-widest">
+                ধন্যবাদ, এপসটি বন্ধুদের সাথে শেয়ার করুন
+              </div>
+            </div>
+
+            {/* Print Button */}
+            <div className="flex justify-center pt-6 print:hidden" data-html2canvas-ignore>
+              <button 
+                onClick={handleDownloadPDF}
+                disabled={isSubmitting}
+                className="px-8 py-4 bg-blue-600 text-white rounded-[24px] font-black text-sm shadow-xl shadow-blue-500/20 active:scale-95 transition-all flex items-center gap-3 disabled:opacity-50"
+              >
+                {isSubmitting ? <Loader2 className="animate-spin" size={18} /> : <><Download size={20} /> ডাউনলোড পিডিএফ</>}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

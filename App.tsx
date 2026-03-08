@@ -334,6 +334,7 @@ const App = () => {
   const isLanding = location.pathname === '/';
   const isChatPage = location.pathname === '/chat';
   const isNewsPage = location.pathname.startsWith('/category/14');
+  const isLedgerPage = location.pathname === '/ledger';
 
   // Google Analytics Page View Tracking
   useEffect(() => {
@@ -476,7 +477,7 @@ const App = () => {
 
   return (
     <div className={`min-h-screen w-full flex flex-col transition-colors duration-300 relative ${isDarkMode ? 'bg-slate-950 text-white' : 'bg-white text-[#1A1A1A]'}`}>
-      {!isLanding && (
+      {!isLanding && !isLedgerPage && (
         <>
           <div className={`fixed inset-0 z-[100] transition-opacity duration-300 ${isDrawerOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
             <div className="absolute inset-0 bg-slate-900/40 dark:bg-slate-950/60 backdrop-blur-sm" onClick={() => setIsDrawerOpen(false)} />
@@ -625,22 +626,26 @@ const App = () => {
                 </button>
               </div>
               <div className="flex flex-col items-center overflow-hidden">
-                <div className="flex items-baseline gap-1.5 overflow-hidden">
-                  <h1 className="font-black text-xl tracking-tight text-white leading-none drop-shadow-sm truncate">
-                    {isChatPage ? 'কেপি চ্যাট' : isNewsPage ? 'কেপি পোস্ট' : 'কয়রা-পাইকগাছা'}
-                  </h1>
-                </div>
-                <div className="relative h-4 flex items-center justify-center mt-0.5 overflow-hidden w-full px-2">
-                  {(!isChatPage && !isNewsPage) ? (
-                    <span key={mainSubtitleIndex} className="text-[9px] font-black tracking-wider uppercase text-white/80 whitespace-nowrap animate-in fade-in duration-500">
-                      {mainSubtitles[mainSubtitleIndex]}
-                    </span>
-                  ) : (
-                    <span className="text-[9px] font-black tracking-wider uppercase whitespace-nowrap animate-rainbow-text">
-                      {subtitles[subtitleIndex]}
-                    </span>
-                  )}
-                </div>
+                {!isLedgerPage && (
+                  <>
+                    <div className="flex items-baseline gap-1.5 overflow-hidden">
+                      <h1 className="font-black text-xl tracking-tight text-white leading-none drop-shadow-sm truncate">
+                        {isChatPage ? 'কেপি চ্যাট' : isNewsPage ? 'কেপি পোস্ট' : 'কয়রা-পাইকগাছা'}
+                      </h1>
+                    </div>
+                    <div className="relative h-4 flex items-center justify-center mt-0.5 overflow-hidden w-full px-2">
+                      {(!isChatPage && !isNewsPage) ? (
+                        <span key={mainSubtitleIndex} className="text-[9px] font-black tracking-wider uppercase text-white/80 whitespace-nowrap animate-in fade-in duration-500">
+                          {mainSubtitles[mainSubtitleIndex]}
+                        </span>
+                      ) : (
+                        <span className="text-[9px] font-black tracking-wider uppercase whitespace-nowrap animate-rainbow-text">
+                          {subtitles[subtitleIndex]}
+                        </span>
+                      )}
+                    </div>
+                  </>
+                )}
               </div>
               <div className="flex items-center gap-1 shrink-0">
                 <button onClick={() => setIsDarkMode(!isDarkMode)} className="p-2.5 rounded-xl text-white/80 transition-all duration-300 hover:text-white active:scale-90">
@@ -677,8 +682,8 @@ const App = () => {
         </div>
       )}
 
-      <main className={`flex-1 relative w-full ${isLanding ? 'overflow-hidden' : 'overflow-hidden'} ${isLanding ? '' : 'bg-white dark:bg-slate-950'}`}>
-        <div className={`h-full w-full ${isLanding ? 'overflow-hidden' : 'overflow-y-auto'} no-scrollbar`}>
+      <main className={`flex-1 relative w-full ${isLanding ? 'overflow-hidden' : 'overflow-hidden'} ${isLanding || isLedgerPage ? '' : 'bg-white dark:bg-slate-950'}`}>
+        <div className={`h-full w-full ${isLanding || isLedgerPage ? 'overflow-hidden' : 'overflow-y-auto'} no-scrollbar`}>
             <Routes>
               <Route path="/" element={
                 <LandingScreen 

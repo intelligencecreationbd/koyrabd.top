@@ -46,6 +46,7 @@ import {
 } from 'firebase/firestore';
 import { kppostDb } from '../Firebase-kppost';
 import { userDb as db } from '../Firebase-user';
+import { settingsDb } from '../Firebase-appsettings';
 import { uploadImageToServer } from '../src/services/uploadService';
 
 const toBn = (num: string | number) => 
@@ -101,6 +102,7 @@ export default function PublicNews({ onBack }: { onBack: () => void }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const [appLogo, setAppLogo] = useState('https://raw.githubusercontent.com/StackBlitz-User-Assets/logo/main/kp-logo.png');
 
   const getCurrentDateTime = () => {
     const now = new Date();
@@ -170,6 +172,14 @@ export default function PublicNews({ onBack }: { onBack: () => void }) {
       setBreakingNews(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })));
     });
 
+    // Fetch app logo from AppSettings Firebase
+    const appLogoRef = doc(settingsDb, 'settings', 'app_logo');
+    const unsubscribeLogo = onSnapshot(appLogoRef, (snapshot) => {
+      if (snapshot.exists()) {
+        setAppLogo(snapshot.data().value);
+      }
+    });
+
     const saved = localStorage.getItem('kp_saved_news');
     if (saved) setSavedNewsIds(JSON.parse(saved));
 
@@ -178,6 +188,7 @@ export default function PublicNews({ onBack }: { onBack: () => void }) {
       unsubscribeCats();
       unsubscribeNews();
       unsubscribeBreaking();
+      unsubscribeLogo();
     };
   }, []);
 
@@ -199,7 +210,7 @@ export default function PublicNews({ onBack }: { onBack: () => void }) {
 
   const getReporterData = (news: any) => {
     if (news.isAdminPost || news.reporter === 'Koyra-Paikgacha Community App' || news.reporter === 'এডমিন') {
-        return { name: news.reporter || 'এডমিন', isVerified: true, village: '', photoURL: '' };
+        return { name: news.reporter || 'এডমিন', isVerified: true, village: '', photoURL: appLogo };
     }
     if (!news.userId) return { name: news.reporter || 'নিজস্ব প্রতিবেদক', isVerified: false, village: '', photoURL: '' };
     const user = allUsers.find(u => u.memberId === news.userId);
