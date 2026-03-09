@@ -182,11 +182,15 @@ const PublicDirectory: React.FC<PublicDirectoryProps> = ({ id, categoryName, pat
 
   const levels = useMemo(() => {
     const result = [];
-    const rootCats = allCategories.filter(c => c.parentId === 'root');
+    const rootCats = allCategories
+      .filter(c => c.parentId === 'root')
+      .sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
     result.push({ parentId: 'root', items: rootCats });
 
     for (let i = 0; i < selections.length; i++) {
-      const children = allCategories.filter(c => c.parentId === selections[i]);
+      const children = allCategories
+        .filter(c => c.parentId === selections[i])
+        .sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
       if (children.length > 0) {
         result.push({ parentId: selections[i], items: children, depth: i + 1 });
       } else {
@@ -224,6 +228,11 @@ const PublicDirectory: React.FC<PublicDirectoryProps> = ({ id, categoryName, pat
       const unsubscribe = onSnapshot(q, (snapshot) => {
         const list = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
         setDataList(list.sort((a: any, b: any) => {
+          // If createdAt exists, use it for chronological order
+          if (a.createdAt !== undefined && b.createdAt !== undefined) {
+            return a.createdAt - b.createdAt;
+          }
+          // Fallback to previous sorting logic for older data or other categories
           const isA = (a.designation || '').includes('চেয়ারম্যান');
           const isB = (b.designation || '').includes('চেয়ারম্যান');
           if (isA && !isB) return -1;
@@ -240,6 +249,10 @@ const PublicDirectory: React.FC<PublicDirectoryProps> = ({ id, categoryName, pat
         if (data) {
           const list = Object.keys(data).map(key => ({ ...data[key], id: key }));
           setDataList(list.sort((a: any, b: any) => {
+            // If createdAt exists, use it for chronological order
+            if (a.createdAt !== undefined && b.createdAt !== undefined) {
+              return a.createdAt - b.createdAt;
+            }
             const isA = (a.designation || '').includes('চেয়ারম্যান');
             const isB = (b.designation || '').includes('চেয়ারম্যান');
             if (isA && !isB) return -1;

@@ -123,13 +123,15 @@ const AdminMobileMgmt: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         ...doc.data(),
         id: doc.id
       }));
-      setCurrentContacts(list);
+      setCurrentContacts(list.sort((a: any, b: any) => (a.createdAt || 0) - (b.createdAt || 0)));
     });
     return () => unsubscribe();
   }, [parentId]);
 
   const subCategories = useMemo(() => 
-    allCategories.filter(c => c.parentId === parentId), 
+    allCategories
+      .filter(c => c.parentId === parentId)
+      .sort((a: any, b: any) => (a.createdAt || 0) - (b.createdAt || 0)), 
   [allCategories, parentId]);
 
   const handleAddCategory = async () => {
@@ -140,7 +142,13 @@ const AdminMobileMgmt: React.FC<{ onBack: () => void }> = ({ onBack }) => {
             ? (allCategories.find(c => c.id === editingCategoryId)?.parentId || parentId)
             : parentId;
 
-        const newCat = { name: catName, parentId: currentParentId };
+        const newCat = { 
+          name: catName, 
+          parentId: currentParentId,
+          createdAt: editingCategoryId 
+            ? (allCategories.find(c => c.id === editingCategoryId) as any)?.createdAt || Date.now()
+            : Date.now()
+        };
         
         if (editingCategoryId) {
           await setDoc(doc(mobileDb, 'categories', editingCategoryId), newCat, { merge: true });
@@ -175,7 +183,14 @@ const AdminMobileMgmt: React.FC<{ onBack: () => void }> = ({ onBack }) => {
           }
         }
 
-        const finalData = { ...contactForm, photo: photoUrl, parentId };
+        const finalData = { 
+          ...contactForm, 
+          photo: photoUrl, 
+          parentId,
+          createdAt: editingContactId 
+            ? (currentContacts.find(c => c.id === editingContactId) as any)?.createdAt || Date.now()
+            : Date.now()
+        };
 
         if (editingContactId) {
           await setDoc(doc(mobileDb, 'contacts', editingContactId), finalData, { merge: true });

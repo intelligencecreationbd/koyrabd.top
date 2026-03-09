@@ -1,70 +1,20 @@
-# Koyra-Paikgacha Community App
+<div align="center">
+<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
+</div>
 
-A comprehensive community application for Koyra and Paikgacha regions, providing various digital services including:
-- Digital Ledger (Personal Finance Tracking)
-- Online Haat (Marketplace)
-- Weather Information
-- Community Chat
-- Hotline Directory
-- Medical Information
-- And more...
+# Run and deploy your AI Studio app
 
-## Tech Stack
-- **Frontend:** React 19, Vite, Tailwind CSS, Lucide React, Motion
-- **Backend:** Express.js (Custom Server)
-- **Database:** Firebase (Firestore & Realtime Database)
-- **Other Tools:** html2canvas, jspdf (for report generation), nodemailer (for emails)
+This contains everything you need to run your app locally.
 
-## Getting Started
+View your app in AI Studio: https://ai.studio/apps/bec30173-84be-4f97-8c01-5418a83b2f82
 
-### Prerequisites
-- Node.js (v18 or higher)
-- npm or yarn
+## Run Locally
 
-### Installation
-1. Clone the repository:
-   ```bash
-   git clone <repository-url>
-   cd koyra-paikgacha
-   ```
+**Prerequisites:**  Node.js
 
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
 
-3. Set up environment variables:
-   - Copy `.env.example` to `.env`
-   - Fill in the required API keys and credentials
-
-### Running the App
-- **Development Mode:**
-  ```bash
-  npm run dev
-  ```
-- **Build for Production:**
-  ```bash
-  npm run build
-  ```
-- **Preview Production Build:**
-  ```bash
-  npm run preview
-  ```
-
-## Firebase Configuration
-This project uses multiple Firebase projects for different modules (e.g., App Settings, Digital Ledger, Chat, etc.). 
-- The main configuration is in `firebase.ts`.
-- Module-specific configurations are in `Firebase-*.ts` files.
-For a production deployment, you may want to consolidate these into a single Firebase project or ensure all environment variables are correctly set for each module.
-
-- `/src`: Frontend source code
-- `/components`: Reusable UI components
-- `/pages`: Application pages
-- `server.ts`: Express server entry point
-- `Firebase-*.ts`: Firebase configuration files for different modules
-
-## License
-This project is private. All rights reserved.
-
-## Development by
-**Intelligence Creation BD**
+1. Install dependencies:
+   `npm install`
+2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
+3. Run the app:
+   `npm run dev`
