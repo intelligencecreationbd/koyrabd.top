@@ -72,11 +72,21 @@ const PublicTransport: React.FC<{
   const uniqueRoutes = useMemo(() => {
     const allRoutes = new Set<string>();
     busData.forEach(b => {
-      if (b.route) allRoutes.add(b.route);
-      if (b.routes) b.routes.forEach(r => { if (r) allRoutes.add(r); });
+      if (b.route) allRoutes.add(b.route.trim());
+      if (b.routes) b.routes.forEach(r => { if (r) allRoutes.add(r.trim()); });
     });
-    return Array.from(allRoutes).map(r => ({ id: r, name: r }));
+    // Sort alphabetically to ensure consistent color mapping regardless of data order
+    return Array.from(allRoutes).sort().map(r => ({ id: r, name: r }));
   }, [busData]);
+
+  const routeColorMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    uniqueRoutes.forEach((route, idx) => {
+      map[route.name] = THEME_COLORS[idx % THEME_COLORS.length];
+    });
+    return map;
+  }, [uniqueRoutes]);
+
   const currentBus = useMemo(() => busData.find(b => b.id === (busId || subId)), [busData, subId, busId]);
   const isViewingDetails = !!currentBus && (!!busId || (subId && busData.some(b => b.id === subId)));
 
@@ -100,14 +110,18 @@ const PublicTransport: React.FC<{
           </h2>
           {!isViewingDetails ? (
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
-              {selectedRoute ? `রুট: ${selectedRoute}` : 'বাস সার্ভিসের তালিকা'}
+              {selectedRoute ? selectedRoute : 'বাস সার্ভিসের তালিকা'}
             </p>
           ) : (
             <div className="mt-1 flex flex-col items-center">
               <div className="flex flex-col items-center gap-0.5">
                 {allRoutes.map((r, i) => (
-                  <p key={i} className="text-[10px] font-bold text-blue-600 uppercase tracking-widest">
-                    রুট: {r}
+                  <p 
+                    key={i} 
+                    className="text-[10px] font-bold uppercase tracking-widest"
+                    style={{ color: routeColorMap[r.trim()] || '#2563eb' }}
+                  >
+                    {r}
                   </p>
                 ))}
               </div>
@@ -131,6 +145,7 @@ const PublicTransport: React.FC<{
           <div className="grid gap-4">
             {filteredBuses.length > 0 ? filteredBuses.map((bus, index) => {
               const iconColor = THEME_COLORS[index % THEME_COLORS.length];
+              const busRoutes = [bus.route, ...(bus.routes || [])].filter(Boolean);
               return (
                 <button 
                    key={bus.id} 
@@ -143,9 +158,17 @@ const PublicTransport: React.FC<{
                     </div>
                     <div className="overflow-hidden">
                         <h4 className="font-black text-lg text-[#1A1A1A] truncate leading-tight">{bus.busName}</h4>
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter mt-1">
-                          রুট: {[bus.route, ...(bus.routes || [])].filter(Boolean).join(', ')}
-                        </p>
+                        <div className="flex flex-col gap-0.5 mt-1">
+                          {busRoutes.map((r, i) => (
+                            <p 
+                              key={i} 
+                              className="text-[10px] font-bold uppercase tracking-tighter leading-tight"
+                              style={{ color: routeColorMap[r.trim()] || '#94a3b8' }}
+                            >
+                              {r}
+                            </p>
+                          ))}
+                        </div>
                     </div>
                   </div>
                   <ArrowRight size={20} className="text-slate-200 group-hover:text-blue-600 transition-colors shrink-0 z-10" />
