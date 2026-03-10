@@ -42,6 +42,7 @@ export interface LegalServiceContact {
 export interface BusCounter {
   id: string;
   route: string;
+  routes?: string[];
   busName: string;
   acFare: string;
   nonAcFare: string;

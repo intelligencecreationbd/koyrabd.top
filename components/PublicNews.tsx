@@ -119,6 +119,7 @@ export default function PublicNews({ onBack }: { onBack: () => void }) {
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const action = params.get('action');
+    const newsId = params.get('newsId');
     const savedUser = localStorage.getItem('kp_logged_in_user');
     
     if (action === 'submit' && savedUser) {
@@ -132,7 +133,14 @@ export default function PublicNews({ onBack }: { onBack: () => void }) {
         setShowSubmitForm(true);
         navigate(location.pathname, { replace: true });
     }
-  }, [location, navigate]);
+
+    if (newsId && newsList.length > 0) {
+      const news = newsList.find(n => n.id === newsId);
+      if (news) {
+        setSelectedNews(news);
+      }
+    }
+  }, [location, navigate, newsList]);
 
   useEffect(() => {
     const savedUser = localStorage.getItem('kp_logged_in_user');
@@ -351,8 +359,21 @@ export default function PublicNews({ onBack }: { onBack: () => void }) {
   }, [newsList, filteredNews, activeCategory]);
 
   const handleShare = (news: any) => {
-    const text = `*${news.title}*\n${news.description?.substring(0, 100)}...\n\nবিস্তারিত পড়ুন কয়রা-পাইকগাছা অ্যাপে।`;
-    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+    // Use the current origin for sharing
+    const shareUrl = `${window.location.origin}/share/news/${news.id}`;
+    const text = `*${news.title}*\n\nবিস্তারিত পড়ুন: ${shareUrl}\n\nকয়রা-পাইকগাছা কমিউনিটি অ্যাপস\nwww.koyrabd.top`;
+    
+    if (navigator.share) {
+      navigator.share({
+        title: news.title,
+        text: text,
+        url: shareUrl,
+      }).catch(() => {
+        window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+      });
+    } else {
+      window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+    }
   };
 
   if (showSubmitForm) {
@@ -480,6 +501,14 @@ export default function PublicNews({ onBack }: { onBack: () => void }) {
              </p>
           </div>
           <div className="pt-6 border-t border-slate-100 space-y-6">
+              <div className="px-2">
+                 <button 
+                   onClick={() => handleShare(selectedNews)}
+                   className="w-full py-4 bg-emerald-50 text-emerald-600 rounded-2xl font-black text-sm flex items-center justify-center gap-3 border border-emerald-100 active:scale-95 transition-all shadow-sm"
+                 >
+                    <Share2 size={20} /> সংবাদটি শেয়ার করুন
+                 </button>
+              </div>
               <div className="flex items-center justify-between px-2 relative">
                 <div className="flex items-center gap-6">
                     <div className="relative">

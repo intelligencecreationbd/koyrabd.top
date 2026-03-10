@@ -53,8 +53,8 @@ const AdminBusMgmt: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [editingBusId, setEditingBusId] = useState<string | null>(null);
-  const [busForm, setBusForm] = useState<Omit<BusCounter, 'id'> & { photo?: string }>({
-    route: '', busName: '', acFare: '', nonAcFare: '', counters: [{ name: '', mobile: '' }], photo: ''
+  const [busForm, setBusForm] = useState<Omit<BusCounter, 'id'>>({
+    route: '', routes: [], busName: '', counters: [{ name: '', mobile: '' }]
   });
 
   useEffect(() => {
@@ -77,19 +77,7 @@ const AdminBusMgmt: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     if (!busForm.busName || !busForm.route) return;
     setIsSubmitting(true);
     try {
-        let photoUrl = busForm.photo || '';
-        
-        if (selectedFile) {
-          try {
-            photoUrl = await uploadImageToServer(selectedFile);
-          } catch (uploadError: any) {
-            alert(uploadError.message || 'ইমেজ আপলোড ব্যর্থ হয়েছে!');
-            setIsSubmitting(false);
-            return;
-          }
-        }
-
-        const finalData = { ...busForm, photo: photoUrl };
+        const finalData = { ...busForm };
 
         if (editingBusId) {
           const busDocRef = doc(busDb, 'বাস', editingBusId);
@@ -135,14 +123,24 @@ const AdminBusMgmt: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     setBusForm({ ...busForm, counters: updatedCounters });
   };
 
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setSelectedFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => setBusForm(prev => ({ ...prev, photo: reader.result as string }));
-      reader.readAsDataURL(file);
-    }
+  const handleAddRouteField = () => {
+    setBusForm({
+      ...busForm,
+      routes: [...(busForm.routes || []), '']
+    });
+  };
+
+  const handleRouteFieldChange = (index: number, value: string) => {
+    const updatedRoutes = [...(busForm.routes || [])];
+    updatedRoutes[index] = value;
+    setBusForm({ ...busForm, routes: updatedRoutes });
+  };
+
+  const handleRemoveRouteField = (index: number) => {
+    setBusForm({
+      ...busForm,
+      routes: (busForm.routes || []).filter((_, i) => i !== index)
+    });
   };
 
   return (
@@ -152,7 +150,7 @@ const AdminBusMgmt: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         <button 
           onClick={() => { 
             setEditingBusId(null); 
-            setBusForm({route: '', busName: '', acFare: '', nonAcFare: '', counters: [{name:'', mobile:''}]}); 
+            setBusForm({route: '', routes: [], busName: '', counters: [{name:'', mobile:''}]}); 
             setShowBusForm(true); 
           }} 
           className="w-full py-5 bg-orange-600 text-white font-black rounded-[28px] shadow-xl flex items-center justify-center gap-3 active:scale-95 transition-all"
@@ -168,9 +166,17 @@ const AdminBusMgmt: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                     <div key={b.id} className="bg-white p-5 rounded-[28px] border border-slate-100 flex items-center justify-between shadow-sm hover:border-orange-100 transition-colors group">
                         <div className="text-left">
                             <h4 className="font-black text-slate-800">{b.busName}</h4>
-                            <div className="flex items-center gap-1.5 mt-0.5">
-                                <MapPin size={10} className="text-orange-500" />
-                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{b.route}</p>
+                            <div className="flex flex-col gap-0.5 mt-0.5">
+                                <div className="flex items-center gap-1.5">
+                                    <MapPin size={10} className="text-orange-500" />
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{b.route}</p>
+                                </div>
+                                {b.routes && b.routes.map((r, i) => (
+                                  <div key={i} className="flex items-center gap-1.5">
+                                      <MapPin size={10} className="text-orange-500 opacity-50" />
+                                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{r}</p>
+                                  </div>
+                                ))}
                             </div>
                         </div>
                         <div className="flex gap-2">
@@ -200,25 +206,44 @@ const AdminBusMgmt: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                         <button onClick={()=>setShowBusForm(false)} className="p-2 text-slate-400 hover:text-red-500"><X/></button>
                     </div>
                     
-                    <div className="flex flex-col items-center pt-2">
-                        <div className="relative group">
-                            <div className="w-24 h-24 rounded-[35px] bg-slate-50 border-4 border-white shadow-lg overflow-hidden flex items-center justify-center text-slate-200">
-                                {busForm.photo ? <img src={busForm.photo} className="w-full h-full object-cover" /> : <Bus size={40} />}
-                            </div>
-                            <button type="button" onClick={() => (document.getElementById('bus-photo-input') as HTMLInputElement)?.click()} className="absolute bottom-0 right-0 p-3 bg-orange-600 text-white rounded-2xl shadow-xl border-4 border-white active:scale-90"><Plus size={18}/></button>
-                            <input id="bus-photo-input" type="file" className="hidden" accept="image/*" onChange={handlePhotoUpload} />
-                        </div>
-                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-4">বাসের ছবি সিলেক্ট করুন</p>
-                    </div>
-
                     <div className="space-y-4 pt-2">
-                        <EditField 
-                            label="রুটের নাম" 
-                            value={busForm.route} 
-                            onChange={v=>setBusForm({...busForm, route:v})} 
-                            placeholder="উদাঃ পাইকগাছা-ঢাকা" 
-                            icon={<MapPin size={18}/>} 
-                        />
+                        <div className="space-y-3">
+                          <EditField 
+                              label="রুটের নাম" 
+                              value={busForm.route} 
+                              onChange={v=>setBusForm({...busForm, route:v})} 
+                              placeholder="উদাঃ পাইকগাছা-ঢাকা" 
+                              icon={<MapPin size={18}/>} 
+                          />
+                          {busForm.routes && busForm.routes.map((r, i) => (
+                            <div key={i} className="flex gap-2 animate-in slide-in-from-top-1">
+                                <div className="flex-1">
+                                  <EditField 
+                                      label={`অতিরিক্ত রুট (${i + 1})`} 
+                                      value={r} 
+                                      onChange={v => handleRouteFieldChange(i, v)} 
+                                      placeholder="উদাঃ পাইকগাছা-খুলনা" 
+                                      icon={<MapPin size={18}/>} 
+                                  />
+                                </div>
+                                <button 
+                                    type="button" 
+                                    onClick={() => handleRemoveRouteField(i)} 
+                                    className="mt-6 p-3 text-red-500"
+                                >
+                                    <Trash2 size={16}/>
+                                </button>
+                            </div>
+                          ))}
+                          <button 
+                              type="button" 
+                              onClick={handleAddRouteField} 
+                              className="flex items-center gap-1.5 text-xs font-black text-orange-600 pl-1"
+                          >
+                              <Plus size={14}/> আরেকটি রুট যোগ করুন
+                          </button>
+                        </div>
+
                         <EditField 
                             label="বাসের নাম" 
                             value={busForm.busName} 
@@ -227,21 +252,6 @@ const AdminBusMgmt: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                             icon={<Bus size={18}/>} 
                         />
                         
-                        <div className="grid grid-cols-2 gap-3">
-                            <EditField 
-                                label="এসি ভাড়া" 
-                                value={busForm.acFare} 
-                                onChange={v=>setBusForm({...busForm, acFare:v})} 
-                                placeholder="৳ 00" 
-                            />
-                            <EditField 
-                                label="নন-এসি ভাড়া" 
-                                value={busForm.nonAcFare} 
-                                onChange={v=>setBusForm({...busForm, nonAcFare:v})} 
-                                placeholder="৳ 00" 
-                            />
-                        </div>
-
                         <div className="space-y-3">
                             <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block pl-1">কাউন্টার লিস্ট</label>
                             {busForm.counters.map((c, i) => (

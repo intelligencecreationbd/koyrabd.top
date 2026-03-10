@@ -6,7 +6,9 @@ import {
   Bus, 
   PhoneCall, 
   MapPin, 
-  Navigation
+  Navigation,
+  Search,
+  X
 } from 'lucide-react';
 import { BusCounter } from '../types';
 import { collection, onSnapshot } from 'firebase/firestore';
@@ -47,6 +49,8 @@ const PublicTransport: React.FC<{
 }> = ({ subId, busId, onNavigate, onBack }) => {
   const [busData, setBusData] = useState<BusCounter[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedRoute, setSelectedRoute] = useState<string | null>(null);
+  const [showRoutePicker, setShowRoutePicker] = useState(false);
 
   useEffect(() => {
     setIsLoading(true);
@@ -65,79 +69,93 @@ const PublicTransport: React.FC<{
     return () => unsubscribe();
   }, []);
 
-  const uniqueRoutes = useMemo(() => Array.from(new Set(busData.map(b => b.route))).filter(Boolean).map(r => ({ id: r, name: r })), [busData]);
-  const filteredBuses = useMemo(() => busData.filter(b => b.route === subId), [busData, subId]);
-  const currentBus = useMemo(() => busData.find(b => b.id === busId), [busData, busId]);
+  const uniqueRoutes = useMemo(() => {
+    const allRoutes = new Set<string>();
+    busData.forEach(b => {
+      if (b.route) allRoutes.add(b.route);
+      if (b.routes) b.routes.forEach(r => { if (r) allRoutes.add(r); });
+    });
+    return Array.from(allRoutes).map(r => ({ id: r, name: r }));
+  }, [busData]);
+  const currentBus = useMemo(() => busData.find(b => b.id === (busId || subId)), [busData, subId, busId]);
+  const isViewingDetails = !!currentBus && (!!busId || (subId && busData.some(b => b.id === subId)));
 
-  const fareInfo = useMemo(() => {
-    if (!currentBus) return null;
-    const parts = [];
-    if (currentBus.acFare?.trim()) parts.push(`এসি: ৳${toBn(currentBus.acFare)}`);
-    if (currentBus.nonAcFare?.trim()) parts.push(`নন-এসি: ৳${toBn(currentBus.nonAcFare)}`);
-    return parts.length > 0 ? `ভাড়া: ${parts.join(', ')}` : null;
+  const filteredBuses = useMemo(() => {
+    if (!selectedRoute) return busData;
+    return busData.filter(b => b.route === selectedRoute || (b.routes && b.routes.includes(selectedRoute)));
+  }, [busData, selectedRoute]);
+
+  const allRoutes = useMemo(() => {
+    if (!currentBus) return [];
+    return [currentBus.route, ...(currentBus.routes || [])].filter(Boolean);
   }, [currentBus]);
 
   return (
-    <div className="flex flex-col h-[calc(100vh-80px)] animate-in fade-in duration-500">
-      <header className="flex items-center justify-center mb-6 shrink-0">
-        <div className="w-full text-center overflow-hidden">
+    <div className="flex flex-col h-[calc(100vh-80px)] animate-in fade-in duration-500 relative">
+      <header className="flex items-center justify-between mb-6 shrink-0 px-5">
+        <div className="w-10" /> {/* Spacer for balance */}
+        <div className="flex-1 text-center overflow-hidden">
           <h2 className="text-2xl font-black text-slate-800 leading-tight truncate">
-            {!subId ? 'বাস' : !busId ? subId : currentBus?.busName}
+            {!isViewingDetails ? 'বাস' : currentBus?.busName}
           </h2>
-          {!busId ? (
+          {!isViewingDetails ? (
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
-              {!subId ? 'রুটের তালিকা নির্বাচন করুন' : 'বাস সার্ভিসের তালিকা'}
+              {selectedRoute ? `রুট: ${selectedRoute}` : 'বাস সার্ভিসের তালিকা'}
             </p>
           ) : (
             <div className="mt-1 flex flex-col items-center">
-              <p className="text-[10px] font-bold text-blue-600 uppercase tracking-widest">
-                রুট: {subId}
-              </p>
-              {fareInfo && (
-                <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mt-0.5">
-                  {fareInfo}
-                </p>
-              )}
+              <div className="flex flex-col items-center gap-0.5">
+                {allRoutes.map((r, i) => (
+                  <p key={i} className="text-[10px] font-bold text-blue-600 uppercase tracking-widest">
+                    রুট: {r}
+                  </p>
+                ))}
+              </div>
             </div>
           )}
         </div>
+        
+        {!isViewingDetails ? (
+          <button 
+            onClick={() => setShowRoutePicker(true)}
+            className="flex flex-col items-center justify-center p-2 bg-blue-50 text-blue-600 rounded-xl active:scale-90 transition-all border border-blue-100"
+          >
+            <Search size={16} strokeWidth={3} />
+            <span className="text-[8px] font-black uppercase mt-0.5">রুট</span>
+          </button>
+        ) : <div className="w-10" />}
       </header>
 
-      <div className="flex-1 overflow-y-auto no-scrollbar pb-40 space-y-4">
-        {!subId ? (
+      <div className="flex-1 overflow-y-auto no-scrollbar pb-40 space-y-4 px-5">
+        {!isViewingDetails ? (
           <div className="grid gap-4">
-            {uniqueRoutes.map((route, idx) => {
-              const color = THEME_COLORS[idx % THEME_COLORS.length];
-              return (
-                <button key={route.id} onClick={() => onNavigate(`/category/3/${route.id}`)} className="flex items-center justify-between p-5 bg-white rounded-[24px] premium-card active:scale-[0.98] transition-all group text-left border border-slate-50 relative overflow-hidden">
-                  <div className="flex items-center gap-4 relative z-10">
-                     <div className="p-3 rounded-2xl transition-all shadow-inner group-hover:scale-110" style={{ backgroundColor: `${color}15`, color: color, border: `1px solid ${color}20` }}><Navigation size={20} /></div>
-                     <span className="font-black text-lg text-[#1A1A1A]">{route.name}</span>
-                  </div>
-                  <ArrowRight size={20} className="text-slate-200 group-hover:text-blue-600 transition-colors z-10" />
-                </button>
-              );
-            })}
-          </div>
-        ) : !busId ? (
-          <div className="grid gap-4">
-            {filteredBuses.map((bus, index) => {
+            {filteredBuses.length > 0 ? filteredBuses.map((bus, index) => {
               const iconColor = THEME_COLORS[index % THEME_COLORS.length];
               return (
-                <button key={bus.id} onClick={() => onNavigate(`/category/3/${subId}/${bus.id}`)} className="flex items-center justify-between p-5 bg-white rounded-[24px] premium-card active:scale-[0.98] transition-all group text-left border border-slate-50 overflow-hidden relative">
+                <button 
+                   key={bus.id} 
+                   onClick={() => onNavigate(`/category/3/${bus.id}`)} 
+                   className="flex items-center justify-between p-5 bg-white rounded-[24px] premium-card active:scale-[0.98] transition-all group text-left border border-slate-50 overflow-hidden relative"
+                >
                   <div className="flex items-center gap-4 flex-1 overflow-hidden relative z-10">
-                    <div className="p-3 rounded-2xl transition-all shadow-inner group-hover:scale-110 duration-300" style={{ backgroundColor: `${iconColor}15`, color: iconColor, border: `1px solid ${iconColor}20` }}><Bus size={22} strokeWidth={2.5} /></div>
+                    <div className="p-3 rounded-2xl transition-all shadow-inner group-hover:scale-110 duration-300" style={{ backgroundColor: `${iconColor}15`, color: iconColor, border: `1px solid ${iconColor}20` }}>
+                      <Bus size={22} strokeWidth={2.5} />
+                    </div>
                     <div className="overflow-hidden">
                         <h4 className="font-black text-lg text-[#1A1A1A] truncate leading-tight">{bus.busName}</h4>
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter mt-1">ভাড়া: ৳{toBn(bus.nonAcFare)} (নন-এসি)</p>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter mt-1">
+                          রুট: {[bus.route, ...(bus.routes || [])].filter(Boolean).join(', ')}
+                        </p>
                     </div>
                   </div>
                   <ArrowRight size={20} className="text-slate-200 group-hover:text-blue-600 transition-colors shrink-0 z-10" />
                 </button>
               );
-            })}
+            }) : (
+              <div className="py-20 text-center opacity-30">এই রুটে কোনো বাস পাওয়া যায়নি।</div>
+            )}
           </div>
-        ) : currentBus && (
+        ) : isViewingDetails && currentBus && (
           <div className="space-y-6">
             <div className="space-y-3">
               <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] pl-2 text-left">কাউন্টার লিস্ট</p>
@@ -163,6 +181,39 @@ const PublicTransport: React.FC<{
           </div>
         )}
       </div>
+
+      {/* Route Picker Modal */}
+      {showRoutePicker && (
+        <div className="fixed inset-0 z-[150] bg-slate-900/60 backdrop-blur-md p-6 flex items-center justify-center animate-in fade-in duration-300">
+          <div className="bg-white w-full max-w-sm rounded-[40px] p-8 shadow-2xl space-y-6 animate-in zoom-in duration-300">
+            <div className="flex justify-between items-center">
+              <h3 className="font-black text-xl text-slate-800">রুট নির্বাচন করুন</h3>
+              <button onClick={() => setShowRoutePicker(false)} className="p-2 text-slate-400 hover:text-red-500 transition-colors"><X size={24} /></button>
+            </div>
+            
+            <div className="grid gap-3 max-h-[60vh] overflow-y-auto no-scrollbar pr-1">
+              <button 
+                onClick={() => { setSelectedRoute(null); setShowRoutePicker(false); }}
+                className={`flex items-center justify-between p-4 rounded-2xl font-bold text-left transition-all ${!selectedRoute ? 'bg-blue-600 text-white shadow-lg' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'}`}
+              >
+                <span>সকল রুট</span>
+                {!selectedRoute && <ArrowRight size={18} />}
+              </button>
+              
+              {uniqueRoutes.map((route, idx) => (
+                <button 
+                  key={idx}
+                  onClick={() => { setSelectedRoute(route.name); setShowRoutePicker(false); }}
+                  className={`flex items-center justify-between p-4 rounded-2xl font-bold text-left transition-all ${selectedRoute === route.name ? 'bg-blue-600 text-white shadow-lg' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'}`}
+                >
+                  <span className="truncate pr-4">{route.name}</span>
+                  {selectedRoute === route.name && <ArrowRight size={18} />}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

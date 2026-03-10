@@ -45,8 +45,12 @@ import {
   UserCheck,
   UserX,
   Bell,
-  Users2
+  Users2,
+  ExternalLink,
+  Newspaper
 } from 'lucide-react';
+import { kppostDb } from '../Firebase-kppost';
+import { getDoc as getNewsDoc } from 'firebase/firestore';
 
 // Firebase removed for paid hosting migration
 
@@ -116,14 +120,27 @@ const KPCommunityChat: React.FC = () => {
   const [sentRequests, setSentRequests] = useState<Record<string, boolean>>({});
   const [receivedRequests, setReceivedRequests] = useState<any[]>([]);
 
+  const [shareNewsId, setShareNewsId] = useState<string | null>(null);
+  const [shareNewsData, setShareNewsData] = useState<any>(null);
+  const [showShareModal, setShowShareModal] = useState(false);
+
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const saved = localStorage.getItem('kp_logged_in_user');
     const params = new URLSearchParams(location.search);
     const isOpenHelpline = params.get('open') === 'helpline';
+    const sNewsId = params.get('shareNewsId');
 
-    if (isOpenHelpline && !saved) {
+    if (sNewsId) {
+      setShareNewsId(sNewsId);
+      setShowShareModal(true);
+      // Fetch news data for preview in modal
+      getNewsDoc(doc(kppostDb, "news_main", sNewsId)).then(d => {
+        if (d.exists()) setShareNewsData({ id: d.id, ...d.data() });
+      });
+      navigate(location.pathname, { replace: true });
+    }
       const token = getGuestToken();
       const guestUser = {
         memberId: `GUEST-${token}`,
@@ -244,19 +261,21 @@ const KPCommunityChat: React.FC = () => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [messages]);
 
-  const handleSendMessage = async () => {
-    const textToSend = inputText.trim();
-    if (!textToSend || !currentUser || !activeChat) return;
+  const handleSendMessage = async (customText?: string, customReceiverId?: string) => {
+    const textToSend = (customText || inputText).trim();
+    const targetChat = customReceiverId ? { memberId: customReceiverId } : activeChat;
     
-    setInputText(''); // Clear immediately for better UX
-    const chatId = [currentUser.memberId, activeChat.memberId].sort().join('_');
+    if (!textToSend || !currentUser || !targetChat) return;
+    
+    if (!customText) setInputText(''); // Clear immediately for better UX
+    const chatId = [currentUser.memberId, targetChat.memberId].sort().join('_');
     const timestamp = Date.now();
     
     try {
         const messageData = {
             id: `msg_${timestamp}`,
             senderId: currentUser.memberId,
-            receiverId: activeChat.memberId,
+            receiverId: targetChat.memberId,
             text: textToSend,
             timestamp: timestamp,
             status: 'sent'
@@ -267,22 +286,35 @@ const KPCommunityChat: React.FC = () => {
         await addDoc(messagesRef, messageData);
 
         // Update rooms for both users
-        const myRoomRef = doc(chatDb, `user_rooms/${currentUser.memberId}/rooms`, activeChat.memberId);
+        const myRoomRef = doc(chatDb, `user_rooms/${currentUser.memberId}/rooms`, targetChat.memberId);
+        
+        // Find target user name/photo for room update
+        let targetName = activeChat?.fullName || '';
+        let targetPhoto = activeChat?.photoURL || '';
+        
+        if (customReceiverId) {
+            const u = users.find(usr => usr.memberId === customReceiverId);
+            if (u) {
+                targetName = u.fullName;
+                targetPhoto = u.photoURL || '';
+            }
+        }
+
         await setDoc(myRoomRef, {
-            otherId: activeChat.memberId,
-            otherName: activeChat.fullName,
-            otherPhoto: activeChat.photoURL || '',
-            lastMessage: textToSend,
+            otherId: targetChat.memberId,
+            otherName: targetName,
+            otherPhoto: targetPhoto,
+            lastMessage: textToSend.length > 50 ? textToSend.substring(0, 50) + '...' : textToSend,
             lastTimestamp: timestamp,
             unseenCount: 0
         }, { merge: true });
 
-        const theirRoomRef = doc(chatDb, `user_rooms/${activeChat.memberId}/rooms`, currentUser.memberId);
+        const theirRoomRef = doc(chatDb, `user_rooms/${targetChat.memberId}/rooms`, currentUser.memberId);
         await setDoc(theirRoomRef, {
             otherId: currentUser.memberId,
             otherName: currentUser.fullName,
             otherPhoto: currentUser.photoURL || '',
-            lastMessage: textToSend,
+            lastMessage: textToSend.length > 50 ? textToSend.substring(0, 50) + '...' : textToSend,
             lastTimestamp: timestamp,
             unseenCount: increment(1)
         }, { merge: true });
@@ -292,8 +324,50 @@ const KPCommunityChat: React.FC = () => {
         await setDoc(typingRef, { isTyping: false }, { merge: true });
     } catch (error) {
         console.error("Send message error:", error);
-        alert("মেসেজ পাঠানো সম্ভব হয়নি! ফায়ারস্টোর রুলস চেক করুন।");
+        alert("মেসেজ পাঠানো সম্ভব হয়নি!");
     }
+  };
+
+  const handleShareNews = async (friendId: string) => {
+    if (!shareNewsId) return;
+    const shareUrl = `https://www.koyrabd.top/share/news/${shareNewsId}`;
+    const text = `[NEWS_SHARE:${shareNewsId}] ${shareUrl}`;
+    await handleSendMessage(text, friendId);
+    setShowShareModal(false);
+    setShareNewsId(null);
+    setShareNewsData(null);
+    alert("সংবাদটি শেয়ার করা হয়েছে।");
+  };
+
+  const NewsCard = ({ newsId, text }: { newsId: string, text: string }) => {
+    const [news, setNews] = useState<any>(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+      getNewsDoc(doc(kppostDb, "news_main", newsId)).then(d => {
+        if (d.exists()) setNews({ id: d.id, ...d.data() });
+        setLoading(false);
+      });
+    }, [newsId]);
+
+    if (loading) return <div className="p-4 bg-white rounded-2xl border border-slate-100 animate-pulse flex items-center gap-3"><Loader2 size={16} className="animate-spin text-blue-500" /><span className="text-[10px] font-bold text-slate-400">সংবাদ লোড হচ্ছে...</span></div>;
+    if (!news) return <div className="p-4 bg-white rounded-2xl border border-slate-100 text-[10px] font-bold text-red-400">সংবাদটি খুঁজে পাওয়া যায়নি।</div>;
+
+    return (
+      <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm max-w-xs">
+        {news.photo && <img src={news.photo} className="w-full h-32 object-cover" alt="" />}
+        <div className="p-3 space-y-2">
+          <h5 className="font-black text-slate-800 text-xs leading-tight line-clamp-2">{news.title}</h5>
+          <p className="text-[10px] text-slate-500 line-clamp-2 leading-relaxed">{news.description}</p>
+          <button 
+            onClick={() => window.open(`https://www.koyrabd.top/share/news/${newsId}`, '_blank')}
+            className="w-full py-2 bg-blue-50 text-blue-600 rounded-xl font-black text-[10px] flex items-center justify-center gap-2 active:scale-95 transition-all"
+          >
+            <ExternalLink size={12} /> বিস্তারিত পড়ুন
+          </button>
+        </div>
+      </div>
+    );
   };
 
   const sendFriendRequest = async (user: any) => {
@@ -490,7 +564,13 @@ const KPCommunityChat: React.FC = () => {
                 return (
                     <div key={m.id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} group animate-in fade-in duration-300`}>
                         <div className="relative max-w-[80%]">
-                            <div className={`px-4 py-2.5 rounded-2xl text-sm font-medium shadow-sm relative ${isMe ? 'bg-blue-600 text-white rounded-tr-none' : 'bg-white text-slate-800 rounded-tl-none border border-slate-100'}`}>{m.text}</div>
+                            {(() => {
+                                const newsMatch = m.text.match(/\[NEWS_SHARE:([^\]]+)\]/) || m.text.match(/koyrabd\.top\/share\/news\/([a-zA-Z0-9_-]+)/);
+                                if (newsMatch) {
+                                    return <NewsCard newsId={newsMatch[1]} text={m.text} />;
+                                }
+                                return <div className={`px-4 py-2.5 rounded-2xl text-sm font-medium shadow-sm relative ${isMe ? 'bg-blue-600 text-white rounded-tr-none' : 'bg-white text-slate-800 rounded-tl-none border border-slate-100'}`}>{m.text}</div>;
+                            })()}
                         </div>
                         <div className="flex items-center gap-1.5 mt-1 px-1">
                             <span className="text-[8px] font-bold text-slate-400 uppercase">{formatTime(m.timestamp)}</span>
@@ -682,6 +762,61 @@ const KPCommunityChat: React.FC = () => {
             </div>
         )}
       </div>
+      
+      {/* News Share Modal */}
+      {showShareModal && (
+        <div className="fixed inset-0 z-[200] bg-slate-900/60 backdrop-blur-sm flex items-end justify-center p-4 animate-in fade-in duration-300">
+            <div className="w-full max-w-md bg-white rounded-[40px] shadow-2xl overflow-hidden animate-in slide-in-from-bottom duration-500">
+                <div className="p-6 border-b border-slate-50 flex items-center justify-between">
+                    <div>
+                        <h3 className="text-xl font-black text-slate-800 tracking-tight">সংবাদ শেয়ার করুন</h3>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">কাকে পাঠাতে চান নির্বাচন করুন</p>
+                    </div>
+                    <button onClick={() => { setShowShareModal(false); setShareNewsId(null); }} className="p-3 bg-slate-50 text-slate-400 rounded-2xl active:scale-90"><X size={20}/></button>
+                </div>
+                
+                {shareNewsData && (
+                    <div className="px-6 py-4 bg-blue-50/50 border-b border-blue-50 flex items-center gap-4">
+                        <div className="w-16 h-16 rounded-2xl overflow-hidden bg-white border border-blue-100 shrink-0">
+                            {shareNewsData.photo ? <img src={shareNewsData.photo} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-blue-200"><Newspaper size={24}/></div>}
+                        </div>
+                        <div className="flex-1 overflow-hidden">
+                            <h4 className="font-black text-slate-800 text-xs line-clamp-1">{shareNewsData.title}</h4>
+                            <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-tighter">এই সংবাদটি শেয়ার করা হবে</p>
+                        </div>
+                    </div>
+                )}
+
+                <div className="max-h-[60vh] overflow-y-auto p-6 space-y-4 no-scrollbar">
+                    {roomsWithVerification.length === 0 ? (
+                        <div className="py-10 text-center opacity-40 flex flex-col items-center gap-4">
+                            <Users2 size={40} className="text-slate-200" />
+                            <p className="text-xs font-bold text-slate-400">আপনার কোনো চ্যাট লিস্ট নেই</p>
+                        </div>
+                    ) : roomsWithVerification.map(room => (
+                        <button key={room.otherId} onClick={() => handleShareNews(room.otherId)} className="w-full flex items-center gap-4 p-4 bg-slate-50 hover:bg-blue-50 rounded-3xl border border-slate-100 transition-all active:scale-[0.98] group">
+                            <div className="w-12 h-12 rounded-2xl bg-white border border-slate-100 overflow-hidden flex items-center justify-center text-slate-300 shrink-0">
+                                {room.photoURL ? <img src={room.photoURL} className="w-full h-full object-cover" /> : <UserCircle size={28} />}
+                            </div>
+                            <div className="flex-1 text-left overflow-hidden">
+                                <div className="flex items-center gap-1.5 overflow-hidden">
+                                    <h4 className="font-black text-slate-800 truncate text-sm">{room.fullName}</h4>
+                                    {room.isVerified && <CheckCircle2 size={12} fill="#1877F2" className="text-white shrink-0" />}
+                                </div>
+                                <p className="text-[10px] font-bold text-slate-400 truncate mt-0.5">ট্যাপ করে শেয়ার করুন</p>
+                            </div>
+                            <div className="p-2 bg-white rounded-xl text-blue-600 shadow-sm opacity-0 group-hover:opacity-100 transition-all">
+                                <Send size={16} />
+                            </div>
+                        </button>
+                    ))}
+                </div>
+                <div className="p-6 bg-slate-50">
+                    <button onClick={() => { setShowShareModal(false); setShareNewsId(null); }} className="w-full py-4 bg-white text-slate-400 font-black rounded-2xl border border-slate-200 active:scale-95 transition-all">বাতিল করুন</button>
+                </div>
+            </div>
+        </div>
+      )}
     </div>
   );
 };

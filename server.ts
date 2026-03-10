@@ -5,12 +5,15 @@ import dotenv from "dotenv";
 import { BetaAnalyticsDataClient } from "@google-analytics/data";
 import fs from 'fs';
 import path from 'path';
+import { doc, getDoc } from "firebase/firestore";
+import { kppostDb } from "./Firebase-kppost";
 
 dotenv.config();
 
 const app = express();
 const PORT = 3000;
 
+app.set('trust proxy', true);
 app.use(cors());
 app.use(express.json());
 
@@ -175,6 +178,75 @@ app.get("/api/analytics", async (req, res) => {
   } catch (error: any) {
     console.error("Analytics Error:", error);
     res.status(500).json({ error: error.message });
+  }
+});
+
+// --- News Share Route for Social Media Previews ---
+app.get("/share/news/:id", async (req, res) => {
+  const newsId = req.params.id;
+  try {
+    const newsDoc = await getDoc(doc(kppostDb, "news_main", newsId));
+    if (newsDoc.exists()) {
+      const news = newsDoc.data();
+      const title = news.title || "সংবাদ - কয়রা-পাইকগাছা";
+      const rawDescription = news.description || "";
+      const cleanDescription = rawDescription.replace(/\n/g, ' ').substring(0, 100);
+      const description = cleanDescription.length < rawDescription.length ? `${cleanDescription}...` : cleanDescription || "কয়রা-পাইকগাছা কমিউনিটি অ্যাপস";
+      const image = news.photo || "https://raw.githubusercontent.com/StackBlitz-User-Assets/logo/main/kp-logo.png";
+      
+      const protocol = req.get('x-forwarded-proto') || req.protocol || 'https';
+      const host = req.get('host');
+      const baseUrl = `${protocol}://${host}`;
+      const appUrl = `${baseUrl}/#/category/14?newsId=${newsId}`;
+
+      res.send(`
+        <!DOCTYPE html>
+        <html lang="bn">
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>${title}</title>
+          <meta property="og:title" content="${title}">
+          <meta property="og:site_name" content="কয়রা-পাইকগাছা কমিউনিটি অ্যাপস">
+          <meta property="og:description" content="${description}">
+          <meta property="og:image" content="${image}">
+          <meta property="og:url" content="${appUrl}">
+          <meta property="og:type" content="article">
+          <meta name="twitter:card" content="summary_large_image">
+          <meta name="twitter:title" content="${title}">
+          <meta name="twitter:description" content="${description}">
+          <meta name="twitter:image" content="${image}">
+          <link rel="icon" href="https://raw.githubusercontent.com/StackBlitz-User-Assets/logo/main/kp-logo.png">
+          <style>
+            body { font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background: #f8f9fa; }
+            .loader { border: 4px solid #f3f3f3; border-top: 4px solid #0056b3; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
+            @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+          </style>
+          <script>
+            setTimeout(() => {
+              window.location.href = "${appUrl}";
+            }, 800);
+          </script>
+        </head>
+        <body>
+          <div style="text-align: center; padding: 20px;">
+            <div class="loader" style="margin: 0 auto 20px;"></div>
+            <h2 style="color: #0056b3; margin-bottom: 10px;">কয়রা-পাইকগাছা কমিউনিটি অ্যাপস</h2>
+            <p>সংবাদটি লোড হচ্ছে, দয়া করে অপেক্ষা করুন...</p>
+          </div>
+        </body>
+        </html>
+      `);
+    } else {
+      const protocol = req.get('x-forwarded-proto') || req.protocol || 'https';
+      const host = req.get('host');
+      res.redirect(`${protocol}://${host}`);
+    }
+  } catch (error) {
+    console.error("Share error:", error);
+    const protocol = req.get('x-forwarded-proto') || req.protocol || 'https';
+    const host = req.get('host');
+    res.redirect(`${protocol}://${host}`);
   }
 });
 
