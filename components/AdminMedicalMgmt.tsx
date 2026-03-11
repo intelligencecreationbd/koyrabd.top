@@ -34,6 +34,7 @@ import {
 } from 'firebase/firestore';
 import { medicalDb } from '../Firebase-medical';
 import { uploadImageToServer } from '../src/services/uploadService';
+import AdminBloodBankMgmt from './medical/AdminBloodBankMgmt';
 
 const toBn = (num: string | number) => 
   (num || '').toString().replace(/\d/g, d => "০১২৩৪৫৬৭৮৯"[parseInt(d)]);
@@ -81,9 +82,11 @@ export default function AdminMedicalMgmt({ onBack }: { onBack: () => void }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingContactIdx, setEditingContactIdx] = useState<number | null>(null);
   
-  const [form, setForm] = useState({
-    name: '', specialist: '', degree: '', mobile: '', location: '', photo: '', desc: ''
+  const [form, setForm] = useState<any>({
+    name: '', specialist: '', degree: '', mobile: '', location: '', photo: '', desc: '',
+    established: '', upazila: '', contacts: [{ name: '', designation: '', bloodGroup: '', address: '', mobile: '' }]
   });
 
   useEffect(() => {
@@ -96,7 +99,10 @@ export default function AdminMedicalMgmt({ onBack }: { onBack: () => void }) {
       }));
       setItems(list);
     });
-    return () => unsubscribe();
+
+    return () => {
+      unsubscribe();
+    };
   }, [selectedCat]);
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -124,8 +130,12 @@ export default function AdminMedicalMgmt({ onBack }: { onBack: () => void }) {
         alert('সফলভাবে সংরক্ষিত হয়েছে!');
         setShowForm(false);
         setEditingId(null);
+        setEditingContactIdx(null);
         setSelectedFile(null);
-        setForm({ name: '', specialist: '', degree: '', mobile: '', location: '', photo: '', desc: '' });
+        setForm({ 
+          name: '', specialist: '', degree: '', mobile: '', location: '', photo: '', desc: '',
+          established: '', upazila: '', contacts: [{ name: '', designation: '', bloodGroup: '', address: '', mobile: '' }]
+        });
     } catch (e) { alert('সংরক্ষণ ব্যর্থ হয়েছে!'); }
     finally { setIsSubmitting(false); }
   };
@@ -144,6 +154,10 @@ export default function AdminMedicalMgmt({ onBack }: { onBack: () => void }) {
     if (selectedCat) setSelectedCat(null);
     else onBack();
   };
+
+  if (selectedCat === 'blood') {
+    return <AdminBloodBankMgmt onBack={handleBack} />;
+  }
 
   return (
     <div className="space-y-6 animate-in slide-in-from-right-4 duration-500 pb-20">
@@ -172,18 +186,29 @@ export default function AdminMedicalMgmt({ onBack }: { onBack: () => void }) {
           </div>
         ) : (
           <>
-            <button 
-              onClick={() => { setEditingId(null); setForm({name:'', specialist:'', degree:'', mobile:'', location:'', photo:'', desc:''}); setShowForm(true); }}
-              className="w-full py-5 bg-[#0056b3] text-white font-black rounded-[28px] shadow-xl flex items-center justify-center gap-2 active:scale-95 transition-all"
-            >
-                <Plus size={20} /> নতুন তথ্য যোগ করুন
-            </button>
+            <div className="grid grid-cols-1 gap-3">
+              <button 
+                onClick={() => { 
+                  setEditingId(null); 
+                  setEditingContactIdx(null);
+                  setForm({
+                    name: '', specialist: '', degree: '', mobile: '', location: '', photo: '', desc: '',
+                    established: '', upazila: '', contacts: [{ name: '', designation: '', bloodGroup: '', address: '', mobile: '' }]
+                  }); 
+                  setShowForm(true); 
+                }}
+                className="py-5 bg-[#0056b3] text-white font-black rounded-[28px] shadow-xl flex items-center justify-center gap-2 active:scale-95 transition-all text-sm"
+              >
+                  <Plus size={20} /> নতুন তথ্য যোগ করুন
+              </button>
+            </div>
 
             <div className="space-y-3">
-                {items.length === 0 ? (
-                    <div className="py-20 text-center opacity-30">কোনো তথ্য সংরক্ষিত নেই।</div>
-                ) : (
-                    items.map(item => (
+                <div className="pt-4">
+                  {items.length === 0 ? (
+                      <div className="py-20 text-center opacity-30">কোনো তথ্য সংরক্ষিত নেই।</div>
+                  ) : (
+                      items.map(item => (
                         <div key={item.id} className="bg-white p-5 rounded-[28px] border border-slate-100 flex items-center justify-between shadow-sm group">
                             <div className="flex items-center gap-4 text-left overflow-hidden">
                                 <div className="w-12 h-12 rounded-xl bg-slate-50 border border-slate-100 overflow-hidden flex items-center justify-center text-slate-300 shrink-0">
@@ -195,8 +220,15 @@ export default function AdminMedicalMgmt({ onBack }: { onBack: () => void }) {
                                 </div>
                             </div>
                             <div className="flex gap-2">
-                                <button onClick={() => { setEditingId(item.id); setForm(item); setShowForm(true); }} className="p-3 bg-blue-50 text-blue-600 rounded-xl active:scale-90 transition-all">
-                                    {/* Changed Edit to Edit2 to fix missing name error */}
+                                <button onClick={() => { 
+                                  setEditingId(item.id); 
+                                  setEditingContactIdx(null);
+                                  setForm({
+                                    ...item,
+                                    contacts: item.contacts || [{ name: '', designation: '', bloodGroup: '', address: '', mobile: '' }]
+                                  }); 
+                                  setShowForm(true); 
+                                }} className="p-3 bg-blue-50 text-blue-600 rounded-xl active:scale-90 transition-all">
                                     <Edit2 size={16}/>
                                 </button>
                                 <button onClick={() => handleDelete(item.id)} className="p-3 bg-red-50 text-red-500 rounded-xl active:scale-90 transition-all">
@@ -206,6 +238,7 @@ export default function AdminMedicalMgmt({ onBack }: { onBack: () => void }) {
                         </div>
                     ))
                 )}
+                </div>
             </div>
           </>
         )}
@@ -215,29 +248,31 @@ export default function AdminMedicalMgmt({ onBack }: { onBack: () => void }) {
                 <div className="bg-white w-full max-w-sm rounded-[45px] p-8 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto animate-in zoom-in duration-300">
                     <div className="flex justify-between items-center border-b pb-4">
                         <h3 className="font-black text-xl text-slate-800">{editingId ? 'তথ্য সংশোধন' : 'নতুন তথ্য প্রদান'}</h3>
-                        <button onClick={()=>setShowForm(false)} className="p-2 text-slate-400 hover:text-red-500"><X/></button>
+                        <button onClick={()=>{setShowForm(false); setEditingContactIdx(null);}} className="p-2 text-slate-400 hover:text-red-500"><X/></button>
                     </div>
                     
-                    <div className="flex flex-col items-center">
-                        <div className="relative group">
-                            <div className="w-24 h-24 rounded-[35px] bg-slate-50 border-4 border-white shadow-lg overflow-hidden flex items-center justify-center text-slate-200">
-                                {form.photo ? <img src={form.photo} className="w-full h-full object-cover" /> : <Camera size={40} />}
-                            </div>
-                            <button type="button" onClick={() => fileInputRef.current?.click()} className="absolute bottom-0 right-0 p-3 bg-blue-600 text-white rounded-2xl shadow-xl border-4 border-white active:scale-90"><Plus size={18}/></button>
-                            <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handlePhotoUpload} />
-                        </div>
-                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-4">ছবি সিলেক্ট করুন</p>
-                    </div>
+                    {selectedCat !== 'blood' && (
+                      <div className="flex flex-col items-center">
+                          <div className="relative group">
+                              <div className="w-24 h-24 rounded-[35px] bg-slate-50 border-4 border-white shadow-lg overflow-hidden flex items-center justify-center text-slate-200">
+                                  {form.photo ? <img src={form.photo} className="w-full h-full object-cover" /> : <Camera size={40} />}
+                              </div>
+                              <button type="button" onClick={() => fileInputRef.current?.click()} className="absolute bottom-0 right-0 p-3 bg-blue-600 text-white rounded-2xl shadow-xl border-4 border-white active:scale-90"><Plus size={18}/></button>
+                              <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handlePhotoUpload} />
+                          </div>
+                          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-4">ছবি সিলেক্ট করুন</p>
+                      </div>
+                    )}
 
                     <div className="space-y-4 pt-2">
                         <EditField label="নাম *" value={form.name} onChange={(v:any)=>setForm({...form, name:v})} placeholder="যেমন: ডাঃ আব্দুর রহমান / ল্যাব এইড" icon={<UserIcon size={18}/>} />
                         
                         {(selectedCat === 'doc' || selectedCat === 'tips') && (
-                           <EditField label="স্পেশালিস্ট / টাইটেল" value={form.specialist} onChange={(v:any)=>setForm({...form, specialist:v})} placeholder="যেমন: মেডিসিন বিশেষজ্ঞ" icon={<Stethoscope size={18}/>} />
+                            <EditField label="স্পেশালিস্ট / টাইটেল" value={form.specialist} onChange={(v:any)=>setForm({...form, specialist:v})} placeholder="যেমন: মেডিসিন বিশেষজ্ঞ" icon={<Stethoscope size={18}/>} />
                         )}
                         
                         {selectedCat === 'doc' && (
-                           <EditField label="ডিগ্রি (ডাক্তারদের জন্য)" value={form.degree} onChange={(v:any)=>setForm({...form, degree:v})} placeholder="যেমন: MBBS, FCPS" icon={<Tag size={18}/>} />
+                            <EditField label="ডিগ্রি (ডাক্তারদের জন্য)" value={form.degree} onChange={(v:any)=>setForm({...form, degree:v})} placeholder="যেমন: MBBS, FCPS" icon={<Tag size={18}/>} />
                         )}
 
                         <EditField label="মোবাইল নম্বর *" value={form.mobile} onChange={(v:any)=>setForm({...form, mobile:v})} placeholder="০১xxxxxxxxx" icon={<Smartphone size={18}/>} />

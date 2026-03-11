@@ -17,7 +17,8 @@ import {
   Hospital,
   Info,
   User,
-  Clock
+  Clock,
+  X
 } from 'lucide-react';
 import { 
   collection, 
@@ -26,6 +27,7 @@ import {
   orderBy 
 } from 'firebase/firestore';
 import { medicalDb } from '../Firebase-medical';
+import PublicBloodBank from './medical/PublicBloodBank';
 
 const toBn = (num: string | number) => 
   (num || '').toString().replace(/\d/g, d => "০১২৩৪৫৬৭৮৯"[parseInt(d)]);
@@ -52,15 +54,32 @@ export default function PublicMedical({ onBack, checkAccess, onCategoryChange }:
 }) {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedLocation, setSelectedLocation] = useState<string | null>(null);
   const [items, setItems] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [viewingItem, setViewingItem] = useState<any | null>(null);
+
+  const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (onCategoryChange) {
       onCategoryChange(selectedCategory);
     }
   }, [selectedCategory, onCategoryChange]);
+
+  // Reset expanded items ONLY when category ID actually changes
+  useEffect(() => {
+    setExpandedItems({});
+  }, [selectedCategory]);
+
+  const CARD_COLORS = [
+    { border: 'border-blue-200', bg: 'bg-blue-50/30' },
+    { border: 'border-rose-200', bg: 'bg-rose-50/30' },
+    { border: 'border-emerald-200', bg: 'bg-emerald-50/30' },
+    { border: 'border-amber-200', bg: 'bg-amber-50/30' },
+    { border: 'border-violet-200', bg: 'bg-violet-50/30' },
+    { border: 'border-orange-200', bg: 'bg-orange-50/30' },
+    { border: 'border-cyan-200', bg: 'bg-cyan-50/30' },
+  ];
 
   useEffect(() => {
     if (!selectedCategory) {
@@ -78,51 +97,61 @@ export default function PublicMedical({ onBack, checkAccess, onCategoryChange }:
       setItems(list);
       setIsLoading(false);
     });
-    return () => unsubscribe();
+
+    return () => {
+      unsubscribe();
+    };
   }, [selectedCategory]);
 
   const filteredItems = useMemo(() => {
     let list = items;
-    if (selectedCategory === 'blood' && selectedLocation) {
-      list = list.filter(item => (item.location || '').includes(selectedLocation));
-    } else {
-      const term = searchTerm.toLowerCase();
-      list = list.filter(item => 
-        (item.name || '').toLowerCase().includes(term) || 
-        (item.specialist || '').toLowerCase().includes(term) ||
-        (item.location || '').toLowerCase().includes(term)
-      );
-    }
+    const term = searchTerm.toLowerCase();
+    list = list.filter(item => 
+      (item.name || '').toLowerCase().includes(term) || 
+      (item.specialist || '').toLowerCase().includes(term) ||
+      (item.location || '').toLowerCase().includes(term)
+    );
     return list;
-  }, [items, searchTerm, selectedCategory, selectedLocation]);
+  }, [items, searchTerm]);
 
   const handleBack = () => {
     if (selectedCategory) {
       setSelectedCategory(null);
       setSearchTerm('');
-      setSelectedLocation(null);
     } else {
       onBack();
     }
   };
 
+  useEffect(() => {
+    const handleGlobalBack = (e: Event) => {
+      if (e.defaultPrevented) return;
+      if (selectedCategory) {
+        e.preventDefault();
+        handleBack();
+      }
+    };
+    window.addEventListener('global-back-request', handleGlobalBack);
+    return () => window.removeEventListener('global-back-request', handleGlobalBack);
+  }, [selectedCategory]);
+
   const getActiveMenu = () => MEDICAL_SUBMENUS.find(m => m.id === selectedCategory);
+
+  if (selectedCategory === 'blood') {
+    return <PublicBloodBank onBack={handleBack} />;
+  }
 
   return (
     <div className="flex flex-col h-full animate-in fade-in duration-500 p-5 bg-white">
-      <header className={`flex items-center ${selectedCategory === 'blood' ? 'justify-center' : 'gap-4'} mb-6 shrink-0`}>
-        {selectedCategory !== 'blood' && (
-          <button onClick={handleBack} className="p-3 bg-white border border-slate-100 rounded-xl shadow-sm transition-transform active:scale-90">
-            <ChevronLeft size={24} />
-          </button>
-        )}
-        <div className={`${selectedCategory === 'blood' ? 'text-center' : 'text-left'} overflow-hidden`}>
+      <header className="flex items-center gap-4 mb-6 shrink-0">
+        <button onClick={handleBack} className="p-3 bg-white border border-slate-100 rounded-xl shadow-sm transition-transform active:scale-90">
+          <ChevronLeft size={24} />
+        </button>
+        <div className="text-left overflow-hidden">
           <h2 className="text-xl font-black text-slate-800 leading-tight truncate">
-            {selectedCategory ? getActiveMenu()?.name : 'চিকিৎসা সেবা'}
+            {getActiveMenu()?.name || 'চিকিৎসা সেবা'}
           </h2>
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">
-            {selectedCategory === 'blood' ? 'কয়রা-পাইকগাছা কমিউনিটি এপস' : (selectedCategory ? 'বিস্তারিত তথ্য তালিকা' : 'ডাক্তার ও স্বাস্থ্য সেবা')}
-          </p>
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">বিস্তারিত তথ্য তালিকা</p>
         </div>
       </header>
 
@@ -159,32 +188,15 @@ export default function PublicMedical({ onBack, checkAccess, onCategoryChange }:
         </div>
       ) : (
         <div className="flex-1 flex flex-col min-h-0 animate-in slide-in-from-right-4 duration-500">
-          {selectedCategory === 'blood' ? (
-            <div className="grid grid-cols-2 gap-3 mb-6 shrink-0">
-              <button 
-                onClick={() => setSelectedLocation(selectedLocation === 'কয়রা' ? null : 'কয়রা')}
-                className={`py-3.5 rounded-2xl font-black text-sm transition-all shadow-sm border ${selectedLocation === 'কয়রা' ? 'bg-blue-600 text-white border-blue-600 shadow-blue-200' : 'bg-white text-slate-600 border-slate-100'}`}
-              >
-                কয়রা উপজেলা
-              </button>
-              <button 
-                onClick={() => setSelectedLocation(selectedLocation === 'পাইকগাছা' ? null : 'পাইকগাছা')}
-                className={`py-3.5 rounded-2xl font-black text-sm transition-all shadow-sm border ${selectedLocation === 'পাইকগাছা' ? 'bg-blue-600 text-white border-blue-600 shadow-blue-200' : 'bg-white text-slate-600 border-slate-100'}`}
-              >
-                পাইকগাছা উপজেলা
-              </button>
-            </div>
-          ) : (
-            <div className="relative mb-6 shrink-0">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
-              <input 
-                className="w-full pl-12 pr-5 py-4 bg-slate-50 border border-slate-100 rounded-[22px] font-bold outline-none focus:border-blue-400 shadow-inner" 
-                placeholder={`${getActiveMenu()?.name} খুঁজুন...`} 
-                value={searchTerm}
-                onChange={e => setSearchTerm(e.target.value)}
-              />
-            </div>
-          )}
+          <div className="relative mb-6 shrink-0">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
+            <input 
+              className="w-full pl-12 pr-5 py-4 bg-slate-50 border border-slate-100 rounded-[22px] font-bold outline-none focus:border-blue-400 shadow-inner" 
+              placeholder={`${getActiveMenu()?.name} খুঁজুন...`} 
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+            />
+          </div>
 
           <div className="flex-1 overflow-y-auto no-scrollbar space-y-5 pb-40 px-1">
             {isLoading ? (
@@ -195,52 +207,65 @@ export default function PublicMedical({ onBack, checkAccess, onCategoryChange }:
             ) : filteredItems.length > 0 ? (
                 filteredItems.map((item, idx) => {
                     const CategoryIcon = getActiveMenu()?.icon || User;
+                    const cardStyle = CARD_COLORS[idx % CARD_COLORS.length];
+                    
                     return (
-                        <div key={item.id} className="bg-white p-5 rounded-[35px] border border-slate-100 shadow-lg shadow-slate-100/50 space-y-4 text-left animate-in slide-in-from-bottom-2 duration-500" style={{ animationDelay: `${idx * 50}ms` }}>
+                        <div 
+                          key={item.id} 
+                          className={`bg-white p-4 rounded-[30px] border ${cardStyle.border} shadow-lg shadow-slate-100/50 space-y-2.5 text-left animate-in slide-in-from-bottom-2 duration-500`} 
+                          style={{ animationDelay: `${idx * 50}ms` }}
+                        >
                             
-                            {/* Profile Header Row - Matches Screenshot 2 Top */}
-                            <div className="flex items-start gap-4">
-                                <div className="w-16 h-16 rounded-[22px] bg-rose-50 text-[#E91E63] border border-rose-100 overflow-hidden flex items-center justify-center shrink-0 shadow-sm">
+                            <div className="flex items-start gap-3">
+                                <div className={`w-14 h-14 rounded-[18px] ${cardStyle.bg} border ${cardStyle.border} overflow-hidden flex items-center justify-center shrink-0 shadow-sm`}>
                                     {item.photo ? (
                                         <img src={item.photo} className="w-full h-full object-cover" alt={item.name} />
                                     ) : (
-                                        <CategoryIcon size={32} />
+                                        <CategoryIcon size={28} style={{ color: cardStyle.border.replace('border-', '').replace('-200', '') }} />
                                     )}
                                 </div>
-                                <div className="flex-1 overflow-hidden pt-1">
+                                <div className="flex-1 overflow-hidden pt-0.5">
                                     <h4 className="font-black text-slate-800 text-lg leading-tight truncate">{item.name}</h4>
                                     {item.specialist && (
-                                      <p className="text-sm font-bold text-blue-600 mt-0.5 truncate">{item.specialist}</p>
+                                      <p className="text-sm font-bold text-blue-600 mt-0 truncate">{item.specialist}</p>
                                     )}
                                     {item.degree && (
-                                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter mt-0.5 truncate">{item.degree}</p>
+                                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter mt-0 truncate">{item.degree}</p>
                                     )}
                                 </div>
                             </div>
 
-                            {/* Location Row - Matches Screenshot 2 Middle */}
                             {item.location && (
-                                <div className="flex items-center gap-2 px-1 border-t border-slate-50 pt-3">
-                                    <MapPin size={14} className="shrink-0 text-[#E91E63]" />
+                                <div className="flex items-center gap-2 px-1 border-t border-slate-50 pt-2">
+                                    <MapPin size={13} className="shrink-0 text-[#E91E63]" />
                                     <span className="text-[13px] font-bold text-slate-500 truncate leading-none">{item.location}</span>
                                 </div>
                             )}
 
-                            {/* Action Button - Matches Screenshot 2 Bottom */}
-                            <div className="pt-1">
+                            <div className="pt-0.5">
                                 <a 
                                     href={`tel:${convertBnToEn(item.mobile)}`} 
-                                    className="w-full py-4 bg-[#E91E63] text-white font-black rounded-[20px] flex items-center justify-center gap-3 shadow-xl shadow-rose-500/30 active:scale-95 transition-all text-[15px]"
+                                    className="w-full py-3.5 bg-[#E91E63] text-white font-black rounded-[18px] flex items-center justify-center gap-3 shadow-xl shadow-rose-500/30 active:scale-95 transition-all text-[15px]"
                                 >
                                     <PhoneCall size={18} /> সিরিয়ালের জন্য কল দিন
                                 </a>
+
+                                {item.desc && (
+                                  <button 
+                                    onClick={() => setExpandedItems(prev => ({ ...prev, [item.id]: !prev[item.id] }))}
+                                    className={`w-full mt-1.5 py-1.5 border ${cardStyle.border} rounded-xl text-[11px] font-black text-slate-500 flex items-center justify-center gap-2 active:scale-95 transition-all ${cardStyle.bg}`}
+                                  >
+                                    <Info size={14} /> {expandedItems[item.id] ? 'বিস্তারিত বন্ধ করুন' : 'বিস্তারিত তথ্য'}
+                                  </button>
+                                )}
                             </div>
 
-                            {/* Description text - subtle if exists */}
-                            {item.desc && (
-                              <p className="text-[11px] font-bold text-slate-400/80 px-1 line-clamp-2 leading-relaxed italic">
-                                {item.desc}
-                              </p>
+                            {item.desc && expandedItems[item.id] && (
+                              <div className={`mt-1.5 p-3 ${cardStyle.bg} rounded-2xl border ${cardStyle.border} animate-in slide-in-from-top-2 duration-300`}>
+                                <p className="text-[11px] font-bold text-slate-700 leading-relaxed whitespace-pre-line">
+                                  {item.desc}
+                                </p>
+                              </div>
                             )}
                         </div>
                     );
@@ -256,6 +281,102 @@ export default function PublicMedical({ onBack, checkAccess, onCategoryChange }:
                     </div>
                 </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Blood Bank Detail Full Screen View */}
+      {viewingItem && (
+        <div className="fixed inset-0 z-[200] bg-white flex flex-col animate-in slide-in-from-bottom duration-500">
+          {/* Header Section with Light Red Background Bar */}
+          <div className="bg-rose-50/40 border-b border-rose-100/50 pb-2 shrink-0">
+            <div className="px-6 pt-4 text-center">
+              <p className="text-[10px] font-bold text-blue-600 tracking-wide">কয়রা-পাইকগাছা কমিউনিটি অ্যাপ</p>
+            </div>
+            <div className="px-6 pt-0.5 pb-0 flex items-center justify-between">
+              <div className="w-10"></div> {/* Symmetry spacer */}
+              <h3 className="text-xl font-black text-rose-600 leading-tight text-center flex-1 truncate px-2">
+                {viewingItem.name}
+              </h3>
+              <button 
+                onClick={() => setViewingItem(null)}
+                className="p-2 bg-white/80 text-slate-400 rounded-xl hover:bg-rose-50 hover:text-rose-500 transition-colors active:scale-90 shadow-sm border border-rose-100/50"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Address and Established (Closer to name) */}
+            <div className="px-6 text-center -mt-1 space-y-0">
+              <div className="flex items-center justify-center gap-1.5 text-blue-600 font-bold">
+                <MapPin size={12} />
+                <span className="text-[11px]">{viewingItem.location || 'ঠিকানা পাওয়া যায়নি'}</span>
+              </div>
+
+              {viewingItem.established && (
+                <div className="inline-flex items-center gap-2 px-2.5 py-0.5 bg-white/60 rounded-lg text-[9px] font-black text-slate-400 uppercase tracking-widest border border-rose-100/30">
+                  স্থাপিত: {toBn(viewingItem.established)}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Main Content */}
+          <div className="flex-1 overflow-y-auto no-scrollbar pb-10">
+            {/* Slim Contact List */}
+            <div className="px-5 pt-4 space-y-2.5">
+              <div className="flex flex-col items-center mb-3">
+                <h4 className="text-[10px] font-black text-slate-900 uppercase tracking-[0.25em] mb-2">ব্লাড ব্যাংকের সদস্য</h4>
+                <div className="w-10 h-0.5 bg-blue-600/20 rounded-full"></div>
+              </div>
+
+              {viewingItem.contacts && Array.isArray(viewingItem.contacts) ? (
+                viewingItem.contacts.map((contact: any, cIdx: number) => (
+                  <div key={cIdx} className="bg-white p-3 rounded-2xl border border-slate-100 flex items-center justify-between shadow-sm hover:border-blue-100 transition-all">
+                    <div className="flex items-center gap-3 overflow-hidden">
+                      <div className="w-9 h-9 rounded-xl bg-slate-50 flex items-center justify-center shrink-0 text-slate-300 border border-slate-50">
+                        <User size={18} />
+                      </div>
+                      <div className="overflow-hidden py-0.5">
+                        <p className="font-black text-slate-800 text-[13px] truncate leading-relaxed">{contact.name}</p>
+                        <p className="text-[10px] font-bold text-slate-400 truncate mt-0.5">
+                          {contact.designation} {contact.address && `• ${contact.address}`}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-2.5 shrink-0">
+                      {contact.bloodGroup && (
+                        <div className="px-2 py-0.5 bg-rose-50 text-rose-600 rounded-lg text-[10px] font-black border border-rose-100">
+                          {contact.bloodGroup}
+                        </div>
+                      )}
+                      <a 
+                        href={`tel:${convertBnToEn(contact.mobile)}`}
+                        className="w-9 h-9 bg-blue-600 text-white rounded-xl flex items-center justify-center shadow-lg shadow-blue-100 active:scale-90 transition-all"
+                      >
+                        <PhoneCall size={16} />
+                      </a>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="py-20 text-center opacity-20">
+                  <Info size={40} className="mx-auto mb-2" />
+                  <p className="text-xs font-bold uppercase tracking-widest">কোনো সদস্য নেই</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Bottom Back Button */}
+          <div className="p-6 bg-white border-t border-slate-50 shrink-0">
+             <button 
+              onClick={() => setViewingItem(null)}
+              className="w-full py-4 bg-slate-900 text-white font-black rounded-2xl active:scale-95 transition-all text-sm shadow-xl shadow-slate-200"
+             >
+              ফিরে যান
+             </button>
           </div>
         </div>
       )}

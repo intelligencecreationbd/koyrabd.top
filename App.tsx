@@ -71,6 +71,11 @@ const BottomNav: React.FC<{ checkAccess?: (id: string, name: string) => boolean 
   const isProfile = location.pathname === '/auth';
 
   const handleGlobalBack = () => {
+    const backEvent = new CustomEvent('global-back-request', { cancelable: true });
+    window.dispatchEvent(backEvent);
+    
+    if (backEvent.defaultPrevented) return;
+
     const { pathname, search } = location;
     if (search.includes('item=')) {
       navigate(pathname, { replace: true });
@@ -485,6 +490,10 @@ const App = () => {
     localStorage.removeItem('kp_logged_in_user');
   };
 
+  const handleCategoryChange = React.useCallback((cat: string | null) => {
+    setIsBloodBankActive(cat === 'blood');
+  }, []);
+
   return (
     <div className={`min-h-screen w-full flex flex-col transition-colors duration-300 relative ${isDarkMode ? 'bg-slate-950 text-white' : 'bg-white text-[#1A1A1A]'}`}>
       {!isLanding && !isLedgerPage && !isHouseRentPage && !isBloodBankActive && (
@@ -723,7 +732,7 @@ const App = () => {
                 <PublicMedical 
                   onBack={() => navigate('/services')} 
                   checkAccess={checkMenuAccess} 
-                  onCategoryChange={(cat) => setIsBloodBankActive(cat === 'blood')}
+                  onCategoryChange={handleCategoryChange}
                 />
               } />
               <Route path="/about" element={<AboutApp onBack={() => navigate('/services')} />} />

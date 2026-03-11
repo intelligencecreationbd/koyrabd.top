@@ -115,13 +115,13 @@ export default function AboutApp({ onBack }: { onBack: () => void }) {
       color: '#3B82F6',
       content: (
         <div className="space-y-6">
-          <div className="flex flex-col items-center text-center p-8 bg-blue-50/50 rounded-[40px] border border-blue-100">
-            <div className="w-24 h-24 bg-white rounded-full shadow-xl flex items-center justify-center mb-4 border border-blue-50 overflow-hidden">
+          <div className="flex flex-col items-center text-center p-5 bg-blue-50/50 rounded-[40px] border border-blue-100">
+            <div className="w-24 h-24 bg-white rounded-full shadow-xl flex items-center justify-center mb-3 border border-blue-50 overflow-hidden">
               <img src={appLogo} alt="App Logo" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
             </div>
             <h3 className="text-2xl font-black text-slate-800">কয়রা-পাইকগাছা</h3>
             <p className="text-sm font-bold text-blue-600 uppercase tracking-widest">কমিউনিটি অ্যাপস</p>
-            <div className="mt-4 px-4 py-1.5 bg-blue-600 text-white text-[10px] font-black rounded-full uppercase tracking-tighter">
+            <div className="mt-3 px-4 py-1.5 bg-blue-600 text-white text-[10px] font-black rounded-full uppercase tracking-tighter">
               Version 2.0.4 (Stable)
             </div>
           </div>
