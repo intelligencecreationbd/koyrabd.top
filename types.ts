@@ -108,3 +108,16 @@ export interface LedgerEntry {
   status: 'paid' | 'partial' | 'pending';
   createdAt: string;
 }
+
+export interface HouseRental {
+  id: string;
+  title: string;
+  category: string;
+  rent: string;
+  address: string;
+  area: string;
+  contact: string;
+  image?: string;
+  status: 'Available' | 'Rented Out';
+  createdAt: number;
+}

@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom';
-import { Sun, Moon, Lock, ChevronLeft, LogOut, Home as HomeIcon, User as UserIcon, PlusCircle, Menu, X, ArrowRight, Sparkles, NotebookTabs, MessageSquare, UserCircle, Download, ShieldCheck, Zap, Heart, Star, Smartphone, Camera, Gift, Bus, CloudSun, Newspaper, Scale, Phone, HeartPulse, Calculator, CheckCircle2, Instagram, Facebook, Youtube } from 'lucide-react';
+import { Sun, Moon, Lock, ChevronLeft, LogOut, Home as HomeIcon, User as UserIcon, PlusCircle, Menu, X, ArrowRight, Sparkles, NotebookTabs, MessageSquare, UserCircle, Download, ShieldCheck, Zap, Heart, Star, Smartphone, Camera, Gift, Bus, CloudSun, Newspaper, Scale, Phone, HeartPulse, Calculator, CheckCircle2, Instagram, Facebook, Youtube, Info } from 'lucide-react';
 import Home from './pages/Home';
 import CategoryView from './pages/CategoryView';
 import InfoSubmit from './pages/InfoSubmit';
@@ -12,8 +12,10 @@ import DigitalLedger from './pages/DigitalLedger';
 import OnlineHaat from './pages/OnlineHaat';
 import WeatherPage from './pages/WeatherPage';
 import KPCommunityChat from './pages/KPCommunityChat';
+import AboutApp from './components/AboutApp';
 import SundarbanHeaderBackground from './components/SundarbanHeaderBackground';
 import PublicMedical from './components/PublicMedical';
+import PublicHouseRent from './components/PublicHouseRent';
 import AgeCalculator from './components/AgeCalculator';
 import DateTimeBox from './components/DateTimeBox';
 import PublicDownload from './components/PublicDownload';
@@ -289,6 +291,7 @@ const App = () => {
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [menuAccess, setMenuAccess] = useState<Record<string, boolean>>({});
   const [accessNotice, setAccessNotice] = useState<{ isOpen: boolean; menuName: string }>({ isOpen: false, menuName: '' });
+  const [isBloodBankActive, setIsBloodBankActive] = useState(false);
 
   useEffect(() => {
     const accessRef = doc(settingsDb, 'settings', 'menu_access');
@@ -333,8 +336,15 @@ const App = () => {
   const location = useLocation();
   const isLanding = location.pathname === '/';
   const isChatPage = location.pathname === '/chat';
+  const isHouseRentPage = location.pathname === '/house-rent';
   const isNewsPage = location.pathname.startsWith('/category/14');
   const isLedgerPage = location.pathname === '/ledger';
+
+  useEffect(() => {
+    if (location.pathname !== '/medical') {
+      setIsBloodBankActive(false);
+    }
+  }, [location.pathname]);
 
   // Google Analytics Page View Tracking
   useEffect(() => {
@@ -477,7 +487,7 @@ const App = () => {
 
   return (
     <div className={`min-h-screen w-full flex flex-col transition-colors duration-300 relative ${isDarkMode ? 'bg-slate-950 text-white' : 'bg-white text-[#1A1A1A]'}`}>
-      {!isLanding && !isLedgerPage && (
+      {!isLanding && !isLedgerPage && !isHouseRentPage && !isBloodBankActive && (
         <>
           <div className={`fixed inset-0 z-[100] transition-opacity duration-300 ${isDrawerOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
             <div className="absolute inset-0 bg-slate-900/40 dark:bg-slate-950/60 backdrop-blur-sm" onClick={() => setIsDrawerOpen(false)} />
@@ -544,6 +554,10 @@ const App = () => {
                         setIsDrawerOpen(false); 
                         navigate('/info-submit'); 
                       }
+                    }} />
+                    <MenuLink icon={<Info size={20} />} label="অ্যাপ সম্পর্কে" onClick={() => { 
+                      setIsDrawerOpen(false); 
+                      navigate('/about'); 
                     }} />
                     {isAdminLoggedIn && (
                        <MenuLink icon={<Lock size={20} />} label="এডমিন প্যানেল" onClick={() => { setIsDrawerOpen(false); navigate('/admin'); }} />
@@ -705,8 +719,16 @@ const App = () => {
               <Route path="/online-haat" element={<OnlineHaat checkAccess={checkMenuAccess} />} />
               <Route path="/weather" element={<WeatherPage checkAccess={checkMenuAccess} />} />
               <Route path="/chat" element={<KPCommunityChat checkAccess={checkMenuAccess} />} />
-              <Route path="/medical" element={<PublicMedical onBack={() => navigate('/services')} checkAccess={checkMenuAccess} />} />
+              <Route path="/medical" element={
+                <PublicMedical 
+                  onBack={() => navigate('/services')} 
+                  checkAccess={checkMenuAccess} 
+                  onCategoryChange={(cat) => setIsBloodBankActive(cat === 'blood')}
+                />
+              } />
+              <Route path="/about" element={<AboutApp onBack={() => navigate('/services')} />} />
               <Route path="/age-calculator" element={<AgeCalculator onBack={() => navigate('/services')} checkAccess={checkMenuAccess} />} />
+              <Route path="/house-rent" element={<PublicHouseRent onBack={() => navigate('/services')} checkAccess={checkMenuAccess} user={currentUser} />} />
               <Route path="/id-card" element={<UserEmergencyInfo uid="" onBack={() => navigate('/services')} />} />
               <Route path="/download" element={
                 <PublicDownload 
@@ -724,7 +746,7 @@ const App = () => {
             </Routes>
         </div>
       </main>
-      {!isLanding && <BottomNav checkAccess={checkMenuAccess} />}
+      {!isLanding && !isHouseRentPage && <BottomNav checkAccess={checkMenuAccess} />}
       <MenuAccessNotice 
         isOpen={accessNotice.isOpen} 
         onClose={() => setAccessNotice({ ...accessNotice, isOpen: false })} 

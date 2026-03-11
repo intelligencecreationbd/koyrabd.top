@@ -36,20 +36,31 @@ const convertBnToEn = (str: string) => {
 };
 
 const MEDICAL_SUBMENUS = [
-  { id: 'doc', name: 'ডাক্তার খুঁজুন', icon: Stethoscope, color: '#E91E63' },
-  { id: 'hosp', name: 'হাসপাতাল ও ক্লিনিক', icon: Hospital, color: '#3B82F6' },
-  { id: 'amb', name: 'অ্যাম্বুলেন্স সেবা', icon: Truck, color: '#F59E0B' },
   { id: 'blood', name: 'ব্লাড ব্যাংক', icon: Droplets, color: '#EF4444' },
-  { id: 'pharma', name: 'অনলাইন ফার্মেসি', icon: Pill, color: '#10B981' },
+  { id: 'amb', name: 'অ্যাম্বুলেন্স সেবা', icon: Truck, color: '#F59E0B' },
+  { id: 'hosp', name: 'হাসপাতাল ও ক্লিনিক', icon: Hospital, color: '#3B82F6' },
   { id: 'diag', name: 'ডায়াগনস্টিক সেন্টার', icon: Microscope, color: '#8B5CF6' },
+  { id: 'doc', name: 'ডাক্তার খুঁজুন', icon: Stethoscope, color: '#E91E63' },
   { id: 'tips', name: 'হেলথ টিপস', icon: Activity, color: '#EC4899' },
+  { id: 'pharma', name: 'অনলাইন ফার্মেসি', icon: Pill, color: '#10B981' },
 ];
 
-export default function PublicMedical({ onBack, checkAccess }: { onBack: () => void; checkAccess?: (id: string, name: string) => boolean }) {
+export default function PublicMedical({ onBack, checkAccess, onCategoryChange }: { 
+  onBack: () => void; 
+  checkAccess?: (id: string, name: string) => boolean;
+  onCategoryChange?: (category: string | null) => void;
+}) {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedLocation, setSelectedLocation] = useState<string | null>(null);
   const [items, setItems] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (onCategoryChange) {
+      onCategoryChange(selectedCategory);
+    }
+  }, [selectedCategory, onCategoryChange]);
 
   useEffect(() => {
     if (!selectedCategory) {
@@ -71,18 +82,25 @@ export default function PublicMedical({ onBack, checkAccess }: { onBack: () => v
   }, [selectedCategory]);
 
   const filteredItems = useMemo(() => {
-    const term = searchTerm.toLowerCase();
-    return items.filter(item => 
-      (item.name || '').toLowerCase().includes(term) || 
-      (item.specialist || '').toLowerCase().includes(term) ||
-      (item.location || '').toLowerCase().includes(term)
-    );
-  }, [items, searchTerm]);
+    let list = items;
+    if (selectedCategory === 'blood' && selectedLocation) {
+      list = list.filter(item => (item.location || '').includes(selectedLocation));
+    } else {
+      const term = searchTerm.toLowerCase();
+      list = list.filter(item => 
+        (item.name || '').toLowerCase().includes(term) || 
+        (item.specialist || '').toLowerCase().includes(term) ||
+        (item.location || '').toLowerCase().includes(term)
+      );
+    }
+    return list;
+  }, [items, searchTerm, selectedCategory, selectedLocation]);
 
   const handleBack = () => {
     if (selectedCategory) {
       setSelectedCategory(null);
       setSearchTerm('');
+      setSelectedLocation(null);
     } else {
       onBack();
     }
@@ -92,16 +110,18 @@ export default function PublicMedical({ onBack, checkAccess }: { onBack: () => v
 
   return (
     <div className="flex flex-col h-full animate-in fade-in duration-500 p-5 bg-white">
-      <header className="flex items-center gap-4 mb-6 shrink-0">
-        <button onClick={handleBack} className="p-3 bg-white border border-slate-100 rounded-xl shadow-sm transition-transform active:scale-90">
-          <ChevronLeft size={24} />
-        </button>
-        <div className="text-left overflow-hidden">
+      <header className={`flex items-center ${selectedCategory === 'blood' ? 'justify-center' : 'gap-4'} mb-6 shrink-0`}>
+        {selectedCategory !== 'blood' && (
+          <button onClick={handleBack} className="p-3 bg-white border border-slate-100 rounded-xl shadow-sm transition-transform active:scale-90">
+            <ChevronLeft size={24} />
+          </button>
+        )}
+        <div className={`${selectedCategory === 'blood' ? 'text-center' : 'text-left'} overflow-hidden`}>
           <h2 className="text-xl font-black text-slate-800 leading-tight truncate">
             {selectedCategory ? getActiveMenu()?.name : 'চিকিৎসা সেবা'}
           </h2>
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">
-            {selectedCategory ? 'বিস্তারিত তথ্য তালিকা' : 'ডাক্তার ও স্বাস্থ্য সেবা'}
+            {selectedCategory === 'blood' ? 'কয়রা-পাইকগাছা কমিউনিটি এপস' : (selectedCategory ? 'বিস্তারিত তথ্য তালিকা' : 'ডাক্তার ও স্বাস্থ্য সেবা')}
           </p>
         </div>
       </header>
@@ -139,15 +159,32 @@ export default function PublicMedical({ onBack, checkAccess }: { onBack: () => v
         </div>
       ) : (
         <div className="flex-1 flex flex-col min-h-0 animate-in slide-in-from-right-4 duration-500">
-          <div className="relative mb-6 shrink-0">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
-            <input 
-              className="w-full pl-12 pr-5 py-4 bg-slate-50 border border-slate-100 rounded-[22px] font-bold outline-none focus:border-blue-400 shadow-inner" 
-              placeholder={`${getActiveMenu()?.name} খুঁজুন...`} 
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-            />
-          </div>
+          {selectedCategory === 'blood' ? (
+            <div className="grid grid-cols-2 gap-3 mb-6 shrink-0">
+              <button 
+                onClick={() => setSelectedLocation(selectedLocation === 'কয়রা' ? null : 'কয়রা')}
+                className={`py-3.5 rounded-2xl font-black text-sm transition-all shadow-sm border ${selectedLocation === 'কয়রা' ? 'bg-blue-600 text-white border-blue-600 shadow-blue-200' : 'bg-white text-slate-600 border-slate-100'}`}
+              >
+                কয়রা উপজেলা
+              </button>
+              <button 
+                onClick={() => setSelectedLocation(selectedLocation === 'পাইকগাছা' ? null : 'পাইকগাছা')}
+                className={`py-3.5 rounded-2xl font-black text-sm transition-all shadow-sm border ${selectedLocation === 'পাইকগাছা' ? 'bg-blue-600 text-white border-blue-600 shadow-blue-200' : 'bg-white text-slate-600 border-slate-100'}`}
+              >
+                পাইকগাছা উপজেলা
+              </button>
+            </div>
+          ) : (
+            <div className="relative mb-6 shrink-0">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
+              <input 
+                className="w-full pl-12 pr-5 py-4 bg-slate-50 border border-slate-100 rounded-[22px] font-bold outline-none focus:border-blue-400 shadow-inner" 
+                placeholder={`${getActiveMenu()?.name} খুঁজুন...`} 
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+              />
+            </div>
+          )}
 
           <div className="flex-1 overflow-y-auto no-scrollbar space-y-5 pb-40 px-1">
             {isLoading ? (

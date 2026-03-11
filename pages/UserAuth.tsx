@@ -36,7 +36,8 @@ import {
   LayoutGrid,
   LogOut,
   Key,
-  Info
+  Info,
+  Building2
 } from 'lucide-react';
 import UserEmergencyInfo from '../components/UserEmergencyInfo';
 import { User as AppUser } from '../types';
@@ -538,6 +539,13 @@ const UserAuth: React.FC<UserAuthProps> = ({ onLogin }) => {
                     <div className="space-y-0.5">
                         <p className="font-black text-[12px] uppercase tracking-[0.1em]">আমার পোস্ট</p>
                         <p className="text-[8px] font-bold opacity-70 leading-tight">পোস্টের তালিকা</p>
+                    </div>
+                </button>
+                <button onClick={() => navigate('/house-rent?view=mine')} className="p-4 bg-[#F59E0B] text-white rounded-[30px] flex flex-col items-center gap-3 shadow-lg active:scale-95 transition-all text-center group relative overflow-hidden">
+                    <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center shrink-0 shadow-inner group-hover:bg-white/30 transition-colors"><Building2 size={24}/></div>
+                    <div className="space-y-0.5">
+                        <p className="font-black text-[12px] uppercase tracking-[0.1em]">টু-লেট</p>
+                        <p className="text-[8px] font-bold opacity-70 leading-tight">আমার বিজ্ঞাপন</p>
                     </div>
                 </button>
             </div>

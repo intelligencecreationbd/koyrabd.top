@@ -43,7 +43,9 @@ import AdminNewsMgmt from '../components/AdminNewsMgmt';
 import AdminHaatMgmt from '../components/AdminHaatMgmt';
 import AdminUserList from '../components/AdminUserList';
 import AdminMedicalMgmt from '../components/AdminMedicalMgmt';
+import AdminHouseRentMgmt from '../components/AdminHouseRentMgmt';
 import AdminMenuAccess from '../components/AdminMenuAccess';
+import AdminAboutMgmt from '../components/AdminAboutMgmt';
 
 import { settingsDb } from '../Firebase-appsettings';
 import { doc, setDoc } from 'firebase/firestore';
@@ -57,7 +59,7 @@ interface AdminDashboardProps {
   adminPassword: string;
 }
 
-type AdminView = 'menu' | 'users' | 'notices' | 'hotline_mgmt' | 'bus_mgmt' | 'legal_mgmt' | 'mobile_mgmt' | 'rep_mgmt' | 'news_mgmt' | 'haat_mgmt' | 'medical_mgmt' | 'change_pass' | 'user_submissions' | 'menu_access';
+type AdminView = 'menu' | 'users' | 'notices' | 'hotline_mgmt' | 'bus_mgmt' | 'legal_mgmt' | 'mobile_mgmt' | 'rep_mgmt' | 'news_mgmt' | 'haat_mgmt' | 'medical_mgmt' | 'houserent_mgmt' | 'change_pass' | 'user_submissions' | 'menu_access' | 'about_mgmt';
 
 const Header: React.FC<{ title: string; onBack: () => void }> = ({ title, onBack }) => (
   <div className="flex flex-col items-center gap-3 mb-6 text-center relative">
@@ -346,6 +348,7 @@ export default function AdminDashboard({ submissions, notices, onUpdateNotices, 
                 <MenuListItem onClick={() => setCurrentView('news_mgmt')} icon={<Newspaper />} label="সংবাদ ম্যানেজার" color="#4CAF50" />
                 <MenuListItem onClick={() => setCurrentView('haat_mgmt')} icon={<ShoppingBag />} label="অনলাইন হাট ম্যানেজার" color="#F1C40F" />
                 <MenuListItem onClick={() => setCurrentView('medical_mgmt')} icon={<HeartPulse />} label="চিকিৎসা সেবা ম্যানেজমেন্ট" color="#E91E63" />
+                <MenuListItem onClick={() => setCurrentView('houserent_mgmt')} icon={<HomeIcon />} label="বাসা ভাড়া ম্যানেজমেন্ট" color="#8B4513" />
                 <MenuListItem onClick={() => setCurrentView('bus_mgmt')} icon={<Bus />} label="বাস কাউন্টার ম্যানেজার" color="#E67E22" />
                 <MenuListItem onClick={() => setCurrentView('legal_mgmt')} icon={<Scale />} label="আইনি সেবা ম্যানেজার" color="#2980B9" />
               </>
@@ -360,6 +363,7 @@ export default function AdminDashboard({ submissions, notices, onUpdateNotices, 
             {activeTab === 'settings' && (
               <>
                 <MenuListItem onClick={() => setCurrentView('user_submissions')} icon={<Inbox />} label="তথ্য পাঠিয়েছেন" color="#E91E63" badge={submissions.length} />
+                <MenuListItem onClick={() => setCurrentView('about_mgmt')} icon={<Smartphone />} label="অ্যাপ ম্যানেজমেন্ট" color="#3B82F6" />
                 <MenuListItem onClick={() => setCurrentView('menu_access')} icon={<LayoutGrid />} label="মেনু একসেস" color="#0056b3" />
                 <MenuListItem onClick={() => setCurrentView('change_pass')} icon={<Lock />} label="পাসওয়ার্ড পরিবর্তন" color="#9B59B6" />
                 <MenuListItem onClick={() => setCurrentView('notices')} icon={<Megaphone />} label="নোটিশ" color="#FF9F43" />
@@ -387,8 +391,10 @@ export default function AdminDashboard({ submissions, notices, onUpdateNotices, 
       {currentView === 'news_mgmt' && <AdminNewsMgmt onBack={() => setCurrentView('menu')} />}
       {currentView === 'haat_mgmt' && <AdminHaatMgmt onBack={() => setCurrentView('menu')} />}
       {currentView === 'medical_mgmt' && <AdminMedicalMgmt onBack={() => setCurrentView('menu')} />}
+      {currentView === 'houserent_mgmt' && <AdminHouseRentMgmt onBack={() => setCurrentView('menu')} />}
       {currentView === 'bus_mgmt' && <AdminBusMgmt onBack={() => setCurrentView('menu')} />}
       {currentView === 'legal_mgmt' && <AdminLegalMgmt onBack={() => setCurrentView('menu')} />}
+      {currentView === 'about_mgmt' && <AdminAboutMgmt onBack={() => setCurrentView('menu')} />}
       {currentView === 'users' && <AdminUserList onBack={() => setCurrentView('menu')} />}
       {currentView === 'menu_access' && <AdminMenuAccess onBack={() => setCurrentView('menu')} />}
       

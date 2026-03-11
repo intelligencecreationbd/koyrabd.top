@@ -216,6 +216,20 @@ export const CATEGORIES: MainMenu[] = [
     subMenus: []
   },
   {
+    id: '24',
+    name: 'To-Let',
+    icon: 'HomeIcon',
+    color: '#8B4513',
+    subMenus: []
+  },
+  {
+    id: '25',
+    name: 'অ্যাপ সম্পর্কে',
+    icon: 'Info',
+    color: '#3B82F6',
+    subMenus: []
+  },
+  {
     id: '12',
     name: 'ইউজার লগইন',
     icon: 'LogIn',
