@@ -20,7 +20,8 @@ import {
   Camera, 
   Loader2,
   ArrowRight,
-  Edit2
+  Edit2,
+  Building2
 } from 'lucide-react';
 import { 
   collection, 
@@ -60,13 +61,13 @@ const Header = ({ title, onBack }: { title: string; onBack: () => void }) => (
 
 const EditField = ({ label, value, placeholder, onChange, icon, type = 'text' }: any) => (
   <div className="text-left w-full">
-    <label className="text-[10px] font-bold text-slate-400 block mb-1.5 uppercase tracking-wider pl-1">{label}</label>
+    <label className="text-[10px] font-bold text-slate-400 block mb-1 uppercase tracking-wider pl-1">{label}</label>
     <div className="relative">
         {icon && <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300">{icon}</div>}
         <input 
           type={type}
           placeholder={placeholder}
-          className={`w-full ${icon ? 'pl-11' : 'px-5'} py-3.5 bg-slate-50 border border-slate-100 rounded-2xl font-bold outline-none text-slate-800 transition-all focus:border-blue-400 shadow-sm`} 
+          className={`w-full ${icon ? 'pl-11' : 'px-5'} py-3 bg-slate-50 border border-slate-100 rounded-2xl font-bold outline-none text-slate-800 transition-all focus:border-blue-400 shadow-sm text-sm`} 
           value={value} 
           onChange={e => onChange(e.target.value)} 
         />
@@ -85,7 +86,7 @@ export default function AdminMedicalMgmt({ onBack }: { onBack: () => void }) {
   const [editingContactIdx, setEditingContactIdx] = useState<number | null>(null);
   
   const [form, setForm] = useState<any>({
-    name: '', specialist: '', degree: '', mobile: '', location: '', photo: '', desc: '',
+    name: '', specialist: '', degree: '', mobile: '', mobiles: [''], location: '', photo: '', desc: '',
     established: '', upazila: '', contacts: [{ name: '', designation: '', bloodGroup: '', address: '', mobile: '' }]
   });
 
@@ -133,7 +134,7 @@ export default function AdminMedicalMgmt({ onBack }: { onBack: () => void }) {
         setEditingContactIdx(null);
         setSelectedFile(null);
         setForm({ 
-          name: '', specialist: '', degree: '', mobile: '', location: '', photo: '', desc: '',
+          name: '', specialist: '', degree: '', mobile: '', mobiles: [''], location: '', photo: '', desc: '',
           established: '', upazila: '', contacts: [{ name: '', designation: '', bloodGroup: '', address: '', mobile: '' }]
         });
     } catch (e) { alert('সংরক্ষণ ব্যর্থ হয়েছে!'); }
@@ -192,7 +193,7 @@ export default function AdminMedicalMgmt({ onBack }: { onBack: () => void }) {
                   setEditingId(null); 
                   setEditingContactIdx(null);
                   setForm({
-                    name: '', specialist: '', degree: '', mobile: '', location: '', photo: '', desc: '',
+                    name: '', specialist: '', degree: '', mobile: '', mobiles: [''], location: '', photo: '', desc: '',
                     established: '', upazila: '', contacts: [{ name: '', designation: '', bloodGroup: '', address: '', mobile: '' }]
                   }); 
                   setShowForm(true); 
@@ -212,7 +213,11 @@ export default function AdminMedicalMgmt({ onBack }: { onBack: () => void }) {
                         <div key={item.id} className="bg-white p-5 rounded-[28px] border border-slate-100 flex items-center justify-between shadow-sm group">
                             <div className="flex items-center gap-4 text-left overflow-hidden">
                                 <div className="w-12 h-12 rounded-xl bg-slate-50 border border-slate-100 overflow-hidden flex items-center justify-center text-slate-300 shrink-0">
-                                    {item.photo ? <img src={item.photo} className="w-full h-full object-cover" /> : <UserIcon size={24} />}
+                                    {item.photo ? (
+                                      <img src={item.photo} className="w-full h-full object-cover" />
+                                    ) : (
+                                      selectedCat === 'amb' ? <Truck size={24} /> : <UserIcon size={24} />
+                                    )}
                                 </div>
                                 <div className="overflow-hidden">
                                     <h4 className="font-black text-slate-800 truncate text-sm">{item.name}</h4>
@@ -225,6 +230,7 @@ export default function AdminMedicalMgmt({ onBack }: { onBack: () => void }) {
                                   setEditingContactIdx(null);
                                   setForm({
                                     ...item,
+                                    mobiles: item.mobiles || [item.mobile || ''],
                                     contacts: item.contacts || [{ name: '', designation: '', bloodGroup: '', address: '', mobile: '' }]
                                   }); 
                                   setShowForm(true); 
@@ -245,13 +251,13 @@ export default function AdminMedicalMgmt({ onBack }: { onBack: () => void }) {
 
         {showForm && (
             <div className="fixed inset-0 z-[150] bg-slate-900/60 backdrop-blur-md p-5 flex items-center justify-center">
-                <div className="bg-white w-full max-w-sm rounded-[45px] p-8 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto animate-in zoom-in duration-300">
-                    <div className="flex justify-between items-center border-b pb-4">
-                        <h3 className="font-black text-xl text-slate-800">{editingId ? 'তথ্য সংশোধন' : 'নতুন তথ্য প্রদান'}</h3>
+                <div className="bg-white w-full max-w-sm rounded-[40px] p-6 shadow-2xl space-y-3 max-h-[90vh] overflow-y-auto animate-in zoom-in duration-300">
+                    <div className="flex justify-between items-center border-b pb-3">
+                        <h3 className="font-black text-lg text-slate-800">{editingId ? 'তথ্য সংশোধন' : 'নতুন তথ্য প্রদান'}</h3>
                         <button onClick={()=>{setShowForm(false); setEditingContactIdx(null);}} className="p-2 text-slate-400 hover:text-red-500"><X/></button>
                     </div>
                     
-                    {selectedCat !== 'blood' && (
+                    {selectedCat !== 'blood' && selectedCat !== 'amb' && (
                       <div className="flex flex-col items-center">
                           <div className="relative group">
                               <div className="w-24 h-24 rounded-[35px] bg-slate-50 border-4 border-white shadow-lg overflow-hidden flex items-center justify-center text-slate-200">
@@ -265,29 +271,99 @@ export default function AdminMedicalMgmt({ onBack }: { onBack: () => void }) {
                     )}
 
                     <div className="space-y-4 pt-2">
-                        <EditField label="নাম *" value={form.name} onChange={(v:any)=>setForm({...form, name:v})} placeholder="যেমন: ডাঃ আব্দুর রহমান / ল্যাব এইড" icon={<UserIcon size={18}/>} />
-                        
-                        {(selectedCat === 'doc' || selectedCat === 'tips') && (
-                            <EditField label="স্পেশালিস্ট / টাইটেল" value={form.specialist} onChange={(v:any)=>setForm({...form, specialist:v})} placeholder="যেমন: মেডিসিন বিশেষজ্ঞ" icon={<Stethoscope size={18}/>} />
-                        )}
-                        
-                        {selectedCat === 'doc' && (
-                            <EditField label="ডিগ্রি (ডাক্তারদের জন্য)" value={form.degree} onChange={(v:any)=>setForm({...form, degree:v})} placeholder="যেমন: MBBS, FCPS" icon={<Tag size={18}/>} />
-                        )}
+                        {selectedCat === 'amb' ? (
+                          <>
+                            <div className="text-left">
+                              <label className="text-[10px] font-bold text-slate-400 block mb-1 uppercase tracking-wider pl-1">উপজেলা নির্বাচন করুন *</label>
+                              <select 
+                                className="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-2xl font-bold outline-none text-slate-800 transition-all focus:border-blue-400 shadow-sm appearance-none text-sm"
+                                value={form.upazila}
+                                onChange={e => setForm({...form, upazila: e.target.value})}
+                              >
+                                <option value="">উপজেলা সিলেক্ট করুন</option>
+                                <option value="কয়রা">কয়রা উপজেলা</option>
+                                <option value="পাইকগাছা">পাইকগাছা উপজেলা</option>
+                              </select>
+                            </div>
 
-                        <EditField label="মোবাইল নম্বর *" value={form.mobile} onChange={(v:any)=>setForm({...form, mobile:v})} placeholder="০১xxxxxxxxx" icon={<Smartphone size={18}/>} />
-                        
-                        <EditField label="ঠিকানা / অবস্থান" value={form.location} onChange={(v:any)=>setForm({...form, location:v})} placeholder="গ্রাম, ইউনিয়ন বা বাজার" icon={<MapPin size={18}/>} />
-                        
-                        <div className="text-left">
-                            <label className="text-[10px] font-bold text-slate-400 block mb-1.5 uppercase tracking-wider pl-1">অতিরিক্ত বিবরণ (যদি থাকে)</label>
-                            <textarea className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-slate-700 outline-none h-24 text-sm" value={form.desc} onChange={e => setForm({...form, desc: e.target.value})} placeholder="টিপস বা বিস্তারিত তথ্য..." />
-                        </div>
+                            {form.upazila && (
+                              <>
+                                <EditField label="প্রতিষ্ঠানের নাম *" value={form.name} onChange={(v:any)=>setForm({...form, name:v})} placeholder="যেমন: জননী এ্যাম্বুলেন্স সার্ভিস" icon={<Building2 size={18}/>} />
+                                
+                                <div className="space-y-3">
+                                  <div className="flex justify-between items-center px-1">
+                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">মোবাইল নম্বরসমূহ *</label>
+                                    <button 
+                                      type="button"
+                                      onClick={() => setForm({...form, mobiles: [...(form.mobiles || []), '']})}
+                                      className="text-[10px] font-bold text-blue-600 flex items-center gap-1"
+                                    >
+                                      <Plus size={12} /> আরও নম্বর যোগ করুন
+                                    </button>
+                                  </div>
+                                  
+                                  {(form.mobiles || ['']).map((m: string, idx: number) => (
+                                    <div key={idx} className="flex gap-2">
+                                      <div className="flex-1">
+                                        <EditField 
+                                          label={`নম্বর ${toBn(idx + 1)}`} 
+                                          value={m} 
+                                          onChange={(v:any) => {
+                                            const newMobiles = [...form.mobiles];
+                                            newMobiles[idx] = v;
+                                            setForm({...form, mobiles: newMobiles, mobile: newMobiles[0]});
+                                          }} 
+                                          placeholder="০১xxxxxxxxx" 
+                                          icon={<Smartphone size={18}/>} 
+                                        />
+                                      </div>
+                                      {idx > 0 && (
+                                        <button 
+                                          type="button"
+                                          onClick={() => {
+                                            const newMobiles = form.mobiles.filter((_: any, i: number) => i !== idx);
+                                            setForm({...form, mobiles: newMobiles, mobile: newMobiles[0]});
+                                          }}
+                                          className="mt-5 p-3 bg-red-50 text-red-500 rounded-2xl active:scale-90 transition-all h-[46px] flex items-center justify-center"
+                                        >
+                                          <X size={16} />
+                                        </button>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+
+                                <EditField label="ঠিকানা *" value={form.location} onChange={(v:any)=>setForm({...form, location:v})} placeholder="যেমন: কয়রা সদর" icon={<MapPin size={18}/>} />
+                              </>
+                            )}
+                          </>
+                        ) : (
+                          <>
+                            <EditField label="নাম *" value={form.name} onChange={(v:any)=>setForm({...form, name:v})} placeholder="যেমন: ডাঃ আব্দুর রহমান / ল্যাব এইড" icon={<UserIcon size={18}/>} />
+                            
+                            {(selectedCat === 'doc' || selectedCat === 'tips') && (
+                                <EditField label="স্পেশালিস্ট / টাইটেল" value={form.specialist} onChange={(v:any)=>setForm({...form, specialist:v})} placeholder="যেমন: মেডিসিন বিশেষজ্ঞ" icon={<Stethoscope size={18}/>} />
+                            )}
+                            
+                            {selectedCat === 'doc' && (
+                                <EditField label="ডিগ্রি (ডাক্তারদের জন্য)" value={form.degree} onChange={(v:any)=>setForm({...form, degree:v})} placeholder="যেমন: MBBS, FCPS" icon={<Tag size={18}/>} />
+                            )}
+
+                            <EditField label="মোবাইল নম্বর *" value={form.mobile} onChange={(v:any)=>setForm({...form, mobile:v})} placeholder="০১xxxxxxxxx" icon={<Smartphone size={18}/>} />
+                            
+                            <EditField label="ঠিকানা / অবস্থান" value={form.location} onChange={(v:any)=>setForm({...form, location:v})} placeholder="গ্রাম, ইউনিয়ন বা বাজার" icon={<MapPin size={18}/>} />
+                            
+                            <div className="text-left">
+                                <label className="text-[10px] font-bold text-slate-400 block mb-1.5 uppercase tracking-wider pl-1">অতিরিক্ত বিবরণ (যদি থাকে)</label>
+                                <textarea className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-slate-700 outline-none h-24 text-sm" value={form.desc} onChange={e => setForm({...form, desc: e.target.value})} placeholder="টিপস বা বিস্তারিত তথ্য..." />
+                            </div>
+                          </>
+                        )}
 
                         <button 
                             onClick={handleSubmit} 
-                            disabled={isSubmitting} 
-                            className="w-full py-5 bg-[#0056b3] text-white font-black rounded-[28px] shadow-lg mt-4 flex items-center justify-center gap-2 active:scale-95 transition-all shadow-blue-500/20 disabled:opacity-50"
+                            disabled={isSubmitting || (selectedCat === 'amb' && (!form.upazila || !form.name || !form.mobile || !form.location))} 
+                            className="w-full py-4 bg-[#0056b3] text-white font-black rounded-[24px] shadow-lg mt-2 flex items-center justify-center gap-2 active:scale-95 transition-all shadow-blue-500/20 disabled:opacity-50 text-sm"
                         >
                             {isSubmitting ? <Loader2 className="animate-spin" /> : (editingId ? 'আপডেট করুন' : 'সংরক্ষণ করুন')}
                         </button>

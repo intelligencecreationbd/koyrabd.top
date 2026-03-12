@@ -102,6 +102,7 @@ const PublicDirectory: React.FC<PublicDirectoryProps> = ({ id, categoryName, pat
   const [dataList, setDataList] = useState<any[]>([]);
   const [globalData, setGlobalData] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const scrollContainerRef = React.useRef<HTMLDivElement>(null);
   
   const [isSearchMode, setIsSearchMode] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -117,12 +118,16 @@ const PublicDirectory: React.FC<PublicDirectoryProps> = ({ id, categoryName, pat
 
   const selectedItem = useMemo(() => {
     if (!profileIdFromUrl) return null;
+    // Check dataList first (current category items) for instant access
+    const fromList = dataList.find(item => item.id === profileIdFromUrl);
+    if (fromList) return fromList;
+    // Then check globalData (search results or direct link)
     return globalData.find(item => item.id === profileIdFromUrl) || null;
-  }, [profileIdFromUrl, globalData]);
+  }, [profileIdFromUrl, dataList, globalData]);
 
   useEffect(() => {
-    if (selectedItem) {
-      window.scrollTo({ top: 0, behavior: 'instant' });
+    if (selectedItem && scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTo({ top: 0, behavior: 'instant' });
     }
   }, [selectedItem]);
 
@@ -152,6 +157,12 @@ const PublicDirectory: React.FC<PublicDirectoryProps> = ({ id, categoryName, pat
   }, [rootNode, id]);
 
   useEffect(() => {
+    // Only fetch global data if search mode is active OR we are viewing a specific item from URL
+    if (!isSearchMode && !profileIdFromUrl) {
+      setGlobalData([]);
+      return;
+    }
+
     if (id === '15') {
       const contactsRef = collection(mobileDb, 'contacts');
       const unsubscribe = onSnapshot(contactsRef, (snapshot) => {
@@ -178,7 +189,7 @@ const PublicDirectory: React.FC<PublicDirectoryProps> = ({ id, categoryName, pat
       });
       return () => unsubscribe();
     }
-  }, [rootNode, id]);
+  }, [rootNode, id, isSearchMode, profileIdFromUrl]);
 
   const levels = useMemo(() => {
     const result = [];
@@ -334,68 +345,75 @@ const PublicDirectory: React.FC<PublicDirectoryProps> = ({ id, categoryName, pat
         )}
       </header>
 
-      <div className="flex-1 overflow-y-auto no-scrollbar pb-40 space-y-5">
-        {selectedItem ? (
-          <div className="animate-in slide-in-from-bottom-6 duration-500 w-full flex flex-col items-center space-y-4 px-0 mt-14">
-            <div className="w-full bg-white px-4 pt-0 pb-6 rounded-[40px] shadow-[0_20px_60px_rgba(0,0,0,0.06)] border border-slate-50 space-y-6">
-                {/* Profile Section matching Screenshot */}
-                <div className="flex flex-col items-center gap-4">
-                  <div className="relative -mt-16">
-                    <div className="w-32 h-32 rounded-full border-[5px] border-white shadow-xl overflow-hidden bg-slate-50 flex items-center justify-center text-slate-200">
-                      {selectedItem.photo ? <img src={selectedItem.photo} className="w-full h-full object-cover" alt="" /> : <UserCircle size={64} strokeWidth={1} />}
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto no-scrollbar pb-40 space-y-5">
+        {profileIdFromUrl ? (
+          selectedItem ? (
+            <div className="animate-in slide-in-from-bottom-6 duration-500 w-full flex flex-col items-center space-y-4 px-0 mt-14">
+              <div className="w-full bg-white px-4 pt-0 pb-6 rounded-[40px] shadow-[0_20px_60px_rgba(0,0,0,0.06)] border border-slate-50 space-y-6">
+                  {/* Profile Section matching Screenshot */}
+                  <div className="flex flex-col items-center gap-4">
+                    <div className="relative -mt-16">
+                      <div className="w-32 h-32 rounded-full border-[5px] border-white shadow-xl overflow-hidden bg-slate-50 flex items-center justify-center text-slate-200">
+                        {selectedItem.photo ? <img src={selectedItem.photo} className="w-full h-full object-cover" alt="" /> : <UserCircle size={64} strokeWidth={1} />}
+                      </div>
+                      {/* Blue Verified Badge exactly as screenshot */}
+                      <div className="absolute bottom-1 right-1 p-2.5 bg-blue-600 text-white rounded-full shadow-lg border-[2px] border-white flex items-center justify-center">
+                         <CheckCircle2 size={14} fill="currentColor" className="text-white" />
+                      </div>
                     </div>
-                    {/* Blue Verified Badge exactly as screenshot */}
-                    <div className="absolute bottom-1 right-1 p-2.5 bg-blue-600 text-white rounded-full shadow-lg border-[2px] border-white flex items-center justify-center">
-                       <CheckCircle2 size={14} fill="currentColor" className="text-white" />
+                    <div className="text-center space-y-1">
+                      <h1 className="text-xl font-black text-slate-800 leading-tight">{selectedItem.name}</h1>
+                      <p className="text-[12px] font-black text-blue-600 uppercase tracking-widest">{selectedItem.designation || 'বিস্তারিত তথ্য'}</p>
                     </div>
                   </div>
-                  <div className="text-center space-y-1">
-                    <h1 className="text-xl font-black text-slate-800 leading-tight">{selectedItem.name}</h1>
-                    <p className="text-[12px] font-black text-blue-600 uppercase tracking-widest">{selectedItem.designation || 'বিস্তারিত তথ্য'}</p>
+
+                  {/* All Contact Information Section */}
+                  <div className="space-y-4">
+                    {/* Mobiles */}
+                    {selectedItem.mobile && <MobileActionRow mobile={selectedItem.mobile} label="প্রাথমিক মোবাইল নম্বর" />}
+                    {selectedItem.extraMobiles && selectedItem.extraMobiles.map((mob: string, i: number) => mob && (
+                      <MobileActionRow key={i} mobile={mob} label={`অতিরিক্ত নম্বর (${toBn(i + 1)})`} />
+                    ))}
+
+                    {/* Email */}
+                    {selectedItem.email && (
+                      <ContactInfoRow icon={Mail} label="ইমেইল এড্রেস" value={selectedItem.email} colorClass="bg-blue-50" iconColor="text-blue-500" />
+                    )}
+
+                    {/* Address */}
+                    {selectedItem.address && (
+                      <ContactInfoRow icon={MapPin} label="ঠিকানা (অফিস/এলাকা)" value={selectedItem.address} colorClass="bg-emerald-50" iconColor="text-emerald-500" />
+                    )}
+
+                    {/* Custom Info Fields */}
+                    {selectedItem.customInfo && selectedItem.customInfo.map((info: any, i: number) => (info.label && info.value) && (
+                      <ContactInfoRow key={i} icon={Type} label={info.label} value={info.value} colorClass="bg-indigo-50" iconColor="text-indigo-500" />
+                    ))}
+
+                    {/* Description Section - Added to fix the 'missing info' issue */}
+                    {selectedItem.description && (
+                      <div className="bg-slate-50/50 p-6 rounded-[35px] border border-slate-100 space-y-3 text-left">
+                         <div className="flex items-center gap-2 mb-1">
+                            <FileText size={16} className="text-slate-400" />
+                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">বিস্তারিত বিবরণ</p>
+                         </div>
+                         <p className="text-sm font-bold text-slate-600 leading-relaxed whitespace-pre-line text-justify">{selectedItem.description}</p>
+                      </div>
+                    )}
                   </div>
-                </div>
-
-                {/* All Contact Information Section */}
-                <div className="space-y-4">
-                  {/* Mobiles */}
-                  {selectedItem.mobile && <MobileActionRow mobile={selectedItem.mobile} label="প্রাথমিক মোবাইল নম্বর" />}
-                  {selectedItem.extraMobiles && selectedItem.extraMobiles.map((mob: string, i: number) => mob && (
-                    <MobileActionRow key={i} mobile={mob} label={`অতিরিক্ত নম্বর (${toBn(i + 1)})`} />
-                  ))}
-
-                  {/* Email */}
-                  {selectedItem.email && (
-                    <ContactInfoRow icon={Mail} label="ইমেইল এড্রেস" value={selectedItem.email} colorClass="bg-blue-50" iconColor="text-blue-500" />
-                  )}
-
-                  {/* Address */}
-                  {selectedItem.address && (
-                    <ContactInfoRow icon={MapPin} label="ঠিকানা (অফিস/এলাকা)" value={selectedItem.address} colorClass="bg-emerald-50" iconColor="text-emerald-500" />
-                  )}
-
-                  {/* Custom Info Fields */}
-                  {selectedItem.customInfo && selectedItem.customInfo.map((info: any, i: number) => (info.label && info.value) && (
-                    <ContactInfoRow key={i} icon={Type} label={info.label} value={info.value} colorClass="bg-indigo-50" iconColor="text-indigo-500" />
-                  ))}
-
-                  {/* Description Section - Added to fix the 'missing info' issue */}
-                  {selectedItem.description && (
-                    <div className="bg-slate-50/50 p-6 rounded-[35px] border border-slate-100 space-y-3 text-left">
-                       <div className="flex items-center gap-2 mb-1">
-                          <FileText size={16} className="text-slate-400" />
-                          <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">বিস্তারিত বিবরণ</p>
-                       </div>
-                       <p className="text-sm font-bold text-slate-600 leading-relaxed whitespace-pre-line text-justify">{selectedItem.description}</p>
-                    </div>
-                  )}
-                </div>
-                
-                {/* Back Pill as seen in some versions of UI */}
-                <div className="flex justify-center pt-4">
-                   <button onClick={() => onNavigate(location.pathname)} className="px-8 py-3 bg-blue-600 text-white rounded-full font-black text-[12px] uppercase shadow-lg shadow-blue-500/30 active:scale-95 transition-all">BACK</button>
-                </div>
+                  
+                  {/* Back Pill as seen in some versions of UI */}
+                  <div className="flex justify-center pt-4">
+                     <button onClick={() => onNavigate(location.pathname)} className="px-8 py-3 bg-blue-600 text-white rounded-full font-black text-[12px] uppercase shadow-lg shadow-blue-500/30 active:scale-95 transition-all">BACK</button>
+                  </div>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="py-40 flex flex-col items-center justify-center gap-4 opacity-30">
+              <Clock className="animate-spin text-blue-600" size={40} />
+              <p className="font-bold text-slate-400">তথ্য লোড হচ্ছে...</p>
+            </div>
+          )
         ) : isSearchMode ? (
           <div className="space-y-5 animate-in slide-in-from-top-4 duration-500">
              <div className="relative mx-1">

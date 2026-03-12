@@ -28,6 +28,7 @@ import {
 } from 'firebase/firestore';
 import { medicalDb } from '../Firebase-medical';
 import PublicBloodBank from './medical/PublicBloodBank';
+import PublicAmbulance from './medical/PublicAmbulance';
 
 const toBn = (num: string | number) => 
   (num || '').toString().replace(/\d/g, d => "০১২৩৪৫৬৭৮৯"[parseInt(d)]);
@@ -141,17 +142,23 @@ export default function PublicMedical({ onBack, checkAccess, onCategoryChange }:
     return <PublicBloodBank onBack={handleBack} />;
   }
 
+  if (selectedCategory === 'amb') {
+    return <PublicAmbulance onBack={handleBack} />;
+  }
+
   return (
     <div className="flex flex-col h-full animate-in fade-in duration-500 p-5 bg-white">
-      <header className="flex items-center gap-4 mb-6 shrink-0">
-        <button onClick={handleBack} className="p-3 bg-white border border-slate-100 rounded-xl shadow-sm transition-transform active:scale-90">
+      <header className={`flex ${selectedCategory === 'doc' ? 'flex-col items-center justify-center' : 'items-center gap-4'} mb-6 shrink-0 relative`}>
+        <button onClick={handleBack} className={`p-3 bg-white border border-slate-100 rounded-xl shadow-sm transition-transform active:scale-90 ${selectedCategory === 'doc' ? 'absolute left-0' : ''}`}>
           <ChevronLeft size={24} />
         </button>
-        <div className="text-left overflow-hidden">
+        <div className={`${selectedCategory === 'doc' ? 'text-center' : 'text-left'} overflow-hidden`}>
           <h2 className="text-xl font-black text-slate-800 leading-tight truncate">
             {getActiveMenu()?.name || 'চিকিৎসা সেবা'}
           </h2>
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">বিস্তারিত তথ্য তালিকা</p>
+          <p className={`text-[10px] font-bold uppercase tracking-widest mt-0.5 ${selectedCategory === 'doc' ? 'text-blue-600' : 'text-slate-400'}`}>
+            {selectedCategory === 'doc' ? 'কয়রা-পাইকগাছা কমিউনিটি অ্যাপ' : 'বিস্তারিত তথ্য তালিকা'}
+          </p>
         </div>
       </header>
 
@@ -191,7 +198,7 @@ export default function PublicMedical({ onBack, checkAccess, onCategoryChange }:
           <div className="relative mb-6 shrink-0">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
             <input 
-              className="w-full pl-12 pr-5 py-4 bg-slate-50 border border-slate-100 rounded-[22px] font-bold outline-none focus:border-blue-400 shadow-inner" 
+              className={`w-full pl-12 pr-5 ${selectedCategory === 'doc' ? 'py-3' : 'py-4'} bg-slate-50 border border-slate-100 rounded-[22px] font-bold outline-none focus:border-blue-400 shadow-inner`} 
               placeholder={`${getActiveMenu()?.name} খুঁজুন...`} 
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
@@ -212,22 +219,22 @@ export default function PublicMedical({ onBack, checkAccess, onCategoryChange }:
                     return (
                         <div 
                           key={item.id} 
-                          className={`bg-white p-4 rounded-[30px] border ${cardStyle.border} shadow-lg shadow-slate-100/50 space-y-2.5 text-left animate-in slide-in-from-bottom-2 duration-500`} 
+                          className={`bg-white p-4 rounded-[30px] border ${cardStyle.border} shadow-lg shadow-slate-100/50 ${selectedCategory === 'doc' ? 'space-y-1.5' : 'space-y-2.5'} text-left animate-in slide-in-from-bottom-2 duration-500`} 
                           style={{ animationDelay: `${idx * 50}ms` }}
                         >
                             
-                            <div className="flex items-start gap-3">
-                                <div className={`w-14 h-14 rounded-[18px] ${cardStyle.bg} border ${cardStyle.border} overflow-hidden flex items-center justify-center shrink-0 shadow-sm`}>
+                            <div className={`flex items-start ${selectedCategory === 'doc' ? 'gap-2' : 'gap-3'}`}>
+                                <div className={`${selectedCategory === 'doc' ? 'w-12 h-12 rounded-[15px]' : 'w-14 h-14 rounded-[18px]'} ${cardStyle.bg} border ${cardStyle.border} overflow-hidden flex items-center justify-center shrink-0 shadow-sm`}>
                                     {item.photo ? (
                                         <img src={item.photo} className="w-full h-full object-cover" alt={item.name} />
                                     ) : (
-                                        <CategoryIcon size={28} style={{ color: cardStyle.border.replace('border-', '').replace('-200', '') }} />
+                                        <CategoryIcon size={selectedCategory === 'doc' ? 24 : 28} style={{ color: cardStyle.border.replace('border-', '').replace('-200', '') }} />
                                     )}
                                 </div>
-                                <div className="flex-1 overflow-hidden pt-0.5">
-                                    <h4 className="font-black text-slate-800 text-lg leading-tight truncate">{item.name}</h4>
+                                <div className="flex-1 overflow-hidden pt-0">
+                                    <h4 className={`${selectedCategory === 'doc' ? 'text-base' : 'text-lg'} font-black text-slate-800 leading-tight truncate`}>{item.name}</h4>
                                     {item.specialist && (
-                                      <p className="text-sm font-bold text-blue-600 mt-0 truncate">{item.specialist}</p>
+                                      <p className={`${selectedCategory === 'doc' ? 'text-[13px]' : 'text-sm'} font-bold text-blue-600 mt-0 truncate`}>{item.specialist}</p>
                                     )}
                                     {item.degree && (
                                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter mt-0 truncate">{item.degree}</p>
@@ -236,9 +243,9 @@ export default function PublicMedical({ onBack, checkAccess, onCategoryChange }:
                             </div>
 
                             {item.location && (
-                                <div className="flex items-center gap-2 px-1 border-t border-slate-50 pt-2">
-                                    <MapPin size={13} className="shrink-0 text-[#E91E63]" />
-                                    <span className="text-[13px] font-bold text-slate-500 truncate leading-none">{item.location}</span>
+                                <div className={`flex items-center gap-2 px-1 border-t border-slate-50 ${selectedCategory === 'doc' ? 'pt-1.5' : 'pt-2'}`}>
+                                    <MapPin size={12} className="shrink-0 text-[#E91E63]" />
+                                    <span className="text-[12px] font-bold text-slate-500 truncate leading-none">{item.location}</span>
                                 </div>
                             )}
 

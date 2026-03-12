@@ -296,7 +296,7 @@ const App = () => {
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [menuAccess, setMenuAccess] = useState<Record<string, boolean>>({});
   const [accessNotice, setAccessNotice] = useState<{ isOpen: boolean; menuName: string }>({ isOpen: false, menuName: '' });
-  const [isBloodBankActive, setIsBloodBankActive] = useState(false);
+  const [isMedicalSubPageActive, setIsMedicalSubPageActive] = useState(false);
 
   useEffect(() => {
     const accessRef = doc(settingsDb, 'settings', 'menu_access');
@@ -347,7 +347,7 @@ const App = () => {
 
   useEffect(() => {
     if (location.pathname !== '/medical') {
-      setIsBloodBankActive(false);
+      setIsMedicalSubPageActive(false);
     }
   }, [location.pathname]);
 
@@ -491,12 +491,12 @@ const App = () => {
   };
 
   const handleCategoryChange = React.useCallback((cat: string | null) => {
-    setIsBloodBankActive(cat === 'blood');
+    setIsMedicalSubPageActive(cat !== null);
   }, []);
 
   return (
     <div className={`min-h-screen w-full flex flex-col transition-colors duration-300 relative ${isDarkMode ? 'bg-slate-950 text-white' : 'bg-white text-[#1A1A1A]'}`}>
-      {!isLanding && !isLedgerPage && !isHouseRentPage && !isBloodBankActive && (
+      {!isLanding && !isLedgerPage && !isHouseRentPage && !isMedicalSubPageActive && (
         <>
           <div className={`fixed inset-0 z-[100] transition-opacity duration-300 ${isDrawerOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
             <div className="absolute inset-0 bg-slate-900/40 dark:bg-slate-950/60 backdrop-blur-sm" onClick={() => setIsDrawerOpen(false)} />
