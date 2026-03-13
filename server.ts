@@ -181,6 +181,31 @@ app.get("/api/analytics", async (req, res) => {
   }
 });
 
+// --- News Image Proxy for Social Media (Handles Base64) ---
+app.get("/news-image/:id", async (req, res) => {
+  const newsId = req.params.id;
+  try {
+    const newsDoc = await getDoc(doc(kppostDb, "news_main", newsId));
+    if (newsDoc.exists() && newsDoc.data().photo) {
+      const photoData = newsDoc.data().photo;
+      if (photoData.startsWith('data:image')) {
+        const matches = photoData.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+        if (matches && matches.length === 3) {
+          const type = matches[1];
+          const buffer = Buffer.from(matches[2], 'base64');
+          res.set('Content-Type', type);
+          res.set('Cache-Control', 'public, max-age=86400'); // Cache for 24 hours
+          return res.send(buffer);
+        }
+      }
+    }
+    // Fallback to default logo
+    res.redirect("https://raw.githubusercontent.com/StackBlitz-User-Assets/logo/main/kp-logo.png");
+  } catch (error) {
+    res.redirect("https://raw.githubusercontent.com/StackBlitz-User-Assets/logo/main/kp-logo.png");
+  }
+});
+
 // --- News Share Route for Social Media Previews ---
 app.get("/news/:id", async (req, res) => {
   const newsId = req.params.id;
@@ -192,12 +217,15 @@ app.get("/news/:id", async (req, res) => {
       const rawDescription = news.description || "";
       const cleanDescription = rawDescription.replace(/\n/g, ' ').substring(0, 160);
       const description = cleanDescription.length < rawDescription.length ? `${cleanDescription}...` : cleanDescription || "কয়রা-পাইকগাছা কমিউনিটি অ্যাপস";
-      const image = news.photo || "https://raw.githubusercontent.com/StackBlitz-User-Assets/logo/main/kp-logo.png";
       
       const protocol = req.get('x-forwarded-proto') || req.protocol || 'https';
       const host = req.get('host');
       const baseUrl = `${protocol}://${host}`;
-      const appUrl = `${baseUrl}/category/14?newsId=${newsId}`;
+      
+      // Use the proxy route for the image
+      const imageUrl = `${baseUrl}/news-image/${newsId}`;
+      const shareUrl = `${baseUrl}/news/${newsId}`;
+      const appRedirectUrl = `${baseUrl}/category/14?newsId=${newsId}`;
 
       res.send(`
         <!DOCTYPE html>
@@ -206,41 +234,52 @@ app.get("/news/:id", async (req, res) => {
           <meta charset="UTF-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <title>${title}</title>
+          
+          <!-- Primary Meta Tags -->
+          <meta name="title" content="${title}">
+          <meta name="description" content="${description}">
+
+          <!-- Open Graph / Facebook -->
+          <meta property="og:type" content="article">
+          <meta property="og:url" content="${shareUrl}">
           <meta property="og:title" content="${title}">
-          <meta property="og:site_name" content="কয়রা-পাইকগাছা কমিউনিটি অ্যাপস">
           <meta property="og:description" content="${description}">
-          <meta property="og:image" content="${image}">
-          <meta property="og:image:secure_url" content="${image}">
+          <meta property="og:image" content="${imageUrl}">
+          <meta property="og:image:secure_url" content="${imageUrl}">
           <meta property="og:image:type" content="image/jpeg">
           <meta property="og:image:width" content="1200">
           <meta property="og:image:height" content="630">
-          <meta property="og:url" content="${appUrl}">
-          <meta property="og:type" content="article">
+          <meta property="og:site_name" content="কয়রা-পাইকগাছা কমিউনিটি অ্যাপস">
+
+          <!-- Twitter -->
           <meta name="twitter:card" content="summary_large_image">
+          <meta name="twitter:url" content="${shareUrl}">
           <meta name="twitter:title" content="${title}">
           <meta name="twitter:description" content="${description}">
-          <meta name="twitter:image" content="${image}">
+          <meta name="twitter:image" content="${imageUrl}">
+
           <link rel="icon" href="https://raw.githubusercontent.com/StackBlitz-User-Assets/logo/main/kp-logo.png">
           <style>
-            body { font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background: #f8f9fa; }
-            .loader { border: 4px solid #f3f3f3; border-top: 4px solid #0056b3; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; background: #f0f2f5; color: #1c1e21; text-align: center; padding: 20px; }
+            .loader { border: 4px solid #f3f3f3; border-top: 4px solid #1877f2; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin-bottom: 20px; }
             @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+            h1 { font-size: 1.5rem; margin-bottom: 10px; color: #1877f2; }
+            p { color: #65676b; font-weight: 500; }
           </style>
           <script>
-            setTimeout(() => {
-              window.location.href = "${appUrl}";
-            }, 800);
+            setTimeout(function() {
+              window.location.href = "${appRedirectUrl}";
+            }, 500);
           </script>
         </head>
         <body>
-          <div style="text-align: center; padding: 20px;">
-            <div class="loader" style="margin: 0 auto 20px;"></div>
-            <h2 style="color: #0056b3; margin-bottom: 10px;">কয়রা-পাইকগাছা কমিউনিটি অ্যাপস</h2>
-            <p>সংবাদটি লোড হচ্ছে, দয়া করে অপেক্ষা করুন...</p>
-          </div>
+          <div class="loader"></div>
+          <h1>${title}</h1>
+          <p>সংবাদটি লোড হচ্ছে, দয়া করে অপেক্ষা করুন...</p>
         </body>
         </html>
       `);
+      return;
     } else {
       const protocol = req.get('x-forwarded-proto') || req.protocol || 'https';
       const host = req.get('host');
