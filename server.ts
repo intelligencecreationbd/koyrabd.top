@@ -197,7 +197,7 @@ app.get("/share/news/:id", async (req, res) => {
       const protocol = req.get('x-forwarded-proto') || req.protocol || 'https';
       const host = req.get('host');
       const baseUrl = `${protocol}://${host}`;
-      const appUrl = `${baseUrl}/#/category/14?newsId=${newsId}`;
+      const appUrl = `${baseUrl}/category/14?newsId=${newsId}`;
 
       res.send(`
         <!DOCTYPE html>
@@ -257,6 +257,12 @@ if (process.env.NODE_ENV !== "production") {
     appType: "spa",
   });
   app.use(vite.middlewares);
+} else {
+  const distPath = path.join(process.cwd(), 'dist');
+  app.use(express.static(distPath));
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(distPath, 'index.html'));
+  });
 }
 
 app.listen(PORT, "0.0.0.0", () => {
