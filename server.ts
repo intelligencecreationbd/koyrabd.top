@@ -210,6 +210,10 @@ app.get("/news/:id", async (req, res) => {
           <meta property="og:site_name" content="কয়রা-পাইকগাছা কমিউনিটি অ্যাপস">
           <meta property="og:description" content="${description}">
           <meta property="og:image" content="${image}">
+          <meta property="og:image:secure_url" content="${image}">
+          <meta property="og:image:type" content="image/jpeg">
+          <meta property="og:image:width" content="1200">
+          <meta property="og:image:height" content="630">
           <meta property="og:url" content="${appUrl}">
           <meta property="og:type" content="article">
           <meta name="twitter:card" content="summary_large_image">

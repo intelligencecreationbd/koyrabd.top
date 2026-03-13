@@ -359,20 +359,17 @@ export default function PublicNews({ onBack }: { onBack: () => void }) {
   }, [newsList, filteredNews, activeCategory]);
 
   const handleShare = (news: any) => {
-    const categoryName = categories.find(c => c.id === news.category)?.name || 'সংবাদ';
     const shareUrl = `${window.location.origin}/news/${news.id}`;
-    
-    const text = `*${news.title}*\n\nবিভাগ: ${categoryName}\nতারিখ: ${toBn(news.date || 'আজ')}\n\nবিস্তারিত পড়ুন: ${shareUrl}\n\nকয়রা-পাইকগাছা কমিউনিটি অ্যাপস`;
     
     if (navigator.share) {
       navigator.share({
         title: news.title,
-        text: text,
+        url: shareUrl,
       }).catch(() => {
-        window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+        window.open(`https://wa.me/?text=${encodeURIComponent(shareUrl)}`, '_blank');
       });
     } else {
-      window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+      window.open(`https://wa.me/?text=${encodeURIComponent(shareUrl)}`, '_blank');
     }
   };
 
