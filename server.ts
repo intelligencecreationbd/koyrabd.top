@@ -236,12 +236,11 @@ app.get("/news/:id", async (req, res) => {
           <title>${title}</title>
           
           <!-- Primary Meta Tags -->
+          <title>${title}</title>
           <meta name="title" content="${title}">
           <meta name="description" content="${description}">
 
           <!-- Open Graph / Facebook -->
-          <meta property="og:type" content="article">
-          <meta property="og:url" content="${shareUrl}">
           <meta property="og:title" content="${title}">
           <meta property="og:description" content="${description}">
           <meta property="og:image" content="${imageUrl}">
@@ -249,6 +248,8 @@ app.get("/news/:id", async (req, res) => {
           <meta property="og:image:type" content="image/jpeg">
           <meta property="og:image:width" content="1200">
           <meta property="og:image:height" content="630">
+          <meta property="og:url" content="${shareUrl}">
+          <meta property="og:type" content="article">
           <meta property="og:site_name" content="কয়রা-পাইকগাছা কমিউনিটি অ্যাপস">
 
           <!-- Twitter -->
