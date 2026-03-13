@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom';
+import { Routes, Route, useNavigate, useLocation, Navigate, useParams } from 'react-router-dom';
 import { Sun, Moon, Lock, ChevronLeft, LogOut, Home as HomeIcon, User as UserIcon, PlusCircle, Menu, X, ArrowRight, Sparkles, NotebookTabs, MessageSquare, UserCircle, Download, ShieldCheck, Zap, Heart, Star, Smartphone, Camera, Gift, Bus, CloudSun, Newspaper, Scale, Phone, HeartPulse, Calculator, CheckCircle2, Instagram, Facebook, Youtube, Info } from 'lucide-react';
 import Home from './pages/Home';
 import CategoryView from './pages/CategoryView';
@@ -22,6 +22,7 @@ import PublicDownload from './components/PublicDownload';
 import MenuAccessNotice from './components/MenuAccessNotice';
 import UserEmergencyInfo from './components/UserEmergencyInfo';
 import { Submission, Notice, User } from './types';
+import { trackVisit } from './services/analyticsService';
 import { settingsDb } from './Firebase-appsettings';
 import { 
   doc, 
@@ -282,6 +283,11 @@ const LandingScreen: React.FC<{
 );
 };
 
+const NewsRedirect = () => {
+  const { newsId } = useParams();
+  return <Navigate to={`/category/14?newsId=${newsId}`} replace />;
+};
+
 const App = () => {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(() => {
@@ -297,6 +303,10 @@ const App = () => {
   const [menuAccess, setMenuAccess] = useState<Record<string, boolean>>({});
   const [accessNotice, setAccessNotice] = useState<{ isOpen: boolean; menuName: string }>({ isOpen: false, menuName: '' });
   const [isMedicalSubPageActive, setIsMedicalSubPageActive] = useState(false);
+
+  useEffect(() => {
+    trackVisit();
+  }, []);
 
   useEffect(() => {
     const accessRef = doc(settingsDb, 'settings', 'menu_access');
@@ -751,6 +761,7 @@ const App = () => {
                 path="/admin" 
                 element={isAdminLoggedIn ? <AdminDashboard submissions={submissions} notices={notices} onUpdateNotices={setNotices} onUpdatePassword={handleUpdatePassword} adminPassword={adminPassword} onUpdateSubmissions={setSubmissions} /> : <Navigate to="/auth" />} 
               />
+              <Route path="/news/:newsId" element={<NewsRedirect />} />
               <Route path="*" element={<Navigate to="/" />} />
             </Routes>
         </div>

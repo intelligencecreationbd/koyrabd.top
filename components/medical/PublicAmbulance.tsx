@@ -91,7 +91,7 @@ export default function PublicAmbulance({ onBack }: PublicAmbulanceProps) {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto no-scrollbar space-y-3 pb-32 px-0.5">
+      <div className="flex-1 overflow-y-auto no-scrollbar space-y-2.5 pb-32 px-0.5">
         {isLoading ? (
           <div className="py-20 flex flex-col items-center justify-center gap-4 opacity-30">
             <Clock className="animate-spin text-blue-600" size={32} />
@@ -101,29 +101,34 @@ export default function PublicAmbulance({ onBack }: PublicAmbulanceProps) {
           filteredItems.map((item, idx) => (
             <div 
               key={item.id} 
-              className="bg-white p-4 rounded-[22px] border border-slate-100 shadow-lg shadow-slate-100/30 space-y-3 text-center animate-in slide-in-from-bottom-2 duration-500" 
+              className="bg-white p-3 rounded-[20px] border border-slate-100 shadow-sm flex items-center gap-3 animate-in slide-in-from-bottom-2 duration-500" 
               style={{ animationDelay: `${idx * 50}ms` }}
             >
-              <div className="flex flex-col items-center space-y-1.5">
-                <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 border border-amber-100 flex items-center justify-center shrink-0 shadow-sm mb-1">
-                  <Truck size={20} />
-                </div>
-                <h4 className="font-black text-slate-800 text-[15px] leading-tight px-2">{item.name}</h4>
-                <div className="flex items-center justify-center gap-1 text-slate-500">
-                  <MapPin size={10} className="text-rose-500" />
-                  <span className="text-[11px] font-bold">{item.location}</span>
+              {/* Icon Section */}
+              <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 border border-amber-100 flex items-center justify-center shrink-0 shadow-sm">
+                <Truck size={24} />
+              </div>
+              
+              {/* Content Section */}
+              <div className="flex-1 min-w-0 text-left">
+                <h4 className="font-black text-slate-800 text-[14px] leading-tight truncate">{item.name}</h4>
+                <div className="flex items-center gap-1 mt-1 text-slate-400">
+                  <MapPin size={9} className="text-rose-400" />
+                  <span className="text-[10px] font-bold truncate">{item.location}</span>
                 </div>
               </div>
 
-              <div className="flex flex-col gap-2">
-                {(item.mobiles && item.mobiles.length > 0 ? item.mobiles : [item.mobile]).map((num: string, nIdx: number) => (
+              {/* Action Section */}
+              <div className="flex gap-1.5 shrink-0">
+                {(item.mobiles && item.mobiles.length > 0 ? item.mobiles : [item.mobile]).slice(0, 2).map((num: string, nIdx: number) => (
                   num && (
                     <a 
                       key={nIdx}
                       href={`tel:${convertBnToEn(num)}`}
-                      className="w-full py-2.5 bg-amber-500 text-white font-black rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 active:scale-95 transition-all text-[13px]"
+                      className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center shadow-md shadow-amber-500/20 active:scale-90 transition-all"
+                      title={item.mobiles && item.mobiles.length > 1 ? `নম্বর ${nIdx + 1}` : 'কল করুন'}
                     >
-                      <PhoneCall size={14} /> {item.mobiles && item.mobiles.length > 1 ? `কল করুন (${nIdx + 1})` : 'কল করুন'}
+                      <PhoneCall size={18} />
                     </a>
                   )
                 ))}

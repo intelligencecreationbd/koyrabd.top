@@ -359,9 +359,12 @@ export default function PublicNews({ onBack }: { onBack: () => void }) {
   }, [newsList, filteredNews, activeCategory]);
 
   const handleShare = (news: any) => {
-    // Use the current origin for sharing
-    const shareUrl = `${window.location.origin}/share/news/${news.id}`;
-    const text = `*${news.title}*\n\nবিস্তারিত পড়ুন: ${shareUrl}\n\nকয়রা-পাইকগাছা কমিউনিটি অ্যাপস\nwww.koyrabd.top`;
+    const categoryName = categories.find(c => c.id === news.category)?.name || 'সংবাদ';
+    // Professional clean URL format
+    const shareUrl = `${window.location.origin}/news/${news.id}`;
+    
+    // Structured professional message format similar to news portals
+    const text = `*${news.title}*\n\nবিভাগ: ${categoryName}\nতারিখ: ${toBn(news.date || 'আজ')}\n\nবিস্তারিত পড়ুন: ${shareUrl}\n\nকয়রা-পাইকগাছা কমিউনিটি অ্যাপস\nwww.koyrabd.top`;
     
     if (navigator.share) {
       navigator.share({

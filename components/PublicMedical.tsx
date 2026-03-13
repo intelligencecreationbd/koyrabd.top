@@ -29,6 +29,7 @@ import {
 import { medicalDb } from '../Firebase-medical';
 import PublicBloodBank from './medical/PublicBloodBank';
 import PublicAmbulance from './medical/PublicAmbulance';
+import PublicHospital from './medical/PublicHospital';
 
 const toBn = (num: string | number) => 
   (num || '').toString().replace(/\d/g, d => "০১২৩৪৫৬৭৮৯"[parseInt(d)]);
@@ -144,6 +145,10 @@ export default function PublicMedical({ onBack, checkAccess, onCategoryChange }:
 
   if (selectedCategory === 'amb') {
     return <PublicAmbulance onBack={handleBack} />;
+  }
+
+  if (selectedCategory === 'hosp') {
+    return <PublicHospital onBack={handleBack} />;
   }
 
   return (

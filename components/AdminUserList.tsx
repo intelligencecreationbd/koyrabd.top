@@ -49,6 +49,7 @@ interface StoredUser {
   email?: string;
   password?: string;
   isVerified?: boolean;
+  createdAt?: string;
 }
 
 const Header: React.FC<{ title: string; onBack: () => void }> = ({ title, onBack }) => (
@@ -72,12 +73,23 @@ const AdminUserList: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 
   useEffect(() => {
     const usersRef = collection(db, 'users');
-    const q = query(usersRef, orderBy('fullName', 'asc'));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+    const unsubscribe = onSnapshot(usersRef, (snapshot) => {
       const userList: StoredUser[] = [];
       snapshot.forEach((doc) => {
         userList.push({ ...doc.data() } as StoredUser);
       });
+      
+      // Sort by seniority (createdAt)
+      // Users without createdAt are assumed to be the oldest and placed at the beginning
+      userList.sort((a, b) => {
+        const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        
+        if (timeA !== timeB) return timeA - timeB;
+        // Fallback to memberId if createdAt is missing or same
+        return (a.memberId || '').localeCompare(b.memberId || '');
+      });
+
       setUsers(userList);
       setIsLoading(false);
     });
@@ -135,31 +147,31 @@ const AdminUserList: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   };
 
   return (
-    <div className="space-y-6 animate-in slide-in-from-right-4 duration-500 text-left">
+    <div className="space-y-4 animate-in slide-in-from-right-4 duration-500 text-left">
       <Header title="নিবন্ধিত ইউজার লিস্ট" onBack={onBack} />
 
-      <div className="grid grid-cols-2 gap-4">
-          <div className="bg-blue-50/50 p-5 rounded-[32px] border border-blue-100 text-left shadow-sm">
-              <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-1">মোট সদস্য</p>
-              <p className="text-2xl font-black text-slate-800">{toBn(users.length)} জন</p>
+      <div className="grid grid-cols-2 gap-3">
+          <div className="bg-blue-50/50 p-3 rounded-2xl border border-blue-100 text-left shadow-sm">
+              <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-0.5">মোট সদস্য</p>
+              <p className="text-xl font-black text-slate-800">{toBn(users.length)} জন</p>
           </div>
-          <div className="bg-emerald-50/50 p-5 rounded-[32px] border border-emerald-100 text-left shadow-sm">
-              <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest mb-1">সক্রিয় ইউজার</p>
-              <p className="text-2xl font-black text-slate-800">{toBn(users.filter(u => u.status !== 'suspended').length)} জন</p>
+          <div className="bg-emerald-50/50 p-3 rounded-2xl border border-emerald-100 text-left shadow-sm">
+              <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest mb-0.5">সক্রিয় ইউজার</p>
+              <p className="text-xl font-black text-slate-800">{toBn(users.filter(u => u.status !== 'suspended').length)} জন</p>
           </div>
       </div>
 
       <div className="relative group">
-        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors" size={20} />
+        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors" size={18} />
         <input 
-          className="w-full pl-12 pr-5 py-4 bg-white border border-slate-100 rounded-[22px] font-bold outline-none shadow-sm focus:border-blue-400 focus:ring-4 focus:ring-blue-50 transition-all" 
+          className="w-full pl-11 pr-4 py-3 bg-white border border-slate-100 rounded-xl font-bold outline-none shadow-sm focus:border-blue-400 focus:ring-4 focus:ring-blue-50 transition-all text-sm" 
           placeholder="নাম, আইডি বা মোবাইল নম্বর..." 
           value={searchTerm} 
           onChange={e => setSearchTerm(e.target.value)} 
         />
       </div>
 
-      <div className="space-y-3 pb-20">
+      <div className="space-y-2 pb-20">
         <div className="flex items-center justify-between px-2">
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">ফলাফল ({toBn(filteredUsers.length)})</p>
         </div>
@@ -179,30 +191,30 @@ const AdminUserList: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                 <div 
                     key={u.uid} 
                     onClick={() => handleUserClick(u)}
-                    className={`w-full flex items-center gap-4 p-4 bg-white border rounded-[30px] shadow-sm animate-in fade-in duration-300 group hover:border-blue-300 active:scale-[0.98] transition-all ${u.status === 'suspended' ? 'border-red-100 bg-red-50/10' : 'border-slate-50'}`}
+                    className={`w-full flex items-center gap-3 p-2.5 bg-white border rounded-2xl shadow-sm animate-in fade-in duration-300 group hover:border-blue-300 active:scale-[0.98] transition-all ${u.status === 'suspended' ? 'border-red-100 bg-red-50/10' : 'border-slate-50'}`}
                 >
-                    <div className="w-8 h-8 bg-slate-50 text-slate-400 rounded-full flex items-center justify-center font-black text-[10px] shrink-0 border border-slate-100">
+                    <div className="w-6 h-6 bg-slate-50 text-slate-400 rounded-full flex items-center justify-center font-black text-[9px] shrink-0 border border-slate-100">
                         {toBn(i + 1)}
                     </div>
-                    <div className="w-12 h-12 rounded-2xl bg-slate-50 border border-slate-100 overflow-hidden flex items-center justify-center text-slate-300 shrink-0 shadow-sm relative">
-                        {u.photoURL ? <img src={u.photoURL} className="w-full h-full object-cover" alt="" /> : <UserIcon size={24} />}
+                    <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-100 overflow-hidden flex items-center justify-center text-slate-300 shrink-0 shadow-sm relative">
+                        {u.photoURL ? <img src={u.photoURL} className="w-full h-full object-cover" alt="" /> : <UserIcon size={20} />}
                     </div>
                     <div className="flex-1 overflow-hidden">
                         <div className="flex items-center gap-1.5 overflow-hidden">
-                          <h4 className="font-black text-slate-800 truncate leading-tight">{u.fullName}</h4>
+                          <h4 className="font-bold text-slate-800 truncate leading-tight text-sm">{u.fullName}</h4>
                           {u.isVerified && (
                             <div className="bg-white rounded-full flex items-center justify-center shrink-0">
-                               <CheckCircle2 size={14} fill="#1877F2" className="text-white" />
+                               <CheckCircle2 size={12} fill="#1877F2" className="text-white" />
                             </div>
                           )}
                         </div>
                         <div className="flex items-center gap-2 mt-0.5">
-                            <span className="text-[10px] font-black text-slate-700 font-inter">{u.mobile}</span>
-                            {u.status === 'suspended' && <span className="px-1.5 py-0.5 bg-red-100 text-red-600 text-[8px] font-black rounded uppercase">সাসপেন্ড</span>}
+                            <span className="text-[9px] font-black text-slate-500 font-inter">{u.mobile}</span>
+                            {u.status === 'suspended' && <span className="px-1 py-0.5 bg-red-100 text-red-600 text-[7px] font-black rounded uppercase">সাসপেন্ড</span>}
                         </div>
                     </div>
                     <div className="shrink-0 text-slate-300 group-hover:text-blue-500 transition-colors">
-                        <ChevronLeft className="rotate-180" size={18} />
+                        <ChevronLeft className="rotate-180" size={16} />
                     </div>
                 </div>
             ))
