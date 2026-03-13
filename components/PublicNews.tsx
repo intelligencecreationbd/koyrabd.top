@@ -370,7 +370,6 @@ export default function PublicNews({ onBack }: { onBack: () => void }) {
       navigator.share({
         title: news.title,
         text: text,
-        url: shareUrl,
       }).catch(() => {
         window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
       });
