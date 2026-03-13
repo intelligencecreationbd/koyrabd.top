@@ -182,7 +182,7 @@ app.get("/api/analytics", async (req, res) => {
 });
 
 // --- News Share Route for Social Media Previews ---
-app.get("/share/news/:id", async (req, res) => {
+app.get("/news/:id", async (req, res) => {
   const newsId = req.params.id;
   try {
     const newsDoc = await getDoc(doc(kppostDb, "news_main", newsId));
@@ -190,7 +190,7 @@ app.get("/share/news/:id", async (req, res) => {
       const news = newsDoc.data();
       const title = news.title || "সংবাদ - কয়রা-পাইকগাছা";
       const rawDescription = news.description || "";
-      const cleanDescription = rawDescription.replace(/\n/g, ' ').substring(0, 100);
+      const cleanDescription = rawDescription.replace(/\n/g, ' ').substring(0, 160);
       const description = cleanDescription.length < rawDescription.length ? `${cleanDescription}...` : cleanDescription || "কয়রা-পাইকগাছা কমিউনিটি অ্যাপস";
       const image = news.photo || "https://raw.githubusercontent.com/StackBlitz-User-Assets/logo/main/kp-logo.png";
       
