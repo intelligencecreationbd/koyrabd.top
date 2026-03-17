@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ChevronLeft, Send, User, ShieldCheck, Clock, MessageSquare, Trash2 } from 'lucide-react';
-import { subscribeToAllHelplineChats, sendHelplineMessage, HelplineMessage, cleanupOldMessages } from '../services/helplineService';
+import { subscribeToAllHelplineChats, sendHelplineMessage, markChatAsRead, HelplineMessage, cleanupOldMessages } from '../services/helplineService';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface AdminHelplineMgmtProps {
@@ -29,6 +29,12 @@ const AdminHelplineMgmt: React.FC<AdminHelplineMgmtProps> = ({ onBack }) => {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [selectedChatId, chats]);
+
+  useEffect(() => {
+    if (selectedChatId) {
+      markChatAsRead(selectedChatId);
+    }
+  }, [selectedChatId]);
 
   const handleSendReply = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -80,15 +86,22 @@ const AdminHelplineMgmt: React.FC<AdminHelplineMgmtProps> = ({ onBack }) => {
               const lastMsg = messages[0]; // Messages are sorted desc in service for list
               const userMsgs = messages.filter(m => !m.isAdminReply);
               const userName = userMsgs[0]?.senderName || 'Unknown User';
+              const hasUnread = messages.some(m => !m.isAdminReply && !m.readByAdmin);
               
               return (
                 <button
                   key={chatId}
                   onClick={() => setSelectedChatId(chatId)}
-                  className={`w-full p-4 text-left border-b border-slate-50 transition-colors hover:bg-slate-50 ${selectedChatId === chatId ? 'bg-blue-50/50' : ''}`}
+                  className={`w-full p-4 text-left border-b border-slate-50 transition-colors hover:bg-slate-50 ${selectedChatId === chatId ? 'bg-blue-50/50' : ''} relative`}
                 >
+                  {hasUnread && (
+                    <div className="absolute left-1 top-1/2 -translate-y-1/2 w-1.5 h-8 bg-blue-600 rounded-full" />
+                  )}
                   <div className="flex justify-between items-start mb-1">
-                    <span className="font-black text-slate-800 text-sm truncate">{userName}</span>
+                    <div className="flex items-center gap-2 overflow-hidden">
+                      <span className={`font-black text-slate-800 text-sm truncate ${hasUnread ? 'text-blue-600' : ''}`}>{userName}</span>
+                      {hasUnread && <div className="w-2 h-2 bg-blue-600 rounded-full shrink-0 animate-pulse" />}
+                    </div>
                     <span className="text-[9px] font-bold text-slate-400">
                       {lastMsg?.createdAt?.toDate ? new Date(lastMsg.createdAt.toDate()).toLocaleTimeString('bn-BD', { hour: '2-digit', minute: '2-digit' }) : ''}
                     </span>

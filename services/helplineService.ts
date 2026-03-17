@@ -8,7 +8,8 @@ import {
   where,
   deleteDoc,
   doc,
-  getDocs
+  getDocs,
+  updateDoc
 } from 'firebase/firestore';
 import { chatDb } from '../Firebase-kpchat';
 
@@ -20,6 +21,7 @@ export interface HelplineMessage {
   createdAt: any;
   isAdminReply: boolean;
   chatId: string; // This is the public user's UID
+  readByAdmin?: boolean;
 }
 
 const COLLECTION_NAME = 'helpline_messages';
@@ -32,6 +34,7 @@ export const sendHelplineMessage = async (text: string, senderId: string, sender
       senderName,
       chatId,
       isAdminReply,
+      readByAdmin: isAdminReply, // Admin replies are read by default
       createdAt: Timestamp.now()
     });
   } catch (error) {
@@ -99,6 +102,38 @@ export const subscribeToAllHelplineChats = (callback: (chats: Record<string, Hel
     });
 
     callback(chats);
+  });
+};
+
+export const markChatAsRead = async (chatId: string) => {
+  try {
+    const q = query(
+      collection(chatDb, COLLECTION_NAME),
+      where('chatId', '==', chatId),
+      where('readByAdmin', '==', false)
+    );
+    const snapshot = await getDocs(q);
+    const promises = snapshot.docs.map(d => updateDoc(doc(chatDb, COLLECTION_NAME, d.id), { readByAdmin: true }));
+    await Promise.all(promises);
+  } catch (error) {
+    console.error('Error marking chat as read:', error);
+  }
+};
+
+export const subscribeToUnreadCount = (callback: (count: number) => void) => {
+  const q = query(
+    collection(chatDb, COLLECTION_NAME),
+    where('readByAdmin', '==', false),
+    where('isAdminReply', '==', false)
+  );
+
+  return onSnapshot(q, (snapshot) => {
+    // We want to count unique chatIds that have unread messages
+    const uniqueChatIds = new Set();
+    snapshot.docs.forEach(doc => {
+      uniqueChatIds.add(doc.data().chatId);
+    });
+    callback(uniqueChatIds.size);
   });
 };
 

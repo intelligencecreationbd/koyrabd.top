@@ -12,7 +12,7 @@ const WeatherPage: React.FC = () => {
   const navigate = useNavigate();
 
   return (
-    <div className="px-5 pt-1 h-[calc(100vh-80px)]">
+    <div className="px-5 pt-4 h-screen">
       <PublicWeather onBack={() => navigate(-1)} />
     </div>
   );

@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   ChevronLeft, 
   Info, 
@@ -83,6 +84,7 @@ interface Category {
 }
 
 export default function AboutApp({ onBack }: { onBack: () => void }) {
+  const navigate = useNavigate();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [content, setContent] = useState<AboutContent>(INITIAL_CONTENT);
   const [isLoading, setIsLoading] = useState(true);
@@ -218,11 +220,12 @@ export default function AboutApp({ onBack }: { onBack: () => void }) {
             <h3 className="text-lg font-black text-slate-800">আপনার মতামত আমাদের প্রেরণা</h3>
             <p className="text-xs font-bold text-pink-500 mt-2">অ্যাপের মান উন্নয়নে আপনার পরামর্শ দিন</p>
           </div>
-          {content.feedbackLink && (
-            <button onClick={() => window.open(content.feedbackLink, '_blank')} className="w-full py-5 bg-pink-600 text-white font-black rounded-[25px] shadow-xl shadow-pink-200 active:scale-95 transition-all flex items-center justify-center gap-3">
-              মতামত প্রদান করুন <ArrowRight size={20} />
-            </button>
-          )}
+          <button 
+            onClick={() => navigate('/helpline')} 
+            className="w-full py-5 bg-pink-600 text-white font-black rounded-[25px] shadow-xl shadow-pink-200 active:scale-95 transition-all flex items-center justify-center gap-3"
+          >
+            মতামত প্রদান করুন <ArrowRight size={20} />
+          </button>
         </div>
       )
     },

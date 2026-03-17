@@ -90,19 +90,86 @@ export default function PublicMedical({ onBack, checkAccess, onCategoryChange }:
     }
 
     setIsLoading(true);
-    const medRef = collection(medicalDb, `চিকিৎসা সেবা/${selectedCategory}/items`);
-    const unsubscribe = onSnapshot(medRef, (snapshot) => {
-      const list = snapshot.docs.map(doc => ({
-        ...doc.data(),
-        id: doc.id
-      }));
-      setItems(list);
-      setIsLoading(false);
-    });
 
-    return () => {
-      unsubscribe();
-    };
+    if (selectedCategory === 'doc') {
+      // Special handling for Doctor Finder: Combine direct doctors and hospital doctors
+      const docRef = collection(medicalDb, `চিকিৎসা সেবা/doc/items`);
+      const hospRef = collection(medicalDb, `চিকিৎসা সেবা/hosp/items`);
+      
+      let directDocs: any[] = [];
+      let hospitalDocs: any[] = [];
+
+      const updateCombinedItems = () => {
+        setItems([...directDocs, ...hospitalDocs]);
+        setIsLoading(false);
+      };
+
+      const unsubDoc = onSnapshot(docRef, (snapshot) => {
+        directDocs = snapshot.docs.map(d => ({ ...d.data(), id: d.id }));
+        updateCombinedItems();
+      }, (err) => {
+        console.error("Error fetching direct doctors:", err);
+        setIsLoading(false);
+      });
+
+      const unsubHosp = onSnapshot(hospRef, (snapshot) => {
+        const hDocs: any[] = [];
+        snapshot.docs.forEach(hDoc => {
+          const hospital = hDoc.data();
+          if (hospital.doctors && Array.isArray(hospital.doctors)) {
+            hospital.doctors.forEach((doc: any, idx: number) => {
+              // Get primary mobile from hospital
+              let primaryMobile = hospital.mobile || '';
+              if (hospital.mobiles && hospital.mobiles.length > 0) {
+                const m = hospital.mobiles[0];
+                primaryMobile = typeof m === 'string' ? m : m.number;
+              }
+
+              hDocs.push({
+                id: `hosp_doc_${hDoc.id}_${idx}`,
+                name: doc.name,
+                specialist: doc.specialist,
+                degree: doc.degree,
+                location: `${hospital.name} (${hospital.location || ''})`, // Hospital Name (Address)
+                mobile: primaryMobile, // Use hospital contact
+                desc: doc.schedule, // Detailed info shows schedule as requested
+                photo: doc.photo || null,
+                isFromHospital: true,
+                hospitalName: hospital.name
+              });
+            });
+          }
+        });
+        hospitalDocs = hDocs;
+        updateCombinedItems();
+      }, (err) => {
+        console.error("Error fetching hospital doctors:", err);
+        setIsLoading(false);
+      });
+
+      return () => {
+        unsubDoc();
+        unsubHosp();
+      };
+    } else {
+      // Standard handling for other categories
+      const medRef = collection(medicalDb, `চিকিৎসা সেবা/${selectedCategory}/items`);
+      const unsubscribe = onSnapshot(medRef, (snapshot) => {
+        const list = snapshot.docs.map(doc => ({
+          ...doc.data(),
+          id: doc.id
+        }));
+        setItems(list);
+        setIsLoading(false);
+      }, (err) => {
+        console.error("Error fetching medical items:", err);
+        setIsLoading(false);
+      });
+
+      return () => {
+        unsubscribe();
+      };
+    }
   }, [selectedCategory]);
 
   const filteredItems = useMemo(() => {

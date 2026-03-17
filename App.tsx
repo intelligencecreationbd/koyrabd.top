@@ -25,6 +25,7 @@ import UserEmergencyInfo from './components/UserEmergencyInfo';
 import { Submission, Notice, User } from './types';
 import { trackVisit } from './services/analyticsService';
 import { settingsDb } from './Firebase-appsettings';
+import { subscribeToUnreadCount } from './services/helplineService';
 import { 
   doc, 
   onSnapshot, 
@@ -55,12 +56,19 @@ const PinterestIcon = ({ size }: { size: number }) => (
   </svg>
 );
 
-const MenuLink: React.FC<{ icon: React.ReactNode, label: string, onClick: () => void }> = ({ icon, label, onClick }) => (
-  <button onClick={onClick} className="w-full flex items-center gap-4 p-4 hover:bg-slate-50 dark:hover:bg-slate-800/40 rounded-2xl text-slate-700 dark:text-slate-300 font-bold text-sm transition-all active:scale-95 group">
+const MenuLink: React.FC<{ icon: React.ReactNode, label: string, onClick: () => void, badge?: number }> = ({ icon, label, onClick, badge }) => (
+  <button onClick={onClick} className="w-full flex items-center gap-4 p-4 hover:bg-slate-50 dark:hover:bg-slate-800/40 rounded-2xl text-slate-700 dark:text-slate-300 font-bold text-sm transition-all active:scale-95 group relative">
     <div className="p-2.5 bg-slate-100 dark:bg-slate-800 rounded-xl text-slate-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 group-hover:bg-blue-50 dark:group-hover:bg-blue-900/30 transition-all">
       {icon}
     </div>
-    {label}
+    <div className="flex-1 flex items-center justify-between">
+      {label}
+      {badge !== undefined && badge > 0 && (
+        <span className="bg-red-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-sm animate-pulse">
+          {badge}
+        </span>
+      )}
+    </div>
   </button>
 );
 
@@ -132,7 +140,7 @@ const BottomNav: React.FC<{ checkAccess?: (id: string, name: string) => boolean 
         onClick={handleGlobalBack}
         className={`w-14 h-14 rounded-full metallic-blue pointer-events-auto -translate-y-1 transition-all duration-300 shadow-xl flex items-center justify-center active:scale-90`}
       >
-        <span className="text-white font-black text-[12px] uppercase tracking-tighter">Back</span>
+        <span className="text-white font-black text-[12px] uppercase tracking-tighter">BACK</span>
       </button>
 
       <button 
@@ -305,9 +313,15 @@ const App = () => {
   const [menuAccess, setMenuAccess] = useState<Record<string, boolean>>({});
   const [accessNotice, setAccessNotice] = useState<{ isOpen: boolean; menuName: string }>({ isOpen: false, menuName: '' });
   const [isMedicalSubPageActive, setIsMedicalSubPageActive] = useState(false);
+  const [unreadHelplineCount, setUnreadHelplineCount] = useState(0);
 
   useEffect(() => {
     trackVisit();
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = subscribeToUnreadCount(setUnreadHelplineCount);
+    return () => unsubscribe();
   }, []);
 
   useEffect(() => {
@@ -357,6 +371,7 @@ const App = () => {
   const isNewsPage = location.pathname.startsWith('/category/14');
   const isLedgerPage = location.pathname === '/ledger';
   const isHelplinePage = location.pathname === '/helpline';
+  const isWeatherPage = location.pathname === '/weather';
 
   useEffect(() => {
     if (location.pathname !== '/medical') {
@@ -594,7 +609,7 @@ const App = () => {
                     {isAdminLoggedIn && (
                        <>
                          <MenuLink icon={<Lock size={20} />} label="এডমিন প্যানেল" onClick={() => { setIsDrawerOpen(false); navigate('/admin'); }} />
-                         <MenuLink icon={<MessageSquare size={20} />} label="এডমিন হেল্প লাইন" onClick={() => { setIsDrawerOpen(false); navigate('/admin?view=helpline'); }} />
+                         <MenuLink icon={<MessageSquare size={20} />} label="এডমিন হেল্প লাইন" onClick={() => { setIsDrawerOpen(false); navigate('/admin?view=helpline'); }} badge={unreadHelplineCount} />
                        </>
                     )}
                  </nav>
@@ -666,43 +681,50 @@ const App = () => {
             </div>
           </div>
 
-          <header className={`sticky top-0 z-50 transition-all duration-500 glass-header border-b ${isScrolled ? 'opacity-100 shadow-lg' : 'opacity-95'}`}>
-            <SundarbanHeaderBackground />
-            <div className="w-full px-5 h-20 flex items-center justify-between relative z-10">
-              <div className="flex items-center gap-0 shrink-0">
-                <button onClick={() => setIsDrawerOpen(true)} className="p-2.5 rounded-xl text-white/80 hover:text-white transition-all duration-300 active:scale-90">
-                  <Menu size={22} strokeWidth={2.5} />
-                </button>
+          {!isWeatherPage && (
+            <header className={`sticky top-0 z-50 transition-all duration-500 glass-header border-b ${isScrolled ? 'opacity-100 shadow-lg' : 'opacity-95'}`}>
+              <SundarbanHeaderBackground />
+              <div className="w-full px-5 h-20 flex items-center justify-between relative z-10">
+                <div className="flex items-center gap-0 shrink-0">
+                  <button onClick={() => setIsDrawerOpen(true)} className="p-2.5 rounded-xl text-white/80 hover:text-white transition-all duration-300 active:scale-90 relative">
+                    <Menu size={22} strokeWidth={2.5} />
+                    {isAdminLoggedIn && unreadHelplineCount > 0 && (
+                      <span className="absolute top-1.5 right-1.5 bg-red-500 text-white text-[9px] font-black w-4 h-4 flex items-center justify-center rounded-full shadow-sm animate-pulse border border-white/20">
+                        {unreadHelplineCount}
+                      </span>
+                    )}
+                  </button>
+                </div>
+                <div className="flex flex-col items-center overflow-hidden">
+                  {!isLedgerPage && (
+                    <>
+                      <div className="flex items-baseline gap-1.5 overflow-hidden">
+                        <h1 className="font-black text-xl tracking-tight text-white leading-none drop-shadow-sm truncate">
+                          {isChatPage ? 'কেপি চ্যাট' : isNewsPage ? 'কেপি পোস্ট' : 'কয়রা-পাইকগাছা'}
+                        </h1>
+                      </div>
+                      <div className="relative h-4 flex items-center justify-center mt-0.5 overflow-hidden w-full px-2">
+                        {(!isChatPage && !isNewsPage) ? (
+                          <span key={mainSubtitleIndex} className="text-[9px] font-black tracking-wider uppercase text-white/80 whitespace-nowrap animate-in fade-in duration-500">
+                            {mainSubtitles[mainSubtitleIndex]}
+                          </span>
+                        ) : (
+                          <span className="text-[9px] font-black tracking-wider uppercase whitespace-nowrap animate-rainbow-text">
+                            {subtitles[subtitleIndex]}
+                          </span>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  <button onClick={() => setIsDarkMode(!isDarkMode)} className="p-2.5 rounded-xl text-white/80 transition-all duration-300 hover:text-white active:scale-90">
+                    {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
+                  </button>
+                </div>
               </div>
-              <div className="flex flex-col items-center overflow-hidden">
-                {!isLedgerPage && (
-                  <>
-                    <div className="flex items-baseline gap-1.5 overflow-hidden">
-                      <h1 className="font-black text-xl tracking-tight text-white leading-none drop-shadow-sm truncate">
-                        {isChatPage ? 'কেপি চ্যাট' : isNewsPage ? 'কেপি পোস্ট' : 'কয়রা-পাইকগাছা'}
-                      </h1>
-                    </div>
-                    <div className="relative h-4 flex items-center justify-center mt-0.5 overflow-hidden w-full px-2">
-                      {(!isChatPage && !isNewsPage) ? (
-                        <span key={mainSubtitleIndex} className="text-[9px] font-black tracking-wider uppercase text-white/80 whitespace-nowrap animate-in fade-in duration-500">
-                          {mainSubtitles[mainSubtitleIndex]}
-                        </span>
-                      ) : (
-                        <span className="text-[9px] font-black tracking-wider uppercase whitespace-nowrap animate-rainbow-text">
-                          {subtitles[subtitleIndex]}
-                        </span>
-                      )}
-                    </div>
-                  </>
-                )}
-              </div>
-              <div className="flex items-center gap-1 shrink-0">
-                <button onClick={() => setIsDarkMode(!isDarkMode)} className="p-2.5 rounded-xl text-white/80 transition-all duration-300 hover:text-white active:scale-90">
-                  {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
-                </button>
-              </div>
-            </div>
-          </header>
+            </header>
+          )}
         </>
       )}
 

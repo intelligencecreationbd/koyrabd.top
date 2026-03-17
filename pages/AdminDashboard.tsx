@@ -50,6 +50,7 @@ import AdminMenuAccess from '../components/AdminMenuAccess';
 import AdminAboutMgmt from '../components/AdminAboutMgmt';
 import AdminHelplineMgmt from '../components/AdminHelplineMgmt';
 import VisitorStats from '../components/analytics/VisitorStats';
+import { subscribeToUnreadCount } from '../services/helplineService';
 
 import { settingsDb } from '../Firebase-appsettings';
 import { doc, setDoc } from 'firebase/firestore';
@@ -136,6 +137,12 @@ export default function AdminDashboard({ submissions, notices, onUpdateNotices, 
   const [newNoticeText, setNewNoticeText] = useState('');
   const [newPassInput, setNewPassInput] = useState('');
   const [showVisitorStats, setShowVisitorStats] = useState(false);
+  const [unreadHelplineCount, setUnreadHelplineCount] = useState(0);
+
+  useEffect(() => {
+    const unsubscribe = subscribeToUnreadCount(setUnreadHelplineCount);
+    return () => unsubscribe();
+  }, []);
 
   const handleAddNotice = async () => {
     if (!newNoticeText.trim()) return;
@@ -197,7 +204,7 @@ export default function AdminDashboard({ submissions, notices, onUpdateNotices, 
                 <MenuListItem onClick={() => setCurrentView('houserent_mgmt')} icon={<HomeIcon />} label="বাসা ভাড়া ম্যানেজমেন্ট" color="#8B4513" />
                 <MenuListItem onClick={() => setCurrentView('bus_mgmt')} icon={<Bus />} label="বাস কাউন্টার ম্যানেজার" color="#E67E22" />
                 <MenuListItem onClick={() => setCurrentView('legal_mgmt')} icon={<Scale />} label="আইনি সেবা ম্যানেজার" color="#2980B9" />
-                <MenuListItem onClick={() => setCurrentView('helpline_mgmt')} icon={<MessageSquare />} label="হেল্প লাইন মেসেজ" color="#0056b3" />
+                <MenuListItem onClick={() => setCurrentView('helpline_mgmt')} icon={<MessageSquare />} label="হেল্প লাইন মেসেজ" color="#0056b3" badge={unreadHelplineCount} />
               </>
             )}
 

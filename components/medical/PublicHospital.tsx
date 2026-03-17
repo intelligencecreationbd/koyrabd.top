@@ -129,7 +129,7 @@ export default function PublicHospital({ onBack }: PublicHospitalProps) {
                   )}
                   <div className="flex items-center gap-1 text-slate-400">
                     <MapPin size={9} className="text-rose-400" />
-                    <span className="text-[10px] font-bold truncate">{item.location}</span>
+                    <span className="text-[10px] font-bold truncate">{item.name} ({item.location})</span>
                   </div>
                 </div>
               </div>
@@ -170,7 +170,7 @@ export default function PublicHospital({ onBack }: PublicHospitalProps) {
                   </div>
                   <div className="flex items-start gap-2.5">
                     <MapPin size={16} className="text-white shrink-0 mt-0.5" />
-                    <span className="leading-tight">{viewingItem.location}</span>
+                    <span className="leading-tight">{viewingItem.name} ({viewingItem.location})</span>
                   </div>
                   {viewingItem.email && (
                     <div className="flex items-start gap-2.5">

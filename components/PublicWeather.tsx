@@ -80,6 +80,16 @@ const getLunarPhase = (date: Date) => {
   return lp[index];
 };
 
+const rowColors = [
+  'bg-blue-50/40',
+  'bg-emerald-50/40',
+  'bg-amber-50/40',
+  'bg-rose-50/40',
+  'bg-indigo-50/40',
+  'bg-cyan-50/40',
+  'bg-violet-50/40'
+];
+
 const PublicWeather: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const [location, setLocation] = useState<keyof typeof LOCATIONS>('koyra');
   const [weather, setWeather] = useState<WeatherData | null>(null);
@@ -131,20 +141,15 @@ const PublicWeather: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   return (
     <div className="flex flex-col h-full animate-in fade-in duration-500">
       {/* Header Section */}
-      <header className="flex items-center justify-between mb-4 shrink-0 px-1">
-        <div className="flex items-center gap-4">
-          <button 
-            onClick={onBack} 
-            className="p-3 bg-white rounded-xl shadow-sm border border-slate-100 active:scale-90 transition-all"
-          >
-            <ChevronLeft size={20} className="text-slate-800" />
-          </button>
-          <div className="text-left">
-            <h2 className="text-xl font-black text-slate-800 leading-tight">আবহাওয়া আপডেট</h2>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">লাইভ নিউজ ও পূর্বাভাস</p>
-          </div>
+      <header className="relative flex items-center justify-center mb-4 shrink-0 px-1 py-2 bg-blue-50 rounded-2xl mx-1 shadow-sm">
+        <div className="text-center">
+          <p className="text-[10px] font-black text-blue-600 uppercase tracking-wider mb-0.5">কয়রা-পাইকগাছা কমিউনিটি অ্যাপ</p>
+          <h2 className="text-xl font-black text-slate-800 leading-tight">আবহাওয়ার পূর্বাভাস</h2>
         </div>
-        <button onClick={fetchWeather} className={`p-2.5 text-blue-600 active:rotate-180 transition-transform ${loading ? 'animate-spin' : ''}`}>
+        <button 
+          onClick={fetchWeather} 
+          className={`absolute right-2 p-2 text-blue-600 active:rotate-180 transition-transform ${loading ? 'animate-spin' : ''}`}
+        >
           <RefreshCw size={20} />
         </button>
       </header>
@@ -186,32 +191,32 @@ const PublicWeather: React.FC<{ onBack: () => void }> = ({ onBack }) => {
             )}
 
             {/* Current Weather Card */}
-            <div className="bg-gradient-to-br from-[#0056b3] to-[#007BFF] p-8 rounded-[40px] text-white shadow-2xl relative overflow-hidden">
-               <div className="absolute top-0 right-0 p-8 opacity-20">
+            <div className="bg-gradient-to-br from-[#0056b3] to-[#007BFF] p-5 rounded-[32px] text-white shadow-2xl relative overflow-hidden">
+               <div className="absolute top-0 right-0 p-4 opacity-20">
                  {getWeatherIcon(weather.current.weatherCode, weather.current.isDay)}
                </div>
-               <div className="relative z-10 text-left space-y-4">
+               <div className="relative z-10 text-left space-y-2">
                   <div className="flex items-center gap-2 px-3 py-1 bg-white/10 rounded-full w-fit">
                     <div className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"></div>
                     <span className="text-[10px] font-black uppercase tracking-widest">এখনকার আবহাওয়া</span>
                   </div>
                   <div className="flex items-end gap-3">
                     <h1 className="text-6xl font-black tracking-tighter">{toBn(Math.round(weather.current.temp))}°</h1>
-                    <div className="pb-2">
+                    <div className="pb-1.5">
                        <p className="text-xl font-black opacity-90 leading-none">{getWeatherStatus(weather.current.weatherCode)}</p>
                        <p className="text-[10px] font-bold opacity-60 uppercase tracking-widest mt-1">আপডেট: {toBn(lastUpdated.toLocaleTimeString('bn-BD', {hour: '2-digit', minute:'2-digit'}))}</p>
                     </div>
                   </div>
                   
-                  <div className="grid grid-cols-2 gap-4 pt-4">
-                     <div className="flex items-center gap-3 bg-white/10 p-3 rounded-2xl">
+                  <div className="grid grid-cols-2 gap-3 pt-2">
+                     <div className="flex items-center gap-3 bg-white/10 p-2.5 rounded-2xl">
                         <Wind size={20} className="text-blue-200" />
                         <div className="text-left">
                            <p className="text-[8px] font-black uppercase tracking-widest opacity-60">বাতাস</p>
                            <p className="text-xs font-black">{toBn(weather.current.windSpeed)} কিমি/ঘ</p>
                         </div>
                      </div>
-                     <div className="flex items-center gap-3 bg-white/10 p-3 rounded-2xl">
+                     <div className="flex items-center gap-3 bg-white/10 p-2.5 rounded-2xl">
                         <Droplets size={20} className="text-blue-200" />
                         <div className="text-left">
                            <p className="text-[8px] font-black uppercase tracking-widest opacity-60">আর্দ্রতা</p>
@@ -223,36 +228,27 @@ const PublicWeather: React.FC<{ onBack: () => void }> = ({ onBack }) => {
             </div>
 
             {/* Coastal & Sunlight Info Grid */}
-            <div className="grid grid-cols-2 gap-4">
-               <div className="bg-white p-5 rounded-[32px] border border-slate-100 shadow-sm text-left space-y-3">
-                  <div className="flex items-center gap-2 text-blue-500">
-                    <Sunrise size={18} />
-                    <span className="text-[10px] font-black uppercase tracking-widest">সূর্যোদয়</span>
+            <div className="grid grid-cols-3 gap-2">
+               <div className="bg-white p-3 rounded-2xl border border-slate-100 shadow-sm text-left space-y-2">
+                  <div className="flex items-center gap-1.5 text-blue-500">
+                    <Sunrise size={16} />
+                    <span className="text-[9px] font-black uppercase tracking-widest">সূর্যোদয়</span>
                   </div>
-                  <p className="text-lg font-black text-slate-800">{toBn(new Date(weather.daily.sunrise[0]).toLocaleTimeString('bn-BD', {hour: '2-digit', minute:'2-digit'}))}</p>
+                  <p className="text-base font-black text-slate-800 leading-tight">{toBn(new Date(weather.daily.sunrise[0]).toLocaleTimeString('bn-BD', {hour: '2-digit', minute:'2-digit'}))}</p>
                </div>
-               <div className="bg-white p-5 rounded-[32px] border border-slate-100 shadow-sm text-left space-y-3">
-                  <div className="flex items-center gap-2 text-orange-500">
-                    <Sunset size={18} />
-                    <span className="text-[10px] font-black uppercase tracking-widest">সূর্যাস্ত</span>
+               <div className="bg-white p-3 rounded-2xl border border-slate-100 shadow-sm text-left space-y-2">
+                  <div className="flex items-center gap-1.5 text-orange-500">
+                    <Sunset size={16} />
+                    <span className="text-[9px] font-black uppercase tracking-widest">সূর্যাস্ত</span>
                   </div>
-                  <p className="text-lg font-black text-slate-800">{toBn(new Date(weather.daily.sunset[0]).toLocaleTimeString('bn-BD', {hour: '2-digit', minute:'2-digit'}))}</p>
+                  <p className="text-base font-black text-slate-800 leading-tight">{toBn(new Date(weather.daily.sunset[0]).toLocaleTimeString('bn-BD', {hour: '2-digit', minute:'2-digit'}))}</p>
                </div>
-               <div className="bg-white p-5 rounded-[32px] border border-slate-100 shadow-sm text-left space-y-3">
-                  <div className="flex items-center gap-2 text-indigo-500">
-                    <Moon size={18} />
-                    <span className="text-[10px] font-black uppercase tracking-widest">চন্দ্র তিথি</span>
+               <div className="bg-white p-3 rounded-2xl border border-slate-100 shadow-sm text-left space-y-2">
+                  <div className="flex items-center gap-1.5 text-indigo-500">
+                    <Moon size={16} />
+                    <span className="text-[9px] font-black uppercase tracking-widest">চন্দ্র তিথি</span>
                   </div>
-                  <p className="text-xs font-black text-slate-800 leading-tight">{getLunarPhase(new Date())}</p>
-               </div>
-               <div className="bg-white p-5 rounded-[32px] border border-slate-100 shadow-sm text-left space-y-3">
-                  <div className="flex items-center gap-2 text-cyan-600">
-                    <Waves size={18} />
-                    <span className="text-[10px] font-black uppercase tracking-widest">জোয়ার-ভাটা</span>
-                  </div>
-                  <p className="text-xs font-black text-slate-800 leading-tight">
-                    {new Date().getHours() % 12 < 6 ? 'জোয়ার শুরু হচ্ছে' : 'ভাটা শুরু হচ্ছে'}
-                  </p>
+                  <p className="text-[10px] font-black text-slate-800 leading-tight">{getLunarPhase(new Date())}</p>
                </div>
             </div>
 
@@ -266,10 +262,13 @@ const PublicWeather: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                </div>
                <div className="divide-y divide-slate-50">
                   {weather.daily.time.map((time, i) => (
-                    <div key={i} className="flex items-center justify-between p-5 hover:bg-slate-50 transition-colors">
+                    <div key={i} className={`flex items-center justify-between p-5 hover:bg-slate-50 transition-colors ${rowColors[i % rowColors.length]}`}>
                        <div className="text-left">
-                          <p className="text-sm font-black text-slate-800">
+                          <p className="text-sm font-black text-slate-800 flex items-center gap-1.5">
                             {i === 0 ? 'আজ' : i === 1 ? 'আগামীকাল' : new Date(time).toLocaleDateString('bn-BD', {weekday: 'long'})}
+                            <span className="text-[11px] font-bold text-slate-400">
+                              ({toBn(new Date(time).toLocaleDateString('bn-BD', {day: 'numeric', month: 'long'}))})
+                            </span>
                           </p>
                           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">{getWeatherStatus(weather.daily.weatherCode[i])}</p>
                        </div>

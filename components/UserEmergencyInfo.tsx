@@ -164,7 +164,7 @@ const UserEmergencyInfo: React.FC<UserEmergencyInfoProps> = ({ uid = '', onBack 
                 </label>
               </div>
               <div className="flex-1">
-                <p className="text-[10px] font-bold text-slate-700">প্রোফাইল ছবি আপলোড করুন</p>
+                <p className="text-[11px] font-black text-slate-900 uppercase tracking-widest">প্রোফাইল ছবি আপলোড করুন</p>
                 <p className="text-[8px] text-slate-400">আপনার ছবি আইডি কার্ডে যুক্ত হবে</p>
               </div>
               <label className="px-3 py-1 bg-white border border-slate-200 rounded-lg text-[9px] font-black text-indigo-600 cursor-pointer hover:bg-indigo-50 transition-colors">
@@ -174,7 +174,7 @@ const UserEmergencyInfo: React.FC<UserEmergencyInfoProps> = ({ uid = '', onBack 
             </div>
 
             <div className="space-y-0.5">
-              <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest ml-1">পূর্ণ নাম</label>
+              <label className="text-[11px] font-black text-slate-900 uppercase tracking-widest ml-1">পূর্ণ নাম</label>
               <div className="relative">
                 <User size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300" />
                 <input 
@@ -188,7 +188,7 @@ const UserEmergencyInfo: React.FC<UserEmergencyInfoProps> = ({ uid = '', onBack 
 
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-0.5">
-                <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest ml-1">পদবী</label>
+                <label className="text-[11px] font-black text-slate-900 uppercase tracking-widest ml-1">পদবী</label>
                 <input 
                   type="text" 
                   value={formData.designation}
@@ -197,7 +197,7 @@ const UserEmergencyInfo: React.FC<UserEmergencyInfoProps> = ({ uid = '', onBack 
                 />
               </div>
               <div className="space-y-0.5">
-                <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest ml-1">মোবাইল</label>
+                <label className="text-[11px] font-black text-slate-900 uppercase tracking-widest ml-1">মোবাইল</label>
                 <input 
                   type="text" 
                   value={formData.mobile}
@@ -208,7 +208,7 @@ const UserEmergencyInfo: React.FC<UserEmergencyInfoProps> = ({ uid = '', onBack 
             </div>
 
             <div className="space-y-0.5">
-              <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest ml-1">প্রতিষ্ঠান</label>
+              <label className="text-[11px] font-black text-slate-900 uppercase tracking-widest ml-1">প্রতিষ্ঠান</label>
               <input 
                 type="text" 
                 value={formData.institution}
@@ -218,7 +218,7 @@ const UserEmergencyInfo: React.FC<UserEmergencyInfoProps> = ({ uid = '', onBack 
             </div>
 
             <div className="space-y-0.5">
-              <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest ml-1">ইমেইল</label>
+              <label className="text-[11px] font-black text-slate-900 uppercase tracking-widest ml-1">ইমেইল</label>
               <input 
                 type="email" 
                 value={formData.email}
@@ -228,7 +228,7 @@ const UserEmergencyInfo: React.FC<UserEmergencyInfoProps> = ({ uid = '', onBack 
             </div>
 
             <div className="space-y-0.5">
-              <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest ml-1">ঠিকানা</label>
+              <label className="text-[11px] font-black text-slate-900 uppercase tracking-widest ml-1">ঠিকানা</label>
               <input 
                 type="text" 
                 value={formData.address}
