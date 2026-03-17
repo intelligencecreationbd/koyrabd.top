@@ -6,6 +6,8 @@ import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 interface AboutContent {
   intro: string;
+  version: string;
+  lastUpdate: string;
   vision: string[];
   developer: {
     name: string;
@@ -22,6 +24,8 @@ interface AboutContent {
 
 const INITIAL_CONTENT: AboutContent = {
   intro: 'কয়রা ও পাইকগাছা উপজেলার সাধারণ মানুষের জীবনযাত্রাকে সহজতর করতে এবং ডিজিটাল সেবা হাতের নাগালে পৌঁছে দিতে এই অ্যাপটি তৈরি করা হয়েছে। এটি একটি অলাভজনক ও সেবামূলক প্ল্যাটফর্ম।',
+  version: '2.0.4 (Stable)',
+  lastUpdate: '১০ মার্চ, ২০২৬',
   vision: [
     'উপজেলার সকল জরুরি সেবা এক ক্লিকে পৌঁছে দেওয়া।',
     'নির্ভুল ও হালনাগাদ তথ্যের একটি নির্ভরযোগ্য উৎস হওয়া।',
@@ -105,13 +109,22 @@ export default function AdminAboutMgmt({ onBack }: { onBack: () => void }) {
 
       <div className="space-y-8">
         {/* Intro */}
-        <Section title="পরিচিতি" icon={<Info size={18} />}>
-          <textarea 
-            className="w-full p-4 bg-slate-50 rounded-xl border border-slate-100 font-bold text-sm outline-none focus:border-blue-400"
-            rows={4}
-            value={content.intro}
-            onChange={e => setContent({ ...content, intro: e.target.value })}
-          />
+        <Section title="পরিচিতি ও ভার্সন" icon={<Info size={18} />}>
+          <div className="space-y-4">
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">অ্যাপ পরিচিতি</label>
+              <textarea 
+                className="w-full p-4 bg-slate-50 rounded-xl border border-slate-100 font-bold text-sm outline-none focus:border-blue-400"
+                rows={4}
+                value={content.intro}
+                onChange={e => setContent({ ...content, intro: e.target.value })}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <Input label="অ্যাপ ভার্সন" value={content.version} onChange={v => setContent({ ...content, version: v })} />
+              <Input label="সর্বশেষ আপডেট" value={content.lastUpdate} onChange={v => setContent({ ...content, lastUpdate: v })} />
+            </div>
+          </div>
         </Section>
 
         {/* Vision */}

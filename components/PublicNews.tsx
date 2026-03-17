@@ -86,7 +86,7 @@ export default function PublicNews({ onBack }: { onBack: () => void }) {
   const [loading, setLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState('all');
   const [selectedNews, setSelectedNews] = useState<any | null>(null);
-  const [fontSize, setFontSize] = useState(18); 
+  const [fontSize, setFontSize] = useState(14); 
   const [savedNewsIds, setSavedNewsIds] = useState<string[]>([]);
   const [categories, setCategories] = useState<{id: string, name: string}[]>([]);
 
@@ -456,7 +456,7 @@ export default function PublicNews({ onBack }: { onBack: () => void }) {
                 </div>
                 <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest truncate">{categories.find(c=>c.id===selectedNews.category)?.name || 'সাধারণ'}</span>
              </div>
-             <h1 className="text-3xl font-black text-slate-900 leading-[1.3] tracking-tight">{selectedNews.title}</h1>
+             <h1 className="text-2xl font-black text-slate-900 leading-[1.3] tracking-tight">{selectedNews.title}</h1>
              <div className="flex items-center justify-between pt-4 border-y border-slate-50 py-4">
                 <div className="flex items-center gap-3 text-left overflow-hidden">
                    <div className="w-11 h-11 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-500 shrink-0 overflow-hidden shadow-inner">

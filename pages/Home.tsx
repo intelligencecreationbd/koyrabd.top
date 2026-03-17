@@ -43,7 +43,12 @@ export function Home({ notices, isAdmin, user, isDarkMode, checkAccess }: HomePr
   }, [user]);
 
   // Filter out User Login (ID 12) from the main grid
-  const menuItems = CATEGORIES.filter(c => c.id !== '12');
+  // Also filter out Help Line (ID 20) for admins as they have a dedicated admin view
+  const menuItems = CATEGORIES.filter(c => {
+    if (c.id === '12') return false;
+    if (c.id === '20' && isAdmin) return false;
+    return true;
+  });
 
   // Chunking logic: 12 items per page (4 rows of 3 grid)
   const chunkSize = 12;
@@ -137,7 +142,10 @@ export function Home({ notices, isAdmin, user, isDarkMode, checkAccess }: HomePr
                       else if (category.id === '23') navigate('/id-card');
                       else if (category.id === '24') navigate('/house-rent');
                       else if (category.id === '25') navigate('/about');
-                      else if (category.id === '20') navigate('/chat?open=helpline');
+                      else if (category.id === '20') {
+                        if (isAdmin) navigate('/admin?view=helpline');
+                        else navigate('/helpline');
+                      }
                       else if (category.id === '21') window.open('https://getapp.koyrabd.top', '_blank');
                       else if (category.id === '18') {
                         navigate('/auth');

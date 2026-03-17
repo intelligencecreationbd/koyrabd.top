@@ -17,6 +17,7 @@ import {
   Mail,
   ShieldAlert,
   Scale,
+  MessageSquare,
   Loader2,
   Camera,
   Smartphone,
@@ -47,6 +48,7 @@ import AdminMedicalMgmt from '../components/AdminMedicalMgmt';
 import AdminHouseRentMgmt from '../components/AdminHouseRentMgmt';
 import AdminMenuAccess from '../components/AdminMenuAccess';
 import AdminAboutMgmt from '../components/AdminAboutMgmt';
+import AdminHelplineMgmt from '../components/AdminHelplineMgmt';
 import VisitorStats from '../components/analytics/VisitorStats';
 
 import { settingsDb } from '../Firebase-appsettings';
@@ -61,7 +63,7 @@ interface AdminDashboardProps {
   adminPassword: string;
 }
 
-type AdminView = 'menu' | 'users' | 'notices' | 'hotline_mgmt' | 'bus_mgmt' | 'legal_mgmt' | 'mobile_mgmt' | 'rep_mgmt' | 'news_mgmt' | 'haat_mgmt' | 'medical_mgmt' | 'houserent_mgmt' | 'change_pass' | 'user_submissions' | 'menu_access' | 'about_mgmt';
+type AdminView = 'menu' | 'users' | 'notices' | 'hotline_mgmt' | 'bus_mgmt' | 'legal_mgmt' | 'mobile_mgmt' | 'rep_mgmt' | 'news_mgmt' | 'haat_mgmt' | 'medical_mgmt' | 'houserent_mgmt' | 'change_pass' | 'user_submissions' | 'menu_access' | 'about_mgmt' | 'helpline_mgmt';
 
 const Header: React.FC<{ title: string; onBack: () => void }> = ({ title, onBack }) => (
   <div className="flex flex-col items-center gap-3 mb-6 text-center relative">
@@ -124,7 +126,12 @@ const EditField: React.FC<{ label: string; value: string; placeholder?: string; 
 
 export default function AdminDashboard({ submissions, notices, onUpdateNotices, onUpdatePassword, onUpdateSubmissions, adminPassword }: AdminDashboardProps) {
   const navigate = useNavigate();
-  const [currentView, setCurrentView] = useState<AdminView>('menu');
+  const [currentView, setCurrentView] = useState<AdminView>(() => {
+    const params = new URLSearchParams(window.location.search);
+    const view = params.get('view');
+    if (view === 'helpline') return 'helpline_mgmt';
+    return 'menu';
+  });
   const [activeTab, setActiveTab] = useState<'mgmt' | 'user' | 'settings' | null>(null);
   const [newNoticeText, setNewNoticeText] = useState('');
   const [newPassInput, setNewPassInput] = useState('');
@@ -190,6 +197,7 @@ export default function AdminDashboard({ submissions, notices, onUpdateNotices, 
                 <MenuListItem onClick={() => setCurrentView('houserent_mgmt')} icon={<HomeIcon />} label="বাসা ভাড়া ম্যানেজমেন্ট" color="#8B4513" />
                 <MenuListItem onClick={() => setCurrentView('bus_mgmt')} icon={<Bus />} label="বাস কাউন্টার ম্যানেজার" color="#E67E22" />
                 <MenuListItem onClick={() => setCurrentView('legal_mgmt')} icon={<Scale />} label="আইনি সেবা ম্যানেজার" color="#2980B9" />
+                <MenuListItem onClick={() => setCurrentView('helpline_mgmt')} icon={<MessageSquare />} label="হেল্প লাইন মেসেজ" color="#0056b3" />
               </>
             )}
 
@@ -228,6 +236,7 @@ export default function AdminDashboard({ submissions, notices, onUpdateNotices, 
       {currentView === 'houserent_mgmt' && <AdminHouseRentMgmt onBack={() => setCurrentView('menu')} />}
       {currentView === 'bus_mgmt' && <AdminBusMgmt onBack={() => setCurrentView('menu')} />}
       {currentView === 'legal_mgmt' && <AdminLegalMgmt onBack={() => setCurrentView('menu')} />}
+      {currentView === 'helpline_mgmt' && <AdminHelplineMgmt onBack={() => setCurrentView('menu')} />}
       {currentView === 'about_mgmt' && <AdminAboutMgmt onBack={() => setCurrentView('menu')} />}
       {currentView === 'users' && <AdminUserList onBack={() => setCurrentView('menu')} />}
       {currentView === 'menu_access' && <AdminMenuAccess onBack={() => setCurrentView('menu')} />}

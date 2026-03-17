@@ -402,6 +402,7 @@ const KPCommunityChat: React.FC = () => {
 
   const filteredUsers = useMemo(() => users.filter(u => 
     u.memberId !== currentUser?.memberId &&
+    u.memberId !== HELPLINE_ID &&
     ((u.fullName || '').toLowerCase().includes(searchTerm.toLowerCase()) || 
     (u.village || '').toLowerCase().includes(searchTerm.toLowerCase()))
   ), [users, currentUser, searchTerm]);
@@ -552,9 +553,6 @@ const KPCommunityChat: React.FC = () => {
                         <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-600 text-white rounded-full flex items-center justify-center text-[10px] font-bold border-2 border-white shadow-sm">{toBn(receivedRequests.length)}</div>
                     )}
                 </div>
-                <button onClick={() => setActiveChat({ memberId: HELPLINE_ID, fullName: HELPLINE_NAME, status: 'online' })} className="active:scale-90 transition-all">
-                    <HelplineCareIcon size="md" />
-                </button>
             </div>
         </div>
         <div className="relative mb-2">

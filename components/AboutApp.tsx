@@ -26,6 +26,8 @@ import { doc, getDoc } from 'firebase/firestore';
 
 interface AboutContent {
   intro: string;
+  version: string;
+  lastUpdate: string;
   vision: string[];
   developer: {
     name: string;
@@ -42,6 +44,8 @@ interface AboutContent {
 
 const INITIAL_CONTENT: AboutContent = {
   intro: 'কয়রা ও পাইকগাছা উপজেলার সাধারণ মানুষের জীবনযাত্রাকে সহজতর করতে এবং ডিজিটাল সেবা হাতের নাগালে পৌঁছে দিতে এই অ্যাপটি তৈরি করা হয়েছে। এটি একটি অলাভজনক ও সেবামূলক প্ল্যাটফর্ম।',
+  version: '2.0.4 (Stable)',
+  lastUpdate: '১০ মার্চ, ২০২৬',
   vision: [
     'উপজেলার সকল জরুরি সেবা এক ক্লিকে পৌঁছে দেওয়া।',
     'নির্ভুল ও হালনাগাদ তথ্যের একটি নির্ভরযোগ্য উৎস হওয়া।',
@@ -122,7 +126,7 @@ export default function AboutApp({ onBack }: { onBack: () => void }) {
             <h3 className="text-2xl font-black text-slate-800">কয়রা-পাইকগাছা</h3>
             <p className="text-sm font-bold text-blue-600 uppercase tracking-widest">কমিউনিটি অ্যাপস</p>
             <div className="mt-3 px-4 py-1.5 bg-blue-600 text-white text-[10px] font-black rounded-full uppercase tracking-tighter">
-              Version 2.0.4 (Stable)
+              Version {content.version}
             </div>
           </div>
           <div className="p-6 bg-white rounded-[30px] border border-slate-100 shadow-sm space-y-4">
@@ -132,7 +136,7 @@ export default function AboutApp({ onBack }: { onBack: () => void }) {
             <div className="pt-4 border-t border-slate-50 flex flex-col gap-2">
               <div className="flex justify-between items-center">
                 <span className="text-xs font-bold text-slate-400 uppercase">Last Update</span>
-                <span className="text-xs font-black text-slate-700">১০ মার্চ, ২০২৬</span>
+                <span className="text-xs font-black text-slate-700">{content.lastUpdate}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-xs font-bold text-slate-400 uppercase">Platform</span>

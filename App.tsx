@@ -1,13 +1,14 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Routes, Route, useNavigate, useLocation, Navigate, useParams } from 'react-router-dom';
-import { Sun, Moon, Lock, ChevronLeft, LogOut, Home as HomeIcon, User as UserIcon, PlusCircle, Menu, X, ArrowRight, Sparkles, NotebookTabs, MessageSquare, UserCircle, Download, ShieldCheck, Zap, Heart, Star, Smartphone, Camera, Gift, Bus, CloudSun, Newspaper, Scale, Phone, HeartPulse, Calculator, CheckCircle2, Instagram, Facebook, Youtube, Info } from 'lucide-react';
+import { Sun, Moon, Lock, ChevronLeft, LogOut, Home as HomeIcon, User as UserIcon, PlusCircle, Menu, X, ArrowRight, Sparkles, NotebookTabs, MessageSquare, UserCircle, Download, ShieldCheck, Zap, Heart, Star, Smartphone, Camera, Gift, Bus, CloudSun, Newspaper, Scale, Phone, HeartPulse, Calculator, CheckCircle2, Instagram, Facebook, Youtube, Info, Eye, EyeOff } from 'lucide-react';
 import Home from './pages/Home';
 import CategoryView from './pages/CategoryView';
 import InfoSubmit from './pages/InfoSubmit';
 import UserAuth from './pages/UserAuth';
 import AdminDashboard from './pages/AdminDashboard';
 import HotlineDetail from './pages/HotlineDetail';
+import PublicHelpline from './components/PublicHelpline';
 import DigitalLedger from './pages/DigitalLedger';
 import OnlineHaat from './pages/OnlineHaat';
 import WeatherPage from './pages/WeatherPage';
@@ -295,6 +296,7 @@ const App = () => {
   });
   const [adminPassword, setAdminPassword] = useState('t');
   const [showAdminLogin, setShowAdminLogin] = useState(false);
+  const [showAdminPassword, setShowAdminPassword] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [loginInput, setLoginInput] = useState('');
   const [isScrolled, setIsScrolled] = useState(false);
@@ -354,6 +356,7 @@ const App = () => {
   const isHouseRentPage = location.pathname === '/house-rent';
   const isNewsPage = location.pathname.startsWith('/category/14');
   const isLedgerPage = location.pathname === '/ledger';
+  const isHelplinePage = location.pathname === '/helpline';
 
   useEffect(() => {
     if (location.pathname !== '/medical') {
@@ -388,13 +391,17 @@ const App = () => {
     // Load admin password from AppSettings Firebase
     const adminPassRef = doc(settingsDb, 'settings', 'admin_password');
     const unsubscribePass = onSnapshot(adminPassRef, (snapshot) => {
-      if (snapshot.exists()) {
-        setAdminPassword(snapshot.data().value);
+      if (snapshot.exists() && snapshot.data()?.value) {
+        setAdminPassword(snapshot.data().value.toString());
       } else {
-        // Set default if not exists
+        // Set default if not exists or value is missing
         setDoc(adminPassRef, { value: 't' });
         setAdminPassword('t');
       }
+    }, (error) => {
+      console.error("Error loading admin password:", error);
+      // Fallback to 't' on error to allow login if Firestore is flaky
+      setAdminPassword('t');
     });
 
     // Load app logo from AppSettings Firebase
@@ -436,12 +443,18 @@ const App = () => {
     
     // Convert Bengali digits to English and trim spaces
     const cleanInput = convertToEn(loginInput).trim();
-    const cleanMaster = adminPassword.toString().trim();
+    const cleanMaster = (adminPassword || 't').toString().trim();
 
-    if (cleanInput === cleanMaster) {
+    // Case-insensitive comparison for non-numeric passwords
+    const isMatch = isNaN(Number(cleanMaster)) 
+      ? cleanInput.toLowerCase() === cleanMaster.toLowerCase()
+      : cleanInput === cleanMaster;
+
+    if (isMatch) {
       setIsAdminLoggedIn(true);
       localStorage.setItem('kp_admin_logged_in', 'true');
       setShowAdminLogin(false);
+      setShowAdminPassword(false);
       setLoginInput('');
     } else {
       alert('ভুল পাসওয়ার্ড! আবার চেষ্টা করুন।');
@@ -506,7 +519,7 @@ const App = () => {
 
   return (
     <div className={`min-h-screen w-full flex flex-col transition-colors duration-300 relative ${isDarkMode ? 'bg-slate-950 text-white' : 'bg-white text-[#1A1A1A]'}`}>
-      {!isLanding && !isLedgerPage && !isHouseRentPage && !isMedicalSubPageActive && (
+      {!isLanding && !isLedgerPage && !isHouseRentPage && !isMedicalSubPageActive && !isHelplinePage && (
         <>
           <div className={`fixed inset-0 z-[100] transition-opacity duration-300 ${isDrawerOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
             <div className="absolute inset-0 bg-slate-900/40 dark:bg-slate-950/60 backdrop-blur-sm" onClick={() => setIsDrawerOpen(false)} />
@@ -579,7 +592,10 @@ const App = () => {
                       navigate('/about'); 
                     }} />
                     {isAdminLoggedIn && (
-                       <MenuLink icon={<Lock size={20} />} label="এডমিন প্যানেল" onClick={() => { setIsDrawerOpen(false); navigate('/admin'); }} />
+                       <>
+                         <MenuLink icon={<Lock size={20} />} label="এডমিন প্যানেল" onClick={() => { setIsDrawerOpen(false); navigate('/admin'); }} />
+                         <MenuLink icon={<MessageSquare size={20} />} label="এডমিন হেল্প লাইন" onClick={() => { setIsDrawerOpen(false); navigate('/admin?view=helpline'); }} />
+                       </>
                     )}
                  </nav>
               </div>
@@ -698,16 +714,25 @@ const App = () => {
             </div>
             <h2 className="text-2xl font-bold mb-6 text-center text-[#1A1A1A] dark:text-white">এডমিন লগইন</h2>
             <form onSubmit={handleAdminLogin} className="space-y-4">
-              <input 
-                type="password"
-                placeholder="পাসওয়ার্ড দিন"
-                className="w-full px-5 py-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0056b3] transition-all font-semibold text-center"
-                value={loginInput}
-                onChange={(e) => setLoginInput(e.target.value)}
-                autoFocus
-              />
+              <div className="relative">
+                <input 
+                  type={showAdminPassword ? "text" : "password"}
+                  placeholder="পাসওয়ার্ড দিন"
+                  className="w-full px-5 py-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0056b3] transition-all font-semibold text-center"
+                  value={loginInput}
+                  onChange={(e) => setLoginInput(e.target.value)}
+                  autoFocus
+                />
+                <button 
+                  type="button"
+                  onClick={() => setShowAdminPassword(!showAdminPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 p-2"
+                >
+                  {showAdminPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
               <div className="grid grid-cols-2 gap-3 pt-2">
-                <button type="button" onClick={() => {setShowAdminLogin(false); setLoginInput('');}} className="py-4 rounded-xl bg-slate-100 dark:bg-slate-700 font-bold text-slate-600 text-sm">বন্ধ</button>
+                <button type="button" onClick={() => {setShowAdminLogin(false); setShowAdminPassword(false); setLoginInput('');}} className="py-4 rounded-xl bg-slate-100 dark:bg-slate-700 font-bold text-slate-600 text-sm">বন্ধ</button>
                 <button type="submit" className="py-4 rounded-xl bg-[#0056b3] text-white font-bold text-sm shadow-lg">প্রবেশ</button>
               </div>
             </form>
@@ -732,6 +757,7 @@ const App = () => {
               <Route path="/hotline" element={<HotlineDetail checkAccess={checkMenuAccess} />} />
               <Route path="/hotline/:serviceType" element={<HotlineDetail checkAccess={checkMenuAccess} />} />
               <Route path="/hotline/:serviceType/:upazila" element={<HotlineDetail checkAccess={checkMenuAccess} />} />
+              <Route path="/helpline" element={isAdminLoggedIn ? <Navigate to="/admin?view=helpline" /> : <PublicHelpline />} />
               <Route path="/info-submit" element={<InfoSubmit onSubmission={(s) => setSubmissions([...submissions, s])} checkAccess={checkMenuAccess} />} />
               <Route path="/auth" element={<UserAuth onLogin={setCurrentUser} checkAccess={checkMenuAccess} />} />
               <Route path="/ledger" element={currentUser ? <DigitalLedger checkAccess={checkMenuAccess} /> : <Navigate to="/auth?to=ledger" />} />
@@ -759,7 +785,25 @@ const App = () => {
               } />
               <Route 
                 path="/admin" 
-                element={isAdminLoggedIn ? <AdminDashboard submissions={submissions} notices={notices} onUpdateNotices={setNotices} onUpdatePassword={handleUpdatePassword} adminPassword={adminPassword} onUpdateSubmissions={setSubmissions} /> : <Navigate to="/auth" />} 
+                element={
+                  isAdminLoggedIn ? (
+                    <AdminDashboard submissions={submissions} notices={notices} onUpdateNotices={setNotices} onUpdatePassword={handleUpdatePassword} adminPassword={adminPassword} onUpdateSubmissions={setSubmissions} />
+                  ) : (
+                    <div className="flex flex-col items-center justify-center h-full p-10 text-center min-h-[60vh]">
+                      <div className="w-20 h-20 bg-blue-50 rounded-3xl flex items-center justify-center mb-6">
+                        <Lock size={40} className="text-[#0056b3]" />
+                      </div>
+                      <h2 className="text-2xl font-black text-slate-800 mb-3 tracking-tight">এডমিন এক্সেস প্রয়োজন</h2>
+                      <p className="text-slate-500 font-bold mb-8 max-w-[280px] leading-relaxed">এই পেজটি শুধুমাত্র অনুমোদিত এডমিনদের জন্য সংরক্ষিত। অনুগ্রহ করে লগইন করুন।</p>
+                      <button 
+                        onClick={() => setShowAdminLogin(true)}
+                        className="w-full max-w-[240px] py-4 bg-[#0056b3] text-white font-black rounded-2xl shadow-xl shadow-blue-500/20 active:scale-95 transition-all"
+                      >
+                        লগইন করুন
+                      </button>
+                    </div>
+                  )
+                } 
               />
               <Route path="/news/:newsId" element={<NewsRedirect />} />
               <Route path="*" element={<Navigate to="/" />} />
