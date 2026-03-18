@@ -46,6 +46,13 @@ let visitData = loadVisits();
 
 // Middleware to track visits
 app.use((req, res, next) => {
+  const host = req.get('host');
+  if (host && host.includes('getapp.koyrabd.top')) {
+    if (req.path === '/') {
+      return res.redirect('/getapp');
+    }
+  }
+
   // Only track main page loads, not API or static assets
   if (req.path.startsWith('/api') || req.path.includes('.') || req.method !== 'GET') {
     return next();

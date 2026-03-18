@@ -146,7 +146,7 @@ export function Home({ notices, isAdmin, user, isDarkMode, checkAccess }: HomePr
                         if (isAdmin) navigate('/admin?view=helpline');
                         else navigate('/helpline');
                       }
-                      else if (category.id === '21') window.open('https://getapp.koyrabd.top', '_blank');
+                      else if (category.id === '21') navigate('/getapp');
                       else if (category.id === '18') {
                         navigate('/auth');
                       }

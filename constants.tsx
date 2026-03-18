@@ -188,13 +188,6 @@ export const CATEGORIES: MainMenu[] = [
     ]
   },
   {
-    id: '21',
-    name: 'ডাউনলোড এপস',
-    icon: 'Download',
-    color: '#3B82F6',
-    subMenus: []
-  },
-  {
     id: '20',
     name: 'হেল্প লাইন',
     icon: 'Headset',
@@ -226,6 +219,13 @@ export const CATEGORIES: MainMenu[] = [
     id: '25',
     name: 'অ্যাপ সম্পর্কে',
     icon: 'Info',
+    color: '#3B82F6',
+    subMenus: []
+  },
+  {
+    id: '21',
+    name: 'ডাউনলোড অ্যাপ',
+    icon: 'Download',
     color: '#3B82F6',
     subMenus: []
   },

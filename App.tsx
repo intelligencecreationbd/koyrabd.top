@@ -113,7 +113,7 @@ const BottomNav: React.FC<{ checkAccess?: (id: string, name: string) => boolean 
     }
     if (pathname === '/services') {
       navigate('/');
-    } else if (['/hotline', '/online-haat', '/weather', '/info-submit', '/auth', '/download', '/chat', '/medical', '/age-calculator'].includes(pathname)) {
+    } else if (['/hotline', '/online-haat', '/weather', '/info-submit', '/auth', '/getapp', '/chat', '/medical', '/age-calculator'].includes(pathname)) {
       navigate('/services');
     } else if (pathname === '/ledger') {
       navigate('/auth');
@@ -366,12 +366,22 @@ const App = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const isLanding = location.pathname === '/';
+  const isDownloadPage = location.pathname === '/getapp';
   const isChatPage = location.pathname === '/chat';
   const isHouseRentPage = location.pathname === '/house-rent';
   const isNewsPage = location.pathname.startsWith('/category/14');
   const isLedgerPage = location.pathname === '/ledger';
   const isHelplinePage = location.pathname === '/helpline';
   const isWeatherPage = location.pathname === '/weather';
+
+  useEffect(() => {
+    const hostname = window.location.hostname;
+    if (hostname.includes('getapp.koyrabd.top')) {
+      if (location.pathname === '/') {
+        navigate('/getapp', { replace: true });
+      }
+    }
+  }, [location.pathname, navigate]);
 
   useEffect(() => {
     if (location.pathname !== '/medical') {
@@ -534,7 +544,7 @@ const App = () => {
 
   return (
     <div className={`min-h-screen w-full flex flex-col transition-colors duration-300 relative ${isDarkMode ? 'bg-slate-950 text-white' : 'bg-white text-[#1A1A1A]'}`}>
-      {!isLanding && !isLedgerPage && !isHouseRentPage && !isMedicalSubPageActive && !isHelplinePage && (
+      {!isLanding && !isDownloadPage && !isLedgerPage && !isHouseRentPage && !isMedicalSubPageActive && !isHelplinePage && (
         <>
           <div className={`fixed inset-0 z-[100] transition-opacity duration-300 ${isDrawerOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
             <div className="absolute inset-0 bg-slate-900/40 dark:bg-slate-950/60 backdrop-blur-sm" onClick={() => setIsDrawerOpen(false)} />
@@ -612,6 +622,10 @@ const App = () => {
                          <MenuLink icon={<MessageSquare size={20} />} label="এডমিন হেল্প লাইন" onClick={() => { setIsDrawerOpen(false); navigate('/admin?view=helpline'); }} badge={unreadHelplineCount} />
                        </>
                     )}
+                    <MenuLink icon={<Download size={20} />} label="ডাউনলোড অ্যাপ" onClick={() => { 
+                      setIsDrawerOpen(false); 
+                      navigate('/getapp'); 
+                    }} />
                  </nav>
               </div>
               <div className="p-6 border-t border-slate-100 dark:border-slate-800 space-y-3 bg-slate-50/30 dark:bg-slate-900/20 shrink-0">
@@ -797,7 +811,7 @@ const App = () => {
               <Route path="/age-calculator" element={<AgeCalculator onBack={() => navigate('/services')} checkAccess={checkMenuAccess} />} />
               <Route path="/house-rent" element={<PublicHouseRent onBack={() => navigate('/services')} checkAccess={checkMenuAccess} user={currentUser} />} />
               <Route path="/id-card" element={<UserEmergencyInfo uid="" onBack={() => navigate('/services')} />} />
-              <Route path="/download" element={
+              <Route path="/getapp" element={
                 <PublicDownload 
                   appLogo={appLogo} 
                   isAdminLoggedIn={isAdminLoggedIn} 
@@ -832,7 +846,7 @@ const App = () => {
             </Routes>
         </div>
       </main>
-      {!isLanding && !isHouseRentPage && <BottomNav checkAccess={checkMenuAccess} />}
+      {!isLanding && !isDownloadPage && !isHouseRentPage && <BottomNav checkAccess={checkMenuAccess} />}
       <MenuAccessNotice 
         isOpen={accessNotice.isOpen} 
         onClose={() => setAccessNotice({ ...accessNotice, isOpen: false })} 
