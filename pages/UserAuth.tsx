@@ -53,6 +53,7 @@ import {
   where, 
   getDocs 
 } from "firebase/firestore";
+import { handleFirestoreError, OperationType } from '../services/firestoreErrorHandler';
 import { 
     signInWithEmailAndPassword, 
     createUserWithEmailAndPassword, 
@@ -440,6 +441,31 @@ const UserAuth: React.FC<UserAuthProps> = ({ onLogin }) => {
     finally { setIsSubmitting(false); }
   };
 
+  const handleDirectPhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !loggedInUser?.uid) return;
+    
+    setIsSubmitting(true);
+    try {
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const photoURL = reader.result as string;
+        const userRef = doc(db, 'users', loggedInUser.uid);
+        await updateDoc(userRef, { photoURL });
+        
+        const updatedUser = { ...loggedInUser, photoURL };
+        setLoggedInUser(updatedUser);
+        localStorage.setItem('kp_logged_in_user', JSON.stringify(updatedUser));
+        alert('প্রোফাইল পিকচার আপডেট হয়েছে!');
+      };
+      reader.readAsDataURL(file);
+    } catch (err) {
+      alert('ত্রুটি!');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleProfilePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -469,55 +495,87 @@ const UserAuth: React.FC<UserAuthProps> = ({ onLogin }) => {
   }
 
   return (
-    <div className="p-5 pb-32 animate-in fade-in duration-500 min-h-screen bg-white">
+    <div className={`pb-32 animate-in fade-in duration-500 min-h-screen bg-white ${mode === 'profile' && loggedInUser ? 'pt-0 px-0' : 'p-5'}`}>
       {mode === 'profile' && loggedInUser ? (
         <div className="w-full max-w-sm mx-auto animate-in slide-in-from-bottom-4 duration-700">
-            <div className="flex items-center justify-between mb-5 px-1 pt-2">
-                <button 
-                    onClick={() => setShowVerifyPage(true)}
-                    className="flex items-center gap-1.5 px-4 py-2 bg-blue-50 text-blue-600 rounded-xl text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all"
-                >
-                    <ShieldCheck size={13} /> ভেরিফাই আইডি
-                </button>
-                <h2 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] flex-1 text-center">আমার ড্যাশবোর্ড</h2>
-                <button 
-                  onClick={handleLogout} 
-                  className="flex items-center gap-1.5 px-4 py-2 bg-red-50 text-red-600 rounded-xl text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all"
-                >
-                    লগআউট
-                </button>
+            <div className="w-full py-3 bg-[#0056b3] text-white text-center mb-2 shadow-md border-b border-white/10 flex flex-col items-center justify-center">
+                <span className="text-[15px] font-black uppercase tracking-[0.1em]">কয়রা-পাইকগাছা কমিউনিটি অ্যাপ</span>
+                <span className="text-[10px] font-bold opacity-80 uppercase tracking-widest mt-0.5">আমার ড্যাশবোর্ড</span>
             </div>
+            <div className="px-5">
+                <div className="backdrop-blur-2xl bg-white/45 border border-white/50 shadow-[0_20px_50px_rgba(0,86,179,0.1)] rounded-[40px] p-5 mt-2 mb-6 relative overflow-hidden ring-1 ring-white/20">
+                    <div className="absolute inset-0 bg-gradient-to-br from-white/40 via-transparent to-blue-500/5 pointer-events-none"></div>
+                    <div className="absolute -top-24 -right-24 w-48 h-48 bg-blue-400/10 rounded-full blur-3xl pointer-events-none"></div>
+                    <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-indigo-400/10 rounded-full blur-3xl pointer-events-none"></div>
+                    <div className="relative flex items-center justify-center mb-2 mt-[-4px]">
+                        <div className="absolute right-[-10px] top-0 flex flex-col gap-2 items-end">
+                            <button 
+                              onClick={handleLogout} 
+                              className="flex items-center justify-center gap-1 px-3 py-2 bg-red-500/10 backdrop-blur-xl text-red-600 border border-red-500/20 rounded-xl text-[9px] font-black uppercase tracking-widest active:scale-95 transition-all shrink-0 w-24 shadow-sm"
+                            >
+                                লগআউট
+                            </button>
+                            <button 
+                                onClick={() => setShowVerifyPage(true)}
+                                className="flex items-center justify-center gap-1 px-3 py-2 bg-blue-500/10 backdrop-blur-xl text-blue-600 border border-blue-500/20 rounded-xl text-[9px] font-black uppercase tracking-widest active:scale-95 transition-all shrink-0 w-24 shadow-sm"
+                            >
+                                <ShieldCheck size={12} /> ভেরিফাই
+                            </button>
+                            <button 
+                                onClick={() => {
+                                    setProfileEditForm({ fullName: loggedInUser.fullName, village: loggedInUser.village, photoURL: loggedInUser.photoURL || '' });
+                                    setIsEditingProfile(true);
+                                }}
+                                className="flex items-center justify-center gap-1 px-3 py-2 bg-slate-500/10 backdrop-blur-xl text-slate-600 border border-slate-500/20 rounded-xl text-[9px] font-black uppercase tracking-widest active:scale-95 transition-all shrink-0 w-24 shadow-sm"
+                            >
+                                <Edit2 size={12} /> তথ্য এডিট
+                            </button>
+                        </div>
+                        
+                        <div className="relative shrink-0">
+                            <div 
+                                onClick={() => profilePicRef.current?.click()}
+                                className="w-24 h-24 rounded-full border-[4px] border-white/60 backdrop-blur-sm shadow-xl overflow-hidden bg-white/40 flex items-center justify-center text-slate-200 ring-1 ring-slate-100/20 cursor-pointer active:scale-95 transition-transform"
+                            >
+                                {loggedInUser.photoURL ? <img src={loggedInUser.photoURL} className="w-full h-full object-cover" /> : <UserCircle size={55} />}
+                            </div>
+                            <button 
+                              onClick={() => profilePicRef.current?.click()}
+                              className="absolute bottom-0 right-0 p-2 bg-blue-600 text-white rounded-xl shadow-lg border-[3px] border-white active:scale-90 transition-all hover:bg-blue-700"
+                            >
+                               <Camera size={14} strokeWidth={2.5} />
+                            </button>
+                            <input 
+                                type="file" 
+                                ref={profilePicRef} 
+                                className="hidden" 
+                                accept="image/*" 
+                                onChange={handleDirectPhotoUpload} 
+                            />
+                        </div>
+                    </div>
 
-            <div className="flex items-center gap-5 bg-gradient-to-r from-blue-50/50 to-white p-5 rounded-[35px] border border-slate-100 shadow-sm mb-6 text-left relative overflow-hidden">
-                <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-blue-400 via-indigo-500 to-blue-400"></div>
-                
-                <div className="relative shrink-0">
-                    <div className="w-20 h-20 rounded-[24px] border-[3px] border-white shadow-lg overflow-hidden bg-white flex items-center justify-center text-slate-200 ring-1 ring-slate-100">
-                        {loggedInUser.photoURL ? <img src={loggedInUser.photoURL} className="w-full h-full object-cover" /> : <UserCircle size={45} />}
-                    </div>
-                    <button 
-                      onClick={() => {
-                        setProfileEditForm({ fullName: loggedInUser.fullName, village: loggedInUser.village, photoURL: loggedInUser.photoURL || '' });
-                        setIsEditingProfile(true);
-                      }}
-                      className="absolute -bottom-1 -right-1 p-1.5 bg-blue-600 text-white rounded-lg shadow-lg border-[2px] border-white active:scale-90 transition-all hover:bg-blue-700"
-                    >
-                       <Camera size={12} strokeWidth={2.5} />
-                    </button>
-                </div>
-
-                <div className="space-y-1 overflow-hidden">
-                    <div className="flex items-center gap-2 overflow-hidden">
-                        <h1 className="text-lg font-black text-slate-800 leading-tight truncate">{loggedInUser.fullName}</h1>
-                        {loggedInUser.isVerified && (
-                          <CheckCircle2 size={16} fill="#1877F2" className="text-white shrink-0" />
-                        )}
-                    </div>
-                    <div className="inline-flex items-center px-3 py-1 bg-blue-100/50 text-blue-600 rounded-full text-[9px] font-black uppercase tracking-widest">
-                        ID: {loggedInUser.memberId}
+                    <div className="mb-2 relative">
+                        <div className="space-y-1.5">
+                            <div className="flex items-center gap-1.5 mb-[-4px] ml-[-1rem] pl-0">
+                                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.6)]"></div>
+                                <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Active Now</span>
+                            </div>
+                            <div className="border border-blue-600/30 bg-white/80 backdrop-blur-md text-slate-900 py-2 mx-[-1rem] px-4 mb-3 flex items-center justify-center gap-2 shadow-sm">
+                                <h1 className="text-xl font-black leading-tight">{loggedInUser.fullName}</h1>
+                                {loggedInUser.isVerified && (
+                                  <CheckCircle2 size={18} fill="#1877F2" className="text-white shrink-0" />
+                                )}
+                            </div>
+                            
+                            <div className="flex flex-col items-center gap-1">
+                                <div className="inline-flex items-center px-4 py-1.5 bg-blue-600/10 backdrop-blur-md text-blue-700 border border-blue-600/20 rounded-xl text-[10px] font-black uppercase tracking-widest w-fit shadow-inner">
+                                    ID: {loggedInUser.memberId}
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
-            </div>
 
             <div className="grid grid-cols-2 gap-3">
                 <button onClick={() => navigate('/ledger')} className="p-4 bg-[#0056b3] text-white rounded-[30px] flex flex-col items-center gap-3 shadow-lg active:scale-95 transition-all text-center group relative overflow-hidden">
@@ -549,10 +607,6 @@ const UserAuth: React.FC<UserAuthProps> = ({ onLogin }) => {
                     </div>
                 </button>
             </div>
-            <div className="mt-12 flex justify-center items-center gap-6 opacity-60 pointer-events-none">
-                <div className="w-12 h-12 rounded-full border-2 border-slate-100 flex items-center justify-center text-slate-300"><Plus size={20}/></div>
-                <div className="px-6 py-2 rounded-full border-2 border-slate-100 font-black text-[10px] text-slate-300 uppercase">BACK</div>
-                <div className="w-12 h-12 rounded-full border-2 border-slate-100 flex items-center justify-center text-slate-300"><UserIcon size={20}/></div>
             </div>
         </div>
       ) : (

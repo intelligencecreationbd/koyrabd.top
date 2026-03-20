@@ -11,7 +11,7 @@ import {
   getDocs,
   updateDoc
 } from 'firebase/firestore';
-import { chatDb } from '../Firebase-kpchat';
+import { helplineDb } from '../Firebase-helpline';
 
 export interface HelplineMessage {
   id?: string;
@@ -28,7 +28,7 @@ const COLLECTION_NAME = 'helpline_messages';
 
 export const sendHelplineMessage = async (text: string, senderId: string, senderName: string, chatId: string, isAdminReply: boolean = false) => {
   try {
-    await addDoc(collection(chatDb, COLLECTION_NAME), {
+    await addDoc(collection(helplineDb, COLLECTION_NAME), {
       text,
       senderId,
       senderName,
@@ -44,7 +44,7 @@ export const sendHelplineMessage = async (text: string, senderId: string, sender
 
 export const subscribeToHelplineMessages = (chatId: string, callback: (messages: HelplineMessage[]) => void) => {
   const q = query(
-    collection(chatDb, COLLECTION_NAME),
+    collection(helplineDb, COLLECTION_NAME),
     where('chatId', '==', chatId)
   );
 
@@ -76,7 +76,7 @@ export const subscribeToHelplineMessages = (chatId: string, callback: (messages:
 
 export const subscribeToAllHelplineChats = (callback: (chats: Record<string, HelplineMessage[]>) => void) => {
   const q = query(
-    collection(chatDb, COLLECTION_NAME),
+    collection(helplineDb, COLLECTION_NAME),
     orderBy('createdAt', 'desc')
   );
 
@@ -108,12 +108,12 @@ export const subscribeToAllHelplineChats = (callback: (chats: Record<string, Hel
 export const markChatAsRead = async (chatId: string) => {
   try {
     const q = query(
-      collection(chatDb, COLLECTION_NAME),
+      collection(helplineDb, COLLECTION_NAME),
       where('chatId', '==', chatId),
       where('readByAdmin', '==', false)
     );
     const snapshot = await getDocs(q);
-    const promises = snapshot.docs.map(d => updateDoc(doc(chatDb, COLLECTION_NAME, d.id), { readByAdmin: true }));
+    const promises = snapshot.docs.map(d => updateDoc(doc(helplineDb, COLLECTION_NAME, d.id), { readByAdmin: true }));
     await Promise.all(promises);
   } catch (error) {
     console.error('Error marking chat as read:', error);
@@ -122,7 +122,7 @@ export const markChatAsRead = async (chatId: string) => {
 
 export const subscribeToUnreadCount = (callback: (count: number) => void) => {
   const q = query(
-    collection(chatDb, COLLECTION_NAME),
+    collection(helplineDb, COLLECTION_NAME),
     where('readByAdmin', '==', false),
     where('isAdminReply', '==', false)
   );
@@ -142,11 +142,11 @@ export const cleanupOldMessages = async () => {
   const twentyFourHoursAgo = now - 24 * 60 * 60 * 1000;
   
   const q = query(
-    collection(chatDb, COLLECTION_NAME),
+    collection(helplineDb, COLLECTION_NAME),
     where('createdAt', '<', Timestamp.fromMillis(twentyFourHoursAgo))
   );
 
   const snapshot = await getDocs(q);
-  const deletePromises = snapshot.docs.map(d => deleteDoc(doc(chatDb, COLLECTION_NAME, d.id)));
+  const deletePromises = snapshot.docs.map(d => deleteDoc(doc(helplineDb, COLLECTION_NAME, d.id)));
   await Promise.all(deletePromises);
 };

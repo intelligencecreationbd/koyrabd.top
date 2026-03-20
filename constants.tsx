@@ -39,7 +39,8 @@ import {
   Home as HomeIcon,
   School,
   Fish,
-  CreditCard
+  CreditCard,
+  Palette
 } from 'lucide-react';
 import { MainMenu } from './types';
 
@@ -277,5 +278,6 @@ export const ICON_MAP: Record<string, any> = {
   HomeIcon,
   School,
   Fish,
-  CreditCard
+  CreditCard,
+  Palette
 };

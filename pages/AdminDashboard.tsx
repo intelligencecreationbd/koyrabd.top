@@ -33,7 +33,8 @@ import {
   ShoppingBag,
   HeartPulse,
   LayoutGrid,
-  BarChart3
+  BarChart3,
+  Bell
 } from 'lucide-react';
 import { Submission, Notice, User as AppUser, HotlineContact, BusCounter, LegalServiceContact } from '../types';
 import AdminHotlineMgmt from '../components/AdminHotlineMgmt';
@@ -58,13 +59,15 @@ import { doc, setDoc } from 'firebase/firestore';
 interface AdminDashboardProps {
   submissions: Submission[];
   notices: Notice[];
+  userNotices: Notice[];
   onUpdateNotices: (notices: Notice[]) => void;
+  onUpdateUserNotices: (notices: Notice[]) => void;
   onUpdatePassword: (pass: string) => void;
   onUpdateSubmissions: (subs: Submission[]) => void;
   adminPassword: string;
 }
 
-type AdminView = 'menu' | 'users' | 'notices' | 'hotline_mgmt' | 'bus_mgmt' | 'legal_mgmt' | 'mobile_mgmt' | 'rep_mgmt' | 'news_mgmt' | 'haat_mgmt' | 'medical_mgmt' | 'houserent_mgmt' | 'change_pass' | 'user_submissions' | 'menu_access' | 'about_mgmt' | 'helpline_mgmt';
+type AdminView = 'menu' | 'users' | 'notices' | 'user_notices' | 'hotline_mgmt' | 'bus_mgmt' | 'legal_mgmt' | 'mobile_mgmt' | 'rep_mgmt' | 'news_mgmt' | 'haat_mgmt' | 'medical_mgmt' | 'houserent_mgmt' | 'change_pass' | 'user_submissions' | 'menu_access' | 'about_mgmt' | 'helpline_mgmt';
 
 const Header: React.FC<{ title: string; onBack: () => void }> = ({ title, onBack }) => (
   <div className="flex flex-col items-center gap-3 mb-6 text-center relative">
@@ -125,7 +128,7 @@ const EditField: React.FC<{ label: string; value: string; placeholder?: string; 
   </div>
 );
 
-export default function AdminDashboard({ submissions, notices, onUpdateNotices, onUpdatePassword, onUpdateSubmissions, adminPassword }: AdminDashboardProps) {
+export default function AdminDashboard({ submissions, notices, userNotices, onUpdateNotices, onUpdateUserNotices, onUpdatePassword, onUpdateSubmissions, adminPassword }: AdminDashboardProps) {
   const navigate = useNavigate();
   const [currentView, setCurrentView] = useState<AdminView>(() => {
     const params = new URLSearchParams(window.location.search);
@@ -135,6 +138,7 @@ export default function AdminDashboard({ submissions, notices, onUpdateNotices, 
   });
   const [activeTab, setActiveTab] = useState<'mgmt' | 'user' | 'settings' | null>(null);
   const [newNoticeText, setNewNoticeText] = useState('');
+  const [newUserNoticeText, setNewUserNoticeText] = useState('');
   const [newPassInput, setNewPassInput] = useState('');
   const [showVisitorStats, setShowVisitorStats] = useState(false);
   const [unreadHelplineCount, setUnreadHelplineCount] = useState(0);
@@ -147,7 +151,16 @@ export default function AdminDashboard({ submissions, notices, onUpdateNotices, 
   const handleAddNotice = async () => {
     if (!newNoticeText.trim()) return;
     const id = `notice_${Date.now()}`;
-    const updated = [...notices, { id, content: newNoticeText, date: new Date().toLocaleDateString('bn-BD') }];
+    const now = new Date();
+    const fullDate = now.toLocaleString('bn-BD', {
+      year: 'numeric',
+      month: 'numeric',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    }).replace(',', ' |');
+    const updated = [...notices, { id, content: newNoticeText, date: fullDate }];
     try {
       const noticesRef = doc(settingsDb, 'settings', 'notices');
       await setDoc(noticesRef, { list: updated });
@@ -156,6 +169,30 @@ export default function AdminDashboard({ submissions, notices, onUpdateNotices, 
       setNewNoticeText('');
     } catch (e) {
       alert('নোটিশ যোগ করতে সমস্যা হয়েছে!');
+    }
+  };
+
+  const handleAddUserNotice = async () => {
+    if (!newUserNoticeText.trim()) return;
+    const id = `user_notice_${Date.now()}`;
+    const now = new Date();
+    const fullDate = now.toLocaleString('bn-BD', {
+      year: 'numeric',
+      month: 'numeric',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    }).replace(',', ' |');
+    const updated = [...userNotices, { id, content: newUserNoticeText, date: fullDate }];
+    try {
+      const noticesRef = doc(settingsDb, 'settings', 'user_notices');
+      await setDoc(noticesRef, { list: updated });
+      onUpdateUserNotices(updated);
+      localStorage.setItem('kp_user_notices', JSON.stringify(updated));
+      setNewUserNoticeText('');
+    } catch (e) {
+      alert('ইউজার নোটিশ যোগ করতে সমস্যা হয়েছে!');
     }
   };
 
@@ -168,6 +205,18 @@ export default function AdminDashboard({ submissions, notices, onUpdateNotices, 
       localStorage.setItem('kp_notices', JSON.stringify(updated));
     } catch (e) {
       alert('নোটিশ ডিলিট করতে সমস্যা হয়েছে!');
+    }
+  };
+
+  const deleteUserNotice = async (id: string) => {
+    const updated = userNotices.filter(n => n.id !== id);
+    try {
+      const noticesRef = doc(settingsDb, 'settings', 'user_notices');
+      await setDoc(noticesRef, { list: updated });
+      onUpdateUserNotices(updated);
+      localStorage.setItem('kp_user_notices', JSON.stringify(updated));
+    } catch (e) {
+      alert('ইউজার নোটিশ ডিলিট করতে সমস্যা হয়েছে!');
     }
   };
 
@@ -221,6 +270,7 @@ export default function AdminDashboard({ submissions, notices, onUpdateNotices, 
                 <MenuListItem onClick={() => setCurrentView('menu_access')} icon={<LayoutGrid />} label="মেনু একসেস" color="#0056b3" />
                 <MenuListItem onClick={() => setCurrentView('change_pass')} icon={<Lock />} label="পাসওয়ার্ড পরিবর্তন" color="#9B59B6" />
                 <MenuListItem onClick={() => setCurrentView('notices')} icon={<Megaphone />} label="নোটিশ" color="#FF9F43" />
+                <MenuListItem onClick={() => setCurrentView('user_notices')} icon={<Bell size={20} />} label="ইউজার নোটিশ" color="#0056b3" />
                 <MenuListItem onClick={() => setShowVisitorStats(true)} icon={<BarChart3 />} label="ভিজিটর পরিসংখ্যান" color="#10B981" />
               </>
             )}
@@ -268,6 +318,32 @@ export default function AdminDashboard({ submissions, notices, onUpdateNotices, 
                     <p className="text-[10px] font-bold text-slate-400 mt-2 uppercase tracking-tighter">{n.date}</p>
                 </div>
                 <button onClick={()=>deleteNotice(n.id)} className="p-3 bg-red-50 text-red-500 rounded-xl active:scale-90 transition-all"><Trash2 size={18}/></button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {currentView === 'user_notices' && (
+        <div className="space-y-6 animate-in slide-in-from-right-4 duration-500">
+          <Header title="ইউজার নোটিশ" onBack={() => setCurrentView('menu')} />
+          <div className="bg-white p-6 rounded-[35px] border border-slate-100 shadow-sm space-y-4">
+            <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-slate-400 block pl-1 tracking-widest">নতুন ইউজার নোটিশ যোগ করুন</label>
+                <textarea className="w-full p-5 bg-slate-50 rounded-[24px] border border-slate-100 font-bold text-slate-800 outline-none focus:border-blue-400" rows={3} placeholder="ইউজার নোটিশের বিস্তারিত লিখুন..." value={newUserNoticeText} onChange={e=>setNewUserNoticeText(e.target.value)} />
+            </div>
+            <button onClick={handleAddUserNotice} className="w-full py-4 bg-[#0056b3] text-white rounded-2xl font-black shadow-lg shadow-blue-500/10 active:scale-95 transition-all flex items-center justify-center gap-2">
+                <Plus size={20} /> পাবলিশ করুন
+            </button>
+          </div>
+          <div className="space-y-3">
+            {userNotices.map(n => (
+              <div key={n.id} className="bg-white p-5 rounded-[28px] border border-slate-100 flex justify-between items-start shadow-sm animate-in slide-in-from-bottom-2 duration-300">
+                <div className="flex-1 pr-4">
+                    <p className="font-bold text-slate-800 text-sm leading-relaxed">{n.content}</p>
+                    <p className="text-[10px] font-bold text-slate-400 mt-2 uppercase tracking-tighter">{n.date}</p>
+                </div>
+                <button onClick={()=>deleteUserNotice(n.id)} className="p-3 bg-red-50 text-red-500 rounded-xl active:scale-90 transition-all"><Trash2 size={18}/></button>
               </div>
             ))}
           </div>

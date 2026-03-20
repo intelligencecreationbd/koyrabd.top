@@ -174,10 +174,10 @@ const PublicDownload: React.FC<PublicDownloadProps> = ({ appLogo, isAdminLoggedI
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.8, duration: 1 }}
-              className="mt-12 flex flex-col items-center gap-2 text-slate-300 dark:text-slate-600"
+              className="mt-12 flex flex-col items-center gap-2 text-red-500"
             >
               <span className="text-[10px] font-bold uppercase tracking-[0.2em]">নিচে স্ক্রল করুন</span>
-              <ArrowDown size={16} className="animate-bounce opacity-50" />
+              <ArrowDown size={16} className="animate-bounce" />
             </motion.div>
           </motion.div>
         </div>

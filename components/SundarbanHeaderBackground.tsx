@@ -17,28 +17,6 @@ const SundarbanHeaderBackground: React.FC = () => {
         <div className="absolute bottom-0 left-0 right-0 h-1/2 bg-gradient-to-t from-black/40 to-transparent" />
       </div>
 
-      {/* Sundarban Mangrove Silhouette Overlays - Left */}
-      <div className="absolute bottom-0 left-0 w-[35%] h-full flex items-end opacity-80 z-10">
-        <div className="relative w-full h-[80%]">
-          {[...Array(3)].map((_, i) => (
-            <div key={i} className="absolute bottom-[-5px]" style={{ left: `${i * 30 - 10}%`, width: '60%', height: '100%' }}>
-              <MangroveTree color="#064e3b" />
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Sundarban Mangrove Silhouette Overlays - Right */}
-      <div className="absolute bottom-0 right-0 w-[35%] h-full flex items-end opacity-80 z-10">
-        <div className="relative w-full h-[80%] transform scale-x-[-1]">
-          {[...Array(3)].map((_, i) => (
-            <div key={i} className="absolute bottom-[-5px]" style={{ left: `${i * 30 - 10}%`, width: '60%', height: '100%' }}>
-              <MangroveTree color="#064e3b" />
-            </div>
-          ))}
-        </div>
-      </div>
-      
       {/* Animated River Waves at the bottom */}
       <div className="absolute bottom-0 left-0 right-0 h-10 z-20">
         <svg className="w-full h-full" preserveAspectRatio="none" viewBox="0 0 1440 100">
@@ -119,16 +97,5 @@ const SundarbanHeaderBackground: React.FC = () => {
     </div>
   );
 };
-
-const MangroveTree: React.FC<{ color: string }> = ({ color }) => (
-  <svg viewBox="0 0 200 300" className="w-full h-full" style={{ color }}>
-    {/* Mangrove Roots (Pneumatophores) */}
-    <path d="M70,300 L75,270 M85,300 L88,260 M115,300 L112,265 M125,300 L120,275 M100,300 L100,250" stroke="currentColor" strokeWidth="4" fill="none" />
-    {/* Trunk */}
-    <path d="M90,250 L110,250 L105,150 L95,150 Z" fill="currentColor" />
-    {/* Lush Foliage */}
-    <path d="M100,30 C150,30 190,80 190,160 C190,200 150,220 100,220 C50,220 10,200 10,160 C10,80 50,30 100,30 Z" fill="currentColor" />
-  </svg>
-);
 
 export default SundarbanHeaderBackground;

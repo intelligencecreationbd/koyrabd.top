@@ -1,7 +1,8 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Routes, Route, useNavigate, useLocation, Navigate, useParams } from 'react-router-dom';
-import { Sun, Moon, Lock, ChevronLeft, LogOut, Home as HomeIcon, User as UserIcon, PlusCircle, Menu, X, ArrowRight, Sparkles, NotebookTabs, MessageSquare, UserCircle, Download, ShieldCheck, Zap, Heart, Star, Smartphone, Camera, Gift, Bus, CloudSun, Newspaper, Scale, Phone, HeartPulse, Calculator, CheckCircle2, Instagram, Facebook, Youtube, Info, Eye, EyeOff } from 'lucide-react';
+import { Sun, Moon, Lock, ChevronLeft, LogOut, Home as HomeIcon, User as UserIcon, PlusCircle, Menu, X, ArrowRight, Sparkles, NotebookTabs, MessageSquare, UserCircle, Download, ShieldCheck, Zap, Heart, Star, Smartphone, Camera, Gift, Bus, CloudSun, Newspaper, Scale, Phone, HeartPulse, Calculator, CheckCircle2, Instagram, Facebook, Youtube, Info, Eye, EyeOff, Palette, Bell } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import Home from './pages/Home';
 import CategoryView from './pages/CategoryView';
 import InfoSubmit from './pages/InfoSubmit';
@@ -15,6 +16,7 @@ import WeatherPage from './pages/WeatherPage';
 import KPCommunityChat from './pages/KPCommunityChat';
 import AboutApp from './components/AboutApp';
 import SundarbanHeaderBackground from './components/SundarbanHeaderBackground';
+import BlueHeaderBackground from './components/BlueHeaderBackground';
 import PublicMedical from './components/PublicMedical';
 import PublicHouseRent from './components/PublicHouseRent';
 import AgeCalculator from './components/AgeCalculator';
@@ -22,6 +24,7 @@ import DateTimeBox from './components/DateTimeBox';
 import PublicDownload from './components/PublicDownload';
 import MenuAccessNotice from './components/MenuAccessNotice';
 import UserEmergencyInfo from './components/UserEmergencyInfo';
+import BannerMaker from './components/BannerMaker';
 import { Submission, Notice, User } from './types';
 import { trackVisit } from './services/analyticsService';
 import { settingsDb } from './Firebase-appsettings';
@@ -33,6 +36,7 @@ import {
   setDoc, 
   collection 
 } from 'firebase/firestore';
+import { handleFirestoreError, OperationType } from './services/firestoreErrorHandler';
 
 // Firebase removed for paid hosting migration
 
@@ -113,7 +117,7 @@ const BottomNav: React.FC<{ checkAccess?: (id: string, name: string) => boolean 
     }
     if (pathname === '/services') {
       navigate('/');
-    } else if (['/hotline', '/online-haat', '/weather', '/info-submit', '/auth', '/getapp', '/chat', '/medical', '/age-calculator'].includes(pathname)) {
+    } else if (['/hotline', '/online-haat', '/weather', '/info-submit', '/auth', '/getapp', '/chat', '/medical', '/age-calculator', '/banner-maker'].includes(pathname)) {
       navigate('/services');
     } else if (pathname === '/ledger') {
       navigate('/auth');
@@ -302,18 +306,35 @@ const App = () => {
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(() => {
     return localStorage.getItem('kp_admin_logged_in') === 'true';
   });
-  const [adminPassword, setAdminPassword] = useState('t');
+  const [adminPassword, setAdminPassword] = useState<string>('');
   const [showAdminLogin, setShowAdminLogin] = useState(false);
   const [showAdminPassword, setShowAdminPassword] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [loginInput, setLoginInput] = useState('');
   const [isScrolled, setIsScrolled] = useState(false);
   const [notices, setNotices] = useState<Notice[]>([]);
+  const [userNotices, setUserNotices] = useState<Notice[]>([]);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [menuAccess, setMenuAccess] = useState<Record<string, boolean>>({});
   const [accessNotice, setAccessNotice] = useState<{ isOpen: boolean; menuName: string }>({ isOpen: false, menuName: '' });
   const [isMedicalSubPageActive, setIsMedicalSubPageActive] = useState(false);
   const [unreadHelplineCount, setUnreadHelplineCount] = useState(0);
+  const [showNotices, setShowNotices] = useState(false);
+  const [expandedNoticeId, setExpandedNoticeId] = useState<string | null>(null);
+  const [readNoticeIds, setReadNoticeIds] = useState<string[]>(() => {
+    const saved = localStorage.getItem('kp_read_notice_ids');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const unreadUserNoticeCount = userNotices.filter(n => !readNoticeIds.includes(n.id)).length;
+
+  const markNoticeAsRead = (id: string) => {
+    if (!readNoticeIds.includes(id)) {
+      const updated = [...readNoticeIds, id];
+      setReadNoticeIds(updated);
+      localStorage.setItem('kp_read_notice_ids', JSON.stringify(updated));
+    }
+  };
 
   useEffect(() => {
     trackVisit();
@@ -330,6 +351,8 @@ const App = () => {
       if (snapshot.exists()) {
         setMenuAccess(snapshot.data() || {});
       }
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, 'settings/menu_access');
     });
     return () => unsubscribe();
   }, []);
@@ -367,12 +390,14 @@ const App = () => {
   const location = useLocation();
   const isLanding = location.pathname === '/';
   const isDownloadPage = location.pathname === '/getapp';
+  const isServicesPage = location.pathname === '/services';
   const isChatPage = location.pathname === '/chat';
   const isHouseRentPage = location.pathname === '/house-rent';
   const isNewsPage = location.pathname.startsWith('/category/14');
   const isLedgerPage = location.pathname === '/ledger';
   const isHelplinePage = location.pathname === '/helpline';
   const isWeatherPage = location.pathname === '/weather';
+  const isProfile = location.pathname === '/auth';
 
   useEffect(() => {
     const hostname = window.location.hostname;
@@ -418,15 +443,9 @@ const App = () => {
     const unsubscribePass = onSnapshot(adminPassRef, (snapshot) => {
       if (snapshot.exists() && snapshot.data()?.value) {
         setAdminPassword(snapshot.data().value.toString());
-      } else {
-        // Set default if not exists or value is missing
-        setDoc(adminPassRef, { value: 't' });
-        setAdminPassword('t');
       }
     }, (error) => {
-      console.error("Error loading admin password:", error);
-      // Fallback to 't' on error to allow login if Firestore is flaky
-      setAdminPassword('t');
+      handleFirestoreError(error, OperationType.GET, 'settings/admin_password');
     });
 
     // Load app logo from AppSettings Firebase
@@ -435,6 +454,8 @@ const App = () => {
       if (snapshot.exists()) {
         setAppLogo(snapshot.data().value);
       }
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, 'settings/app_logo');
     });
 
     // Load notices from AppSettings Firebase
@@ -445,10 +466,27 @@ const App = () => {
         setNotices(data);
         localStorage.setItem('kp_notices', JSON.stringify(data));
       }
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, 'settings/notices');
+    });
+
+    // Load user notices from AppSettings Firebase
+    const userNoticesRef = doc(settingsDb, 'settings', 'user_notices');
+    const unsubscribeUserNotices = onSnapshot(userNoticesRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.data().list || [];
+        setUserNotices(data);
+        localStorage.setItem('kp_user_notices', JSON.stringify(data));
+      }
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, 'settings/user_notices');
     });
 
     const savedNotices = localStorage.getItem('kp_notices');
     if (savedNotices) setNotices(JSON.parse(savedNotices));
+
+    const savedUserNotices = localStorage.getItem('kp_user_notices');
+    if (savedUserNotices) setUserNotices(JSON.parse(savedUserNotices));
 
     return () => {
       unsubscribePass();
@@ -468,7 +506,12 @@ const App = () => {
     
     // Convert Bengali digits to English and trim spaces
     const cleanInput = convertToEn(loginInput).trim();
-    const cleanMaster = (adminPassword || 't').toString().trim();
+    const cleanMaster = (adminPassword || '').toString().trim();
+
+    if (!cleanMaster) {
+      alert('পাসওয়ার্ড লোড হচ্ছে, অনুগ্রহ করে অপেক্ষা করুন...');
+      return;
+    }
 
     // Case-insensitive comparison for non-numeric passwords
     const isMatch = isNaN(Number(cleanMaster)) 
@@ -695,9 +738,9 @@ const App = () => {
             </div>
           </div>
 
-          {!isWeatherPage && (
+          {(!isWeatherPage && !(isProfile && currentUser)) && (
             <header className={`sticky top-0 z-50 transition-all duration-500 glass-header border-b ${isScrolled ? 'opacity-100 shadow-lg' : 'opacity-95'}`}>
-              <SundarbanHeaderBackground />
+              {isServicesPage ? <BlueHeaderBackground /> : <SundarbanHeaderBackground />}
               <div className="w-full px-5 h-20 flex items-center justify-between relative z-10">
                 <div className="flex items-center gap-0 shrink-0">
                   <button onClick={() => setIsDrawerOpen(true)} className="p-2.5 rounded-xl text-white/80 hover:text-white transition-all duration-300 active:scale-90 relative">
@@ -735,12 +778,140 @@ const App = () => {
                   <button onClick={() => setIsDarkMode(!isDarkMode)} className="p-2.5 rounded-xl text-white/80 transition-all duration-300 hover:text-white active:scale-90">
                     {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
                   </button>
+                  <div className="relative">
+                    <button 
+                      onClick={() => setShowNotices(!showNotices)} 
+                      className="p-2.5 rounded-xl text-white/80 transition-all duration-300 hover:text-white active:scale-90 relative"
+                    >
+                      <Bell size={20} />
+                      {unreadUserNoticeCount > 0 && (
+                        <span className="absolute top-1.5 right-1.5 bg-red-500 text-white text-[9px] font-black w-4 h-4 flex items-center justify-center rounded-full shadow-sm animate-pulse border border-white/20">
+                          {unreadUserNoticeCount}
+                        </span>
+                      )}
+                    </button>
+                  </div>
                 </div>
               </div>
             </header>
           )}
         </>
       )}
+
+      <AnimatePresence>
+        {showNotices && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowNotices(false)}
+              className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative w-full max-w-[340px] bg-white dark:bg-slate-900 rounded-[32px] shadow-2xl border border-slate-100 dark:border-slate-800 overflow-hidden"
+            >
+              <div className="p-5 border-b border-slate-50 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/50">
+                <div className="w-10 h-10" /> {/* Spacer for centering */}
+                <div className="flex items-center gap-2">
+                  <motion.div 
+                    animate={{ 
+                      rotate: [0, -10, 10, -10, 10, 0],
+                      scale: [1, 1.1, 1, 1.1, 1]
+                    }}
+                    transition={{ 
+                      repeat: Infinity, 
+                      duration: 2,
+                      ease: "easeInOut"
+                    }}
+                    className="w-8 h-8 bg-blue-50 dark:bg-blue-900/30 rounded-xl flex items-center justify-center text-[#0056b3] dark:text-blue-400"
+                  >
+                    <Bell size={16} />
+                  </motion.div>
+                  <h3 className="font-black text-sm text-slate-800 dark:text-white uppercase tracking-wider">নোটিফিকেশন</h3>
+                </div>
+                <button onClick={() => setShowNotices(false)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors">
+                  <X size={16} className="text-slate-400" />
+                </button>
+              </div>
+              <div className="max-h-[60vh] overflow-y-auto p-4 space-y-3 custom-scrollbar">
+                {userNotices.length === 0 ? (
+                  <div className="py-10 text-center">
+                    <p className="text-xs font-bold text-slate-400">কোনো নোটিশ নেই</p>
+                  </div>
+                ) : (
+                  [...userNotices]
+                    .sort((a, b) => {
+                      const aRead = readNoticeIds.includes(a.id);
+                      const bRead = readNoticeIds.includes(b.id);
+                      if (aRead === bRead) return 0;
+                      return aRead ? 1 : -1;
+                    })
+                    .map((notice, idx) => {
+                      const isRead = readNoticeIds.includes(notice.id);
+                      const isExpanded = expandedNoticeId === notice.id;
+                      return (
+                        <motion.div 
+                          key={notice.id || idx}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: idx * 0.05 }}
+                          onClick={() => {
+                            markNoticeAsRead(notice.id);
+                            setExpandedNoticeId(isExpanded ? null : notice.id);
+                          }}
+                          className={`p-4 rounded-2xl border transition-all group cursor-pointer ${
+                            isRead 
+                              ? 'bg-slate-50/50 dark:bg-slate-800/30 border-slate-100 dark:border-slate-800' 
+                              : 'bg-white dark:bg-slate-800 border-blue-100 dark:border-blue-900/30 shadow-sm ring-1 ring-blue-500/5'
+                          }`}
+                        >
+                          <div className="flex items-start gap-3">
+                            {!isRead && (
+                              <div className="w-2 h-2 rounded-full bg-blue-500 mt-1.5 shrink-0 animate-pulse" />
+                            )}
+                            {isRead && (
+                              <div className="w-2 h-2 rounded-full bg-slate-300 dark:bg-slate-600 mt-1.5 shrink-0" />
+                            )}
+                            <div className="space-y-1 flex-1 overflow-hidden">
+                              <p className={`text-[13px] leading-relaxed transition-all duration-300 ${
+                                isRead ? 'text-slate-500 dark:text-slate-400 font-medium' : 'text-slate-800 dark:text-slate-100 font-bold'
+                              } ${isExpanded ? '' : 'line-clamp-1'}`}>
+                                {notice.content}
+                              </p>
+                              <div className="flex items-center justify-between mt-2">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-[9px] font-black text-slate-400 dark:text-slate-500">
+                                    {notice.date}
+                                  </span>
+                                  {!isRead && (
+                                    <span className="text-[8px] font-black text-blue-500 uppercase tracking-widest bg-blue-50 dark:bg-blue-900/30 px-1.5 py-0.5 rounded-md">
+                                      New
+                                    </span>
+                                  )}
+                                </div>
+                                <span className="text-[9px] font-bold text-blue-500/60 dark:text-blue-400/60">
+                                  {isExpanded ? 'সংক্ষিপ্ত করুন' : 'বিস্তারিত দেখুন'}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </motion.div>
+                      );
+                    })
+                )}
+              </div>
+              <div className="p-4 bg-slate-50 dark:bg-slate-800/30 flex items-center justify-center gap-1.5">
+                <p className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.1em]">কয়রা-পাইকগাছা কমিউনিটি অ্যাপ</p>
+                <CheckCircle2 size={10} className="text-blue-500 fill-blue-500/10" />
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {showAdminLogin && !isAdminLoggedIn && (
         <div className="fixed inset-0 z-[120] flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-sm">
@@ -823,7 +994,16 @@ const App = () => {
                 path="/admin" 
                 element={
                   isAdminLoggedIn ? (
-                    <AdminDashboard submissions={submissions} notices={notices} onUpdateNotices={setNotices} onUpdatePassword={handleUpdatePassword} adminPassword={adminPassword} onUpdateSubmissions={setSubmissions} />
+                    <AdminDashboard 
+                      submissions={submissions} 
+                      notices={notices} 
+                      userNotices={userNotices}
+                      onUpdateNotices={setNotices} 
+                      onUpdateUserNotices={setUserNotices}
+                      onUpdatePassword={handleUpdatePassword} 
+                      adminPassword={adminPassword} 
+                      onUpdateSubmissions={setSubmissions} 
+                    />
                   ) : (
                     <div className="flex flex-col items-center justify-center h-full p-10 text-center min-h-[60vh]">
                       <div className="w-20 h-20 bg-blue-50 rounded-3xl flex items-center justify-center mb-6">
