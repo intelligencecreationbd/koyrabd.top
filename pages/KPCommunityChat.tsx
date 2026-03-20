@@ -17,7 +17,6 @@ import {
   increment,
   deleteField
 } from 'firebase/firestore';
-import { handleFirestoreError, OperationType } from '../services/firestoreErrorHandler';
 import { chatDb } from '../Firebase-kpchat';
 import { userDb as db } from '../Firebase-user';
 import { 
@@ -173,8 +172,6 @@ const KPCommunityChat: React.FC = () => {
       const userList: any[] = [];
       snapshot.forEach(doc => userList.push(doc.data()));
       setUsers(userList);
-    }, (error) => {
-      handleFirestoreError(error, OperationType.GET, 'users');
     });
     return () => unsubscribe();
   }, [currentUser, isGuest]);
@@ -186,16 +183,12 @@ const KPCommunityChat: React.FC = () => {
     const friendsRef = doc(chatDb, 'friends', currentUser.memberId);
     const unsubscribeFriends = onSnapshot(friendsRef, (docSnap) => {
       setFriends(docSnap.data() || {});
-    }, (error) => {
-      handleFirestoreError(error, OperationType.GET, `friends/${currentUser.memberId}`);
     });
 
     // Outgoing requests
     const outgoingRef = doc(chatDb, 'requests_outgoing', currentUser.memberId);
     const unsubscribeOutgoing = onSnapshot(outgoingRef, (docSnap) => {
       setSentRequests(docSnap.data() || {});
-    }, (error) => {
-      handleFirestoreError(error, OperationType.GET, `requests_outgoing/${currentUser.memberId}`);
     });
 
     // Incoming requests
@@ -203,8 +196,6 @@ const KPCommunityChat: React.FC = () => {
     const unsubscribeIncoming = onSnapshot(incomingRef, (snapshot) => {
       const list = snapshot.docs.map(d => d.data());
       setReceivedRequests(list);
-    }, (error) => {
-      handleFirestoreError(error, OperationType.GET, `requests_incoming/${currentUser.memberId}/items`);
     });
 
     // Chat rooms (Recent Chats)
@@ -213,8 +204,6 @@ const KPCommunityChat: React.FC = () => {
     const unsubscribeRooms = onSnapshot(qRooms, (snapshot) => {
       const list = snapshot.docs.map(d => d.data());
       setChatRooms(list);
-    }, (error) => {
-      handleFirestoreError(error, OperationType.GET, `user_rooms/${currentUser.memberId}/rooms`);
     });
 
     return () => {
@@ -239,16 +228,12 @@ const KPCommunityChat: React.FC = () => {
     const unsubscribeMessages = onSnapshot(qMessages, (snapshot) => {
       const list = snapshot.docs.map(d => d.data());
       setMessages(list);
-    }, (error) => {
-      handleFirestoreError(error, OperationType.GET, `messages/${chatId}/list`);
     });
 
     // Listen for typing status
     const typingRef = doc(chatDb, 'typing', `${chatId}_${activeChat.memberId}`);
     const unsubscribeTyping = onSnapshot(typingRef, (docSnap) => {
       setOtherTyping(!!docSnap.data()?.isTyping);
-    }, (error) => {
-      handleFirestoreError(error, OperationType.GET, `typing/${chatId}_${activeChat.memberId}`);
     });
 
     return () => {

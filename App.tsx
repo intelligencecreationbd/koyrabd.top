@@ -36,7 +36,6 @@ import {
   setDoc, 
   collection 
 } from 'firebase/firestore';
-import { handleFirestoreError, OperationType } from './services/firestoreErrorHandler';
 
 // Firebase removed for paid hosting migration
 
@@ -351,8 +350,6 @@ const App = () => {
       if (snapshot.exists()) {
         setMenuAccess(snapshot.data() || {});
       }
-    }, (error) => {
-      handleFirestoreError(error, OperationType.GET, 'settings/menu_access');
     });
     return () => unsubscribe();
   }, []);
@@ -445,7 +442,7 @@ const App = () => {
         setAdminPassword(snapshot.data().value.toString());
       }
     }, (error) => {
-      handleFirestoreError(error, OperationType.GET, 'settings/admin_password');
+      console.error("Error loading admin password:", error);
     });
 
     // Load app logo from AppSettings Firebase
@@ -454,8 +451,6 @@ const App = () => {
       if (snapshot.exists()) {
         setAppLogo(snapshot.data().value);
       }
-    }, (error) => {
-      handleFirestoreError(error, OperationType.GET, 'settings/app_logo');
     });
 
     // Load notices from AppSettings Firebase
@@ -466,8 +461,6 @@ const App = () => {
         setNotices(data);
         localStorage.setItem('kp_notices', JSON.stringify(data));
       }
-    }, (error) => {
-      handleFirestoreError(error, OperationType.GET, 'settings/notices');
     });
 
     // Load user notices from AppSettings Firebase
@@ -478,8 +471,6 @@ const App = () => {
         setUserNotices(data);
         localStorage.setItem('kp_user_notices', JSON.stringify(data));
       }
-    }, (error) => {
-      handleFirestoreError(error, OperationType.GET, 'settings/user_notices');
     });
 
     const savedNotices = localStorage.getItem('kp_notices');

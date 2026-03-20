@@ -53,7 +53,6 @@ import {
   where, 
   getDocs 
 } from "firebase/firestore";
-import { handleFirestoreError, OperationType } from '../services/firestoreErrorHandler';
 import { 
     signInWithEmailAndPassword, 
     createUserWithEmailAndPassword, 
@@ -503,21 +502,18 @@ const UserAuth: React.FC<UserAuthProps> = ({ onLogin }) => {
                 <span className="text-[10px] font-bold opacity-80 uppercase tracking-widest mt-0.5">আমার ড্যাশবোর্ড</span>
             </div>
             <div className="px-5">
-                <div className="backdrop-blur-2xl bg-white/45 border border-white/50 shadow-[0_20px_50px_rgba(0,86,179,0.1)] rounded-[40px] p-5 mt-2 mb-6 relative overflow-hidden ring-1 ring-white/20">
-                    <div className="absolute inset-0 bg-gradient-to-br from-white/40 via-transparent to-blue-500/5 pointer-events-none"></div>
-                    <div className="absolute -top-24 -right-24 w-48 h-48 bg-blue-400/10 rounded-full blur-3xl pointer-events-none"></div>
-                    <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-indigo-400/10 rounded-full blur-3xl pointer-events-none"></div>
+                <div className="border border-blue-400/30 rounded-[35px] p-4 mt-2 mb-6 bg-blue-50/5">
                     <div className="relative flex items-center justify-center mb-2 mt-[-4px]">
-                        <div className="absolute right-[-10px] top-0 flex flex-col gap-2 items-end">
+                        <div className="absolute right-[-10px] top-0 flex flex-col gap-1.5 items-end">
                             <button 
                               onClick={handleLogout} 
-                              className="flex items-center justify-center gap-1 px-3 py-2 bg-red-500/10 backdrop-blur-xl text-red-600 border border-red-500/20 rounded-xl text-[9px] font-black uppercase tracking-widest active:scale-95 transition-all shrink-0 w-24 shadow-sm"
+                              className="flex items-center gap-1 px-3 py-2 bg-red-50 text-red-600 rounded-xl text-[9px] font-black uppercase tracking-widest active:scale-95 transition-all shrink-0"
                             >
                                 লগআউট
                             </button>
                             <button 
                                 onClick={() => setShowVerifyPage(true)}
-                                className="flex items-center justify-center gap-1 px-3 py-2 bg-blue-500/10 backdrop-blur-xl text-blue-600 border border-blue-500/20 rounded-xl text-[9px] font-black uppercase tracking-widest active:scale-95 transition-all shrink-0 w-24 shadow-sm"
+                                className="flex items-center gap-1 px-3 py-2 bg-blue-50 text-blue-600 rounded-xl text-[9px] font-black uppercase tracking-widest active:scale-95 transition-all shrink-0"
                             >
                                 <ShieldCheck size={12} /> ভেরিফাই
                             </button>
@@ -526,7 +522,7 @@ const UserAuth: React.FC<UserAuthProps> = ({ onLogin }) => {
                                     setProfileEditForm({ fullName: loggedInUser.fullName, village: loggedInUser.village, photoURL: loggedInUser.photoURL || '' });
                                     setIsEditingProfile(true);
                                 }}
-                                className="flex items-center justify-center gap-1 px-3 py-2 bg-slate-500/10 backdrop-blur-xl text-slate-600 border border-slate-500/20 rounded-xl text-[9px] font-black uppercase tracking-widest active:scale-95 transition-all shrink-0 w-24 shadow-sm"
+                                className="flex items-center gap-1 px-3 py-2 bg-slate-50 text-slate-600 rounded-xl text-[9px] font-black uppercase tracking-widest active:scale-95 transition-all shrink-0"
                             >
                                 <Edit2 size={12} /> তথ্য এডিট
                             </button>
@@ -535,7 +531,7 @@ const UserAuth: React.FC<UserAuthProps> = ({ onLogin }) => {
                         <div className="relative shrink-0">
                             <div 
                                 onClick={() => profilePicRef.current?.click()}
-                                className="w-24 h-24 rounded-full border-[4px] border-white/60 backdrop-blur-sm shadow-xl overflow-hidden bg-white/40 flex items-center justify-center text-slate-200 ring-1 ring-slate-100/20 cursor-pointer active:scale-95 transition-transform"
+                                className="w-24 h-24 rounded-full border-[4px] border-white shadow-xl overflow-hidden bg-white flex items-center justify-center text-slate-200 ring-1 ring-slate-100 cursor-pointer active:scale-95 transition-transform"
                             >
                                 {loggedInUser.photoURL ? <img src={loggedInUser.photoURL} className="w-full h-full object-cover" /> : <UserCircle size={55} />}
                             </div>
@@ -557,11 +553,11 @@ const UserAuth: React.FC<UserAuthProps> = ({ onLogin }) => {
 
                     <div className="mb-2 relative">
                         <div className="space-y-1.5">
-                            <div className="flex items-center gap-1.5 mb-[-4px] ml-[-1rem] pl-0">
-                                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.6)]"></div>
+                            <div className="flex items-center gap-1.5 mb-[-4px] ml-[-1rem] pl-2">
+                                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
                                 <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Active Now</span>
                             </div>
-                            <div className="border border-blue-600/30 bg-white/80 backdrop-blur-md text-slate-900 py-2 mx-[-1rem] px-4 mb-3 flex items-center justify-center gap-2 shadow-sm">
+                            <div className="border-y border-[#0056b3] bg-white text-slate-800 py-1.5 mx-[-1rem] px-4 mb-3 flex items-center justify-center gap-2">
                                 <h1 className="text-xl font-black leading-tight">{loggedInUser.fullName}</h1>
                                 {loggedInUser.isVerified && (
                                   <CheckCircle2 size={18} fill="#1877F2" className="text-white shrink-0" />
@@ -569,7 +565,7 @@ const UserAuth: React.FC<UserAuthProps> = ({ onLogin }) => {
                             </div>
                             
                             <div className="flex flex-col items-center gap-1">
-                                <div className="inline-flex items-center px-4 py-1.5 bg-blue-600/10 backdrop-blur-md text-blue-700 border border-blue-600/20 rounded-xl text-[10px] font-black uppercase tracking-widest w-fit shadow-inner">
+                                <div className="inline-flex items-center px-3 py-1 bg-blue-100/50 text-blue-600 rounded-full text-[10px] font-black uppercase tracking-widest w-fit">
                                     ID: {loggedInUser.memberId}
                                 </div>
                             </div>
