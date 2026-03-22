@@ -1,0 +1,44 @@
+name: 🚀 Build and Deploy Website
+
+on:
+  push:
+    branches:
+      - main  # আপনার মেইন ব্রাঞ্চের নাম অনুযায়ী পরিবর্তন করতে পারেন
+
+jobs:
+  build-and-deploy:
+    name: 🏗️ Build & 🎉 Deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      # ১. রিপোজিটরি থেকে কোড নেওয়া
+      - name: 🚚 Get latest code
+        uses: actions/checkout@v4
+
+      # ২. Node.js সেটআপ করা (লেটেস্ট ভার্সন)
+      - name: ⚙️ Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20' # অথবা আপনার প্রয়োজনমতো ভার্সন দিন
+
+      # ৩. ডিপেন্ডেন্সি ইনস্টল করা (যেমন: npm install)
+      - name: 📦 Install dependencies
+        run: npm install
+
+      # ৪. প্রোজেক্ট বিল্ড করা (যেমন: npm run build)
+      - name: 🏗️ Build project
+        run: npm run build 
+
+      # ৫. বিল্ড হওয়া ফাইলগুলো FTP এর মাধ্যমে সার্ভারে পাঠানো
+      - name: 📂 Sync files to Server
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          # সাধারণত বিল্ড ফাইল 'dist' বা 'build' ফোল্ডারে থাকে
+          local-dir: ./dist/ 
+          # আপনার cPanel এর মেইন ডিরেক্টরি
+          server-dir: ./ 
+          protocol: ftp
+          port: 21
