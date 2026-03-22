@@ -3,7 +3,7 @@ name: 🚀 Build and Deploy Website
 on:
   push:
     branches:
-      - main  # আপনার মেইন ব্রাঞ্চের নাম যদি অন্য কিছু হয় (যেমন: master), তবে সেটি এখানে লিখুন
+      - main  # আপনার ব্রাঞ্চের নাম master হলে এখানে master লিখে দিন
 
 jobs:
   build-and-deploy:
@@ -11,37 +11,37 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # ১. GitHub থেকে আপনার কোডটি নেওয়া
+      # ১. GitHub থেকে লেটেস্ট কোড সংগ্রহ করা
       - name: 🚚 Get latest code
         uses: actions/checkout@v4
 
-      # ২. Node.js সেটআপ করা (লেটেস্ট স্ট্যাবল ভার্সন)
+      # ২. Node.js সেটআপ করা
       - name: ⚙️ Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
-      # ৩. প্রোজেক্টের প্রয়োজনীয় প্যাকেজ ইনস্টল করা
+      # ৩. প্রোজেক্টের ডিপেন্ডেন্সি ইনস্টল করা
       - name: 📦 Install dependencies
         run: npm install
 
-      # ৪. প্রোজেক্টটি বিল্ড করা (যাতে শুধু প্রয়োজনীয় ফাইলগুলো আলাদা হয়)
+      # ৪. প্রোজেক্ট বিল্ড করা
       - name: 🏗️ Build project
-        run: npm run build 
+        run: npm run build
 
-      # ৫. বিল্ড হওয়া ফাইলগুলো FTP এর মাধ্যমে সার্ভারে পাঠানো
+      # ৫. বিল্ড করা ফাইলগুলো FTP-তে সিঙ্ক করা
       - name: 📂 Sync files to Server
         uses: SamKirkland/FTP-Deploy-Action@v4.3.4
         with:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          # বিল্ড হওয়ার পর ফাইলগুলো সাধারণত 'dist' বা 'build' ফোল্ডারে থাকে
-          # আপনার প্রোজেক্ট অনুযায়ী এটি চেক করে নিন
+          # বিল্ড ফোল্ডার সাধারণত 'dist' বা 'build' হয়। আপনার অনুযায়ী এটি চেক করুন।
           local-dir: ./dist/ 
-          # cPanel-এর মেইন ডিরেক্টরি
+          # যেহেতু আপনি FTP ডিরেক্টরি public_html সেট করেছেন, তাই এখানে ./ দিন
           server-dir: ./ 
           protocol: ftp
           port: 21
-          # যদি ফাইল ডিলিট না করতে চান তবে এটি false রাখুন
+          # টাইমআউট সমস্যা এড়াতে অতিরিক্ত সেটিংস
+          state-name: .ftp-deploy-sync-state.json
           dangerous-clean-slate: false
