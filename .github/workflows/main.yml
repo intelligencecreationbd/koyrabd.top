@@ -29,4 +29,6 @@ jobs:
           protocol: ftp
           local-dir: ./dist/
           server-dir: ./
-          state-name: .ftp-deploy-sync-state.json
+          passive: true
+          dangerous-clean-slate: false
+          timeout: 60000
