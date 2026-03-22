@@ -1,11 +1,14 @@
 name: Deploy to cPanel
+
 on:
   push:
     branches:
-      - main
+      - main  # আপনার মেইন ব্রাঞ্চের নাম অনুযায়ী নিশ্চিত হয়ে নিন
+
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -22,5 +25,8 @@ jobs:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
+          port: 21
+          protocol: ftp
           local-dir: ./dist/
           server-dir: ./
+          state-name: .ftp-deploy-sync-state.json
