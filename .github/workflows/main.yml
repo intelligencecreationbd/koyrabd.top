@@ -3,7 +3,7 @@ name: 🚀 Build and Deploy Website
 on:
   push:
     branches:
-      - main  # আপনার ব্রাঞ্চের নাম master হলে এখানে master লিখে দিন
+      - main  # আপনার মেইন ব্রাঞ্চের নাম master হলে সেটি দিন
 
 jobs:
   build-and-deploy:
@@ -11,37 +11,39 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # ১. GitHub থেকে লেটেস্ট কোড সংগ্রহ করা
+      # ১. কোড চেকআউট করা
       - name: 🚚 Get latest code
         uses: actions/checkout@v4
 
-      # ২. Node.js সেটআপ করা
+      # ২. Node.js সেটআপ
       - name: ⚙️ Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
-      # ৩. প্রোজেক্টের ডিপেন্ডেন্সি ইনস্টল করা
+      # ৩. ডিপেন্ডেন্সি ইনস্টল (npm install)
       - name: 📦 Install dependencies
         run: npm install
 
-      # ৪. প্রোজেক্ট বিল্ড করা
+      # ৪. প্রোজেক্ট বিল্ড করা (npm run build)
       - name: 🏗️ Build project
         run: npm run build
 
-      # ৫. বিল্ড করা ফাইলগুলো FTP-তে সিঙ্ক করা
+      # ৫. ফাইল সিঙ্ক্রোনাইজেশন (সবচেয়ে গুরুত্বপূর্ণ ধাপ)
       - name: 📂 Sync files to Server
         uses: SamKirkland/FTP-Deploy-Action@v4.3.4
         with:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          # বিল্ড ফোল্ডার সাধারণত 'dist' বা 'build' হয়। আপনার অনুযায়ী এটি চেক করুন।
+          # আপনার বিল্ড ফোল্ডার যদি 'dist' হয় তবে এটিই থাকবে
           local-dir: ./dist/ 
-          # যেহেতু আপনি FTP ডিরেক্টরি public_html সেট করেছেন, তাই এখানে ./ দিন
+          # FTP ইউজার যদি সরাসরি public_html এ ঢুকে তবে এটি ./ থাকবে
           server-dir: ./ 
           protocol: ftp
           port: 21
-          # টাইমআউট সমস্যা এড়াতে অতিরিক্ত সেটিংস
-          state-name: .ftp-deploy-sync-state.json
+          # টাইমআউট এবং রিট্রাই সেটিংস (যাতে মাঝপথে না কাটে)
+          timeout: 90000
           dangerous-clean-slate: false
+          # অতিরিক্ত লগ দেখার জন্য (যাতে সমস্যা ধরা যায়)
+          log-level: verbose
