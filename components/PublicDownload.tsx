@@ -19,6 +19,8 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
+import { settingsDb } from '../Firebase-appsettings';
+import { doc, getDoc } from 'firebase/firestore';
 
 interface DownloadFeatureCardProps {
   icon: React.ReactNode;
@@ -54,9 +56,25 @@ interface PublicDownloadProps {
 const PublicDownload: React.FC<PublicDownloadProps> = ({ appLogo, isAdminLoggedIn, onLogoChange }) => {
   const navigate = useNavigate();
   const logoInputRef = useRef<HTMLInputElement>(null);
+  const [downloadLink, setDownloadLink] = React.useState('https://www.koyrabd.top/KP-Community.apk');
+
+  React.useEffect(() => {
+    const fetchDownloadLink = async () => {
+      try {
+        const docRef = doc(settingsDb, 'settings', 'about_app');
+        const snap = await getDoc(docRef);
+        if (snap.exists() && snap.data().downloadLink) {
+          setDownloadLink(snap.data().downloadLink);
+        }
+      } catch (e) {
+        console.error('Error fetching download link:', e);
+      }
+    };
+    fetchDownloadLink();
+  }, []);
 
   const handleDownload = () => {
-    window.open('https://github.com/intelligencecreationbd/KoyraPaikgachaCommunityApp/releases/download/v1.0.0/KP.Community.apk', '_blank');
+    window.open(downloadLink, '_blank');
   };
 
   return (

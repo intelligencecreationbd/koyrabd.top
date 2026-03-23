@@ -26,9 +26,9 @@ import MenuAccessNotice from './components/MenuAccessNotice';
 import UserEmergencyInfo from './components/UserEmergencyInfo';
 import BannerMaker from './components/BannerMaker';
 import { Submission, Notice, User } from './types';
-import { trackVisit } from './services/analyticsService';
+import { trackVisit } from './src/services/analyticsService';
 import { settingsDb } from './Firebase-appsettings';
-import { subscribeToUnreadCount } from './services/helplineService';
+import { subscribeToUnreadCount } from './src/services/helplineService';
 import { 
   doc, 
   onSnapshot, 
@@ -36,6 +36,7 @@ import {
   setDoc, 
   collection 
 } from 'firebase/firestore';
+import { handleFirestoreError, OperationType } from './src/services/firestoreErrorHandler';
 
 // Firebase removed for paid hosting migration
 
@@ -350,8 +351,8 @@ const App = () => {
       if (snapshot.exists()) {
         setMenuAccess(snapshot.data() || {});
       }
-    }, (err) => {
-      console.error("Menu access fetch error:", err);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, 'settings/menu_access');
     });
     return () => unsubscribe();
   }, []);
@@ -444,7 +445,7 @@ const App = () => {
         setAdminPassword(snapshot.data().value.toString());
       }
     }, (error) => {
-      console.error("Error loading admin password:", error);
+      handleFirestoreError(error, OperationType.GET, 'settings/admin_password');
     });
 
     // Load app logo from AppSettings Firebase
@@ -454,7 +455,7 @@ const App = () => {
         setAppLogo(snapshot.data().value);
       }
     }, (error) => {
-      console.error("Error loading app logo:", error);
+      handleFirestoreError(error, OperationType.GET, 'settings/app_logo');
     });
 
     // Load notices from AppSettings Firebase
@@ -466,7 +467,7 @@ const App = () => {
         localStorage.setItem('kp_notices', JSON.stringify(data));
       }
     }, (error) => {
-      console.error("Error loading notices:", error);
+      handleFirestoreError(error, OperationType.GET, 'settings/notices');
     });
 
     // Load user notices from AppSettings Firebase
@@ -478,7 +479,7 @@ const App = () => {
         localStorage.setItem('kp_user_notices', JSON.stringify(data));
       }
     }, (error) => {
-      console.error("Error loading user notices:", error);
+      handleFirestoreError(error, OperationType.GET, 'settings/user_notices');
     });
 
     const savedNotices = localStorage.getItem('kp_notices');
@@ -491,6 +492,7 @@ const App = () => {
       unsubscribePass();
       unsubscribeLogo();
       unsubscribeNotices();
+      unsubscribeUserNotices();
     };
   }, []);
 
