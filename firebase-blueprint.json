@@ -1,0 +1,74 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "User profile information",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "fullName": { "type": "string" },
+        "mobile": { "type": "string" },
+        "email": { "type": "string" },
+        "dob": { "type": "string" },
+        "village": { "type": "string" },
+        "nid": { "type": "string" },
+        "password": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "status": { "type": "string" },
+        "role": { "type": "string" }
+      },
+      "required": ["uid", "fullName", "mobile", "password"]
+    },
+    "Setting": {
+      "title": "App Setting",
+      "description": "General application settings",
+      "type": "object",
+      "properties": {
+        "value": { "type": "any" },
+        "list": { "type": "array" }
+      }
+    },
+    "News": {
+      "title": "News Article",
+      "description": "News article information",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "content": { "type": "string" },
+        "author": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "category": { "type": "string" },
+        "image": { "type": "string" }
+      }
+    },
+    "ChatMessage": {
+      "title": "Chat Message",
+      "description": "Message in a chat room",
+      "type": "object",
+      "properties": {
+        "text": { "type": "string" },
+        "senderId": { "type": "string" },
+        "senderName": { "type": "string" },
+        "timestamp": { "type": "string" }
+      }
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles"
+    },
+    "/settings/{settingId}": {
+      "schema": "Setting",
+      "description": "Application settings"
+    },
+    "/news/{newsId}": {
+      "schema": "News",
+      "description": "News articles"
+    },
+    "/rooms/{roomId}/messages/{messageId}": {
+      "schema": "ChatMessage",
+      "description": "Chat messages"
+    }
+  }
+}

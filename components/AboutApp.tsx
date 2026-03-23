@@ -37,6 +37,7 @@ interface AboutContent {
   };
   contributors: string[];
   feedbackLink: string;
+  downloadLink: string;
   terms: string[];
   privacy: string;
   disclaimer: string;
@@ -60,6 +61,7 @@ const INITIAL_CONTENT: AboutContent = {
   },
   contributors: ['উপজেলা প্রশাসন', 'স্থানীয় স্বেচ্ছাসেবকবৃন্দ', 'তথ্য প্রদানকারী ইউজারগণ'],
   feedbackLink: '',
+  downloadLink: 'https://www.koyrabd.top/KP-Community.apk',
   terms: [
     'অ্যাপটি শুধুমাত্র জনকল্যাণমূলক কাজে ব্যবহার করতে হবে।',
     'ভুল বা বিভ্রান্তিকর তথ্য প্রদান করা থেকে বিরত থাকতে হবে।',

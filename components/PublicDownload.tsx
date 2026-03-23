@@ -56,7 +56,7 @@ const PublicDownload: React.FC<PublicDownloadProps> = ({ appLogo, isAdminLoggedI
   const logoInputRef = useRef<HTMLInputElement>(null);
 
   const handleDownload = () => {
-    window.open('https://getapp.koyrabd.top/KP%20Community.apk', '_blank');
+    window.open('https://github.com/intelligencecreationbd/KoyraPaikgachaCommunityApp/releases/download/v1.0.0/KP.Community.apk', '_blank');
   };
 
   return (

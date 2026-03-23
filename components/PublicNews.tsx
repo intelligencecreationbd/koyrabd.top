@@ -48,6 +48,7 @@ import { kppostDb } from '../Firebase-kppost';
 import { userDb as db } from '../Firebase-user';
 import { settingsDb } from '../Firebase-appsettings';
 import { uploadImageToServer } from '../src/services/uploadService';
+import { handleFirestoreError, OperationType } from '../src/services/firestoreErrorHandler';
 
 const toBn = (num: string | number) => 
   (num || '').toString().replace(/\d/g, d => "০১২৩৪৫৬৭৮৯"[parseInt(d)]);
@@ -156,6 +157,8 @@ export default function PublicNews({ onBack }: { onBack: () => void }) {
       const userList: any[] = [];
       snapshot.forEach(doc => userList.push(doc.data()));
       setAllUsers(userList);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, 'users');
     });
 
     // Fetch categories from Firebase
@@ -164,6 +167,8 @@ export default function PublicNews({ onBack }: { onBack: () => void }) {
       const dynamic = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
       setCategories(dynamic as any[]);
       if (dynamic.length > 0) setForm(prev => ({...prev, category: (dynamic[0] as any).id}));
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, 'categories');
     });
 
     setLoading(true);
@@ -172,12 +177,16 @@ export default function PublicNews({ onBack }: { onBack: () => void }) {
     const unsubscribeNews = onSnapshot(newsRef, (snapshot) => {
       setNewsList(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })));
       setLoading(false);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, 'news_main');
     });
 
     // Fetch breaking news from Firebase
     const breakingRef = query(collection(kppostDb, 'breaking_news'), orderBy('timestamp', 'desc'));
     const unsubscribeBreaking = onSnapshot(breakingRef, (snapshot) => {
       setBreakingNews(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })));
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, 'breaking_news');
     });
 
     // Fetch app logo from AppSettings Firebase
@@ -186,6 +195,8 @@ export default function PublicNews({ onBack }: { onBack: () => void }) {
       if (snapshot.exists()) {
         setAppLogo(snapshot.data().value);
       }
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, 'settings/app_logo');
     });
 
     const saved = localStorage.getItem('kp_saved_news');

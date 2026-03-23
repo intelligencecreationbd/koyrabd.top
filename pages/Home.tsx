@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { LayoutDashboard, ChevronRight } from 'lucide-react';
 import { ref, onValue } from 'firebase/database';
 import { collection, onSnapshot } from 'firebase/firestore';
+import { handleFirestoreError, OperationType } from '../src/services/firestoreErrorHandler';
 import { chatDb } from '../Firebase-kpchat';
 import { CATEGORIES, ICON_MAP } from '../constants';
 import { Notice, User } from '../types';
@@ -37,6 +38,8 @@ export function Home({ notices, isAdmin, user, isDarkMode, checkAccess }: HomePr
     const unsubscribe = onSnapshot(roomsRef, (snapshot) => {
       const total = snapshot.docs.reduce((acc: number, d: any) => acc + (d.data().unseenCount || 0), 0);
       setChatNotifications(total);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, `user_rooms/${user.memberId}/rooms`);
     });
 
     return () => unsubscribe();
