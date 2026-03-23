@@ -47,9 +47,11 @@ const PublicHotline: React.FC<{
     return cached ? JSON.parse(cached) : [];
   });
   const [isLoading, setIsLoading] = useState(contacts.length === 0);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     setIsLoading(true);
+    setError(null);
     const hotlineCollection = collection(hotlineDb, 'হটলাইন');
     const unsubscribe = onSnapshot(hotlineCollection, (snapshot) => {
       const list = snapshot.docs.map(doc => ({
@@ -59,8 +61,10 @@ const PublicHotline: React.FC<{
       setContacts(list);
       localStorage.setItem('kp_cache_hotline', JSON.stringify(list));
       setIsLoading(false);
-    }, (error) => {
-      console.error("Firestore error:", error);
+      setError(null);
+    }, (err) => {
+      console.error("Firestore error:", err);
+      setError("ডেটা লোড করতে সমস্যা হয়েছে। অনুগ্রহ করে ইন্টারনেট কানেকশন চেক করুন।");
       setIsLoading(false);
     });
     return () => unsubscribe();
@@ -115,6 +119,17 @@ const PublicHotline: React.FC<{
 
         {isLoading ? (
             <SkeletonHotline />
+        ) : error ? (
+            <div className="text-center py-10 space-y-4">
+                <ShieldAlert size={48} className="text-red-400 mx-auto" />
+                <p className="text-sm font-bold text-red-500">{error}</p>
+                <button 
+                    onClick={() => window.location.reload()}
+                    className="px-6 py-2 bg-blue-600 text-white rounded-xl font-bold active:scale-95 transition-all"
+                >
+                    আবার চেষ্টা করুন
+                </button>
+            </div>
         ) : initialServiceType && filteredContacts.length > 0 ? (
             <div className="space-y-4 animate-in fade-in duration-700">
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] pl-2 text-left">হটলাইন কন্টাক্ট লিস্ট</p>

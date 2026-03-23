@@ -1,200 +1,23 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // ===============================================================
-    // Assumed Data Model
-    // ===============================================================
-    //
-    // Collection: users
-    // Document ID: userId (uid)
-    // Fields:
-    //   - uid: string (required)
-    //   - fullName: string (required)
-    //   - mobile: string (required)
-    //   - email: string (optional)
-    //   - dob: string (required)
-    //   - village: string (required)
-    //   - nid: string (optional)
-    //   - password: string (required)
-    //   - createdAt: string (required)
-    //   - status: string (required)
-    //   - role: string (optional)
-    //
-    // Collection: settings
-    // Document ID: settingId (e.g., menu_access, admin_password, app_logo, notices, user_notices)
-    // Fields:
-    //   - value: any (optional)
-    //   - list: array (optional)
-    //
-    // Collection: news, pendingNews, rejectedNews, breakingNews
-    // Document ID: newsId
-    // Fields:
-    //   - title: string (required)
-    //   - content: string (required)
-    //   - author: string (required)
-    //   - createdAt: string (required)
-    //   - category: string (required)
-    //   - image: string (optional)
-    //
-    // Collection: rooms, friends, outgoing, incoming, messages, typing, helpline, hotline, bus, medical, hospitals, banners, categories, houseRent, products, legal, donors, ledger, contacts, appSettings, adminPass, notices, userNotices
-    // [Other collections follow similar patterns of public read or owner-only access]
-    //
-    // ===============================================================
-
-    // ===============================================================
-    // Helper Functions
-    // ===============================================================
-    
-    function isAuthenticated() {
-      return request.auth != null;
-    }
-
-    function isOwner(userId) {
-      return isAuthenticated() && request.auth.uid == userId;
-    }
-
-    function isAdmin() {
-      return isAuthenticated() &&
-        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
-          (request.auth.token.email == "intelligencecreationbd@gmail.com" && request.auth.token.email_verified == true));
-    }
-
-    function hasRequiredFields(fields) {
-      return request.resource.data.keys().hasAll(fields);
-    }
-
-    function hasOnlyAllowedFields(fields) {
-      return request.resource.data.keys().hasOnly(fields);
-    }
-
-    function uidUnchanged() {
-      return !('uid' in request.resource.data) ||
-        request.resource.data.uid == request.auth.uid;
-    }
-
-    function uidNotModified() {
-      return !('uid' in request.resource.data) ||
-        request.resource.data.uid == resource.data.uid;
-    }
-
-    // ===============================================================
-    // Domain Validators
-    // ===============================================================
-
-    function isValidUser(data) {
-      return data.fullName is string && data.fullName.size() > 0 && data.fullName.size() < 100 &&
-             data.mobile is string && data.mobile.size() >= 10 && data.mobile.size() <= 15 &&
-             (!('email' in data) || (data.email is string && data.email.size() < 100)) &&
-             data.dob is string && data.dob.size() > 0 &&
-             data.village is string && data.village.size() > 0 &&
-             (!('nid' in data) || (data.nid is string && data.nid.size() < 20)) &&
-             data.password is string && data.password.size() > 0 &&
-             data.createdAt is string &&
-             data.status in ['active', 'suspended'];
-    }
-
-    function isValidSetting(data) {
-      return true; // Settings can have various shapes
-    }
-
-    // ===============================================================
-    // Rules
-    // ===============================================================
-
-    // Users collection
-    match /users/{userId} {
-      // Allow authenticated users to read profiles (needed for chat search/display)
-      // CRITICAL: This may expose PII if not split into public/private collections.
-      allow read: if isAuthenticated();
-      // Allow creation of a new user profile (registration)
-      allow create: if isAuthenticated() && isValidUser(request.resource.data) && (isOwner(userId) || isAdmin());
-      // Allow users to update their own profile, or admins to update all
-      allow update: if isAuthenticated() && isValidUser(request.resource.data) && (isOwner(userId) || isAdmin()) && uidNotModified();
-      // Allow admins to delete users
-      allow delete: if isAdmin();
-    }
-
-    // Settings collection
-    match /settings/{settingId} {
+    // Allow public read access to 'হটলাইন' and 'settings' collections
+    match /হটলাইন/{document=**} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow write: if false; // Only admin should write via Firebase Console or Admin SDK
+    }
+    
+    match /settings/{document=**} {
+      allow read: if true;
+      allow write: if false;
     }
 
-    // Chat related collections
-    match /presence/{userId} {
-      allow read: if isAuthenticated();
-      allow write: if isOwner(userId) || isAdmin();
-    }
-
-    match /friends/{userId} {
-      allow read, write: if isOwner(userId) || isAdmin();
-      match /list/{friendId} {
-        allow read, write: if isOwner(userId) || isAdmin();
-      }
-    }
-
-    match /requests_outgoing/{userId} {
-      allow read, write: if isOwner(userId) || isAdmin();
-      match /list/{requestId} {
-        allow read, write: if isOwner(userId) || isAdmin();
-      }
-    }
-
-    match /requests_incoming/{userId} {
-      allow read: if isOwner(userId) || isAdmin();
-      allow write: if isAuthenticated(); // Others can send requests
-      match /list/{requestId} {
-        allow read: if isOwner(userId) || isAdmin();
-        allow write: if isAuthenticated();
-      }
-    }
-
-    match /user_rooms/{userId} {
-      allow read: if isOwner(userId) || isAdmin();
-      match /rooms/{roomId} {
-        allow read: if isOwner(userId) || isAdmin();
-        allow write: if isAuthenticated(); // Others can update room metadata (e.g. unseenCount)
-      }
-    }
-
-    match /messages/{chatId} {
-      allow read: if isAuthenticated(); // Should ideally check if user is part of chatId
-      match /list/{messageId} {
-        allow read: if isAuthenticated();
-        allow write: if isAuthenticated();
-      }
-    }
-
-    match /typing/{typingId} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
-    }
-
-    // Helpline
-    match /helpline_messages/{messageId} {
-      allow read, write: if isAuthenticated();
-    }
-
-    // Public collections
-    match /{collectionName}/{docId} {
-      allow read: if collectionName in [
-        'hotline', 'bus', 'medical', 'hospitals', 'banners', 'categories', 
-        'houseRent', 'products', 'legal', 'donors', 'ledger', 'contacts', 
-        'notices', 'userNotices', 'appSettings', 'adminPass', 'news', 
-        'breakingNews', 'pendingNews', 'rejectedNews', 'news_main', 'breaking_news',
-        'app_logo', 'menu_access', 'admin_password'
-      ];
-      allow write: if isAdmin() && collectionName in [
-        'hotline', 'bus', 'medical', 'hospitals', 'banners', 'categories', 
-        'houseRent', 'products', 'legal', 'donors', 'ledger', 'contacts', 
-        'notices', 'userNotices', 'appSettings', 'adminPass', 'news', 
-        'breakingNews', 'pendingNews', 'rejectedNews', 'news_main', 'breaking_news',
-        'app_logo', 'menu_access', 'admin_password'
-      ];
+    match /helpline_messages/{document=**} {
+      allow read, write: if request.auth != null || request.resource.data.chatId != null;
     }
 
     // Default deny
-    match /{path=**} {
+    match /{document=**} {
       allow read, write: if false;
     }
   }
