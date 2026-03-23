@@ -51,7 +51,7 @@ import AdminMenuAccess from '../components/AdminMenuAccess';
 import AdminAboutMgmt from '../components/AdminAboutMgmt';
 import AdminHelplineMgmt from '../components/AdminHelplineMgmt';
 import VisitorStats from '../components/analytics/VisitorStats';
-import { subscribeToUnreadCount } from '../src/services/helplineService';
+import { subscribeToUnreadCount } from '../services/helplineService';
 
 import { settingsDb } from '../Firebase-appsettings';
 import { doc, setDoc } from 'firebase/firestore';

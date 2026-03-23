@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Send, User, ShieldCheck, Clock, Headset, Phone, MoreVertical, Smile, CheckCircle2 } from 'lucide-react';
-import { sendHelplineMessage, subscribeToHelplineMessages, HelplineMessage, cleanupOldMessages } from '../src/services/helplineService';
+import { sendHelplineMessage, subscribeToHelplineMessages, HelplineMessage, cleanupOldMessages } from '../services/helplineService';
 
 import { doc, onSnapshot } from 'firebase/firestore';
 import { settingsDb } from '../Firebase-appsettings';

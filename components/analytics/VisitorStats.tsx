@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { getVisitorStats } from '../../src/services/analyticsService';
+import { getVisitorStats } from '../../services/analyticsService';
 import { Users, Calendar, BarChart3, RotateCcw } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 

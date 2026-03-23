@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ChevronLeft, Send, User, ShieldCheck, Clock, MessageSquare, Trash2 } from 'lucide-react';
-import { subscribeToAllHelplineChats, sendHelplineMessage, markChatAsRead, HelplineMessage, cleanupOldMessages } from '../src/services/helplineService';
+import { subscribeToAllHelplineChats, sendHelplineMessage, markChatAsRead, HelplineMessage, cleanupOldMessages } from '../services/helplineService';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface AdminHelplineMgmtProps {

@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, Save, Info, Target, Code2, Users2, MessageSquareQuote, FileText, ShieldCheck, AlertCircle, Lightbulb, Loader2, Smartphone } from 'lucide-react';
+import { ChevronLeft, Save, Info, Target, Code2, Users2, MessageSquareQuote, FileText, ShieldCheck, AlertCircle, Lightbulb, Loader2 } from 'lucide-react';
 import { settingsDb } from '../Firebase-appsettings';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 
@@ -16,7 +16,6 @@ interface AboutContent {
   };
   contributors: string[];
   feedbackLink: string;
-  downloadLink: string;
   terms: string[];
   privacy: string;
   disclaimer: string;
@@ -40,7 +39,6 @@ const INITIAL_CONTENT: AboutContent = {
   },
   contributors: ['উপজেলা প্রশাসন', 'স্থানীয় স্বেচ্ছাসেবকবৃন্দ', 'তথ্য প্রদানকারী ইউজারগণ'],
   feedbackLink: '',
-  downloadLink: 'https://www.koyrabd.top/KP-Community.apk',
   terms: [
     'অ্যাপটি শুধুমাত্র জনকল্যাণমূলক কাজে ব্যবহার করতে হবে।',
     'ভুল বা বিভ্রান্তিকর তথ্য প্রদান করা থেকে বিরত থাকতে হবে।',
@@ -159,11 +157,6 @@ export default function AdminAboutMgmt({ onBack }: { onBack: () => void }) {
         {/* Feedback */}
         <Section title="মতামত লিংক" icon={<MessageSquareQuote size={18} />}>
           <Input label="লিংক" value={content.feedbackLink} onChange={v => setContent({ ...content, feedbackLink: v })} />
-        </Section>
-
-        {/* Download Link */}
-        <Section title="অ্যাপ ডাউনলোড লিংক" icon={<Smartphone size={18} />}>
-          <Input label="ডাউনলোড লিংক" value={content.downloadLink} onChange={v => setContent({ ...content, downloadLink: v })} />
         </Section>
 
         {/* Terms */}

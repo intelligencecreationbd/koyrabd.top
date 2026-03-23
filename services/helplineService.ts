@@ -11,9 +11,7 @@ import {
   getDocs,
   updateDoc
 } from 'firebase/firestore';
-import { helplineDb } from '../../Firebase-helpline';
-
-import { handleFirestoreError, OperationType } from './firestoreErrorHandler';
+import { helplineDb } from '../Firebase-helpline';
 
 export interface HelplineMessage {
   id?: string;
@@ -73,8 +71,6 @@ export const subscribeToHelplineMessages = (chatId: string, callback: (messages:
       });
 
     callback(processedMessages);
-  }, (error) => {
-    handleFirestoreError(error, OperationType.GET, `${COLLECTION_NAME}/${chatId}`);
   });
 };
 
@@ -106,8 +102,6 @@ export const subscribeToAllHelplineChats = (callback: (chats: Record<string, Hel
     });
 
     callback(chats);
-  }, (error) => {
-    handleFirestoreError(error, OperationType.GET, COLLECTION_NAME);
   });
 };
 
@@ -140,8 +134,6 @@ export const subscribeToUnreadCount = (callback: (count: number) => void) => {
       uniqueChatIds.add(doc.data().chatId);
     });
     callback(uniqueChatIds.size);
-  }, (error) => {
-    handleFirestoreError(error, OperationType.GET, `${COLLECTION_NAME}/unread_count`);
   });
 };
 
